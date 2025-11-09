@@ -256,16 +256,6 @@ def save_scan_to_history(results, min_short, min_gain, min_vol_ratio, min_risk):
         print(f"Error saving history: {e}")
 
 if __name__ == '__main__':
-    print("
-" + "="*60)
-    print("🍋 LEMON SQUEEZE WEB APP 🍋")
-    print("="*60)
-    print("
-✅ Server starting...")
-    print("📱 Open your browser and go to: http://localhost:5000")
-    print("🛑 Press Ctrl+C to stop the server")
-    print("
-" + "="*60 + "
-")
-    
-    app.run(debug=True, host='0.0.0.0', port=8080)
+       import os
+       port = int(os.environ.get('PORT', 8080))
+       app.run(debug=False, host='0.0.0.0', port=port)
