@@ -1,8 +1,0 @@
-[phases.setup]
-nixPkgs = ['python311', 'python311Packages.pip']
-
-[phases.install]
-cmds = ['python -m pip install --upgrade pip', 'python -m pip install -r requirements_webapp.txt']
-
-[start]
-cmd = 'python lemon_squeeze_webapp.py'
