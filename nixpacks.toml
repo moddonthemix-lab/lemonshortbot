@@ -1,0 +1,43 @@
+[phases.setup]
+   nixPkgs = ['python311']
+   
+   [phases.install]
+   cmds = ['pip install -r requirements_webapp.txt']
+   
+   [phases.build]
+   cmds = ['echo "Build complete"']
+   
+   [start]
+   cmd = 'python lemon_squeeze_webapp.py'
+```
+4. Click **"Commit changes"**
+
+---
+
+## ⚠️ Also - I Notice the Issue!
+
+Looking at the error, Railway sees your files but something's wrong with the structure. Let me check...
+
+**Did you upload the HTML file correctly?** I see in the list it shows `lemon_squeeze_webapp.html` - good!
+
+---
+
+## 🎯 Alternative - Let's Try a Different Approach:
+
+If that still fails, let's use **requirements.txt** instead of **requirements_webapp.txt**:
+
+### Rename the requirements file:
+
+1. In GitHub, go to your repo
+2. Click on **`requirements_webapp.txt`**
+3. Click the **pencil icon** (edit)
+4. Click the **3 dots menu** (top right of editor)
+5. Select **"Delete file"**
+6. Commit
+7. Then **"Add file"** → **"Create new file"**
+8. Name it: `requirements.txt` (no _webapp!)
+9. Paste:
+```
+   Flask==3.0.0
+   yfinance>=0.2.28
+   pandas>=1.5.0
