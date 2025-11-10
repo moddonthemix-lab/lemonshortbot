@@ -473,13 +473,33 @@ def save_scan_to_history(results, min_short, min_gain, min_vol_ratio, min_risk):
 
 if __name__ == '__main__':
     import os
+    import ssl
+    
     port = int(os.environ.get('PORT', 8080))
     
     print("\n" + "="*60)
     print("🍋 LEMON SQUEEZE WEB APP v2.0 🍋")
     print("="*60)
     print("\n✅ Server starting...")
-    print("📱 Open your browser and go to: http://localhost:8080")
+    
+    # Check if SSL certificates exist
+    cert_file = 'cert.pem'
+    key_file = 'key.pem'
+    
+    if os.path.exists(cert_file) and os.path.exists(key_file):
+        print("🔒 HTTPS enabled!")
+        print("📱 Open your browser and go to: https://localhost:8080")
+        print("   (You may need to click 'Advanced' and accept the self-signed certificate)")
+        
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.load_cert_chain(cert_file, key_file)
+    else:
+        print("⚠️  Running without HTTPS (certificates not found)")
+        print("📱 Open your browser and go to: http://localhost:8080")
+        print("\n💡 To enable HTTPS, run:")
+        print("   openssl req -x509 -newkey rsa:4096 -nodes -out cert.pem -keyout key.pem -days 365")
+        context = None
+    
     print("\n📊 Features:")
     print("  - Short Squeeze Scanner")
     print("  - Daily Plays (3-1 Strat)")
@@ -487,4 +507,7 @@ if __name__ == '__main__':
     print("\n🛑 Press Ctrl+C to stop the server")
     print("\n" + "="*60 + "\n")
     
-    app.run(debug=False, host='0.0.0.0', port=port)
+    if context:
+        app.run(debug=False, host='0.0.0.0', port=port, ssl_context=context)
+    else:
+        app.run(debug=False, host='0.0.0.0', port=port)
