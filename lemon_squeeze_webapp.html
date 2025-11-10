@@ -80,11 +80,11 @@
         
         .tab-button {
             flex: 1;
-            max-width: 300px;
-            padding: 20px 30px;
+            max-width: 280px;
+            padding: 20px 20px;
             background: transparent;
             border: none;
-            font-size: 1.3em;
+            font-size: 1.2em;
             font-weight: bold;
             cursor: pointer;
             transition: all 0.3s;
@@ -469,8 +469,8 @@
     <div class="container">
         <div class="header">
             <h1>🍋 Lemon Squeeze v2.0</h1>
-            <p>Short Squeeze Scanner + Daily Plays Pattern Detector</p>
-            <span class="badge">v2.0 - 3-1 Strat Edition</span>
+            <p>Short Squeeze + Daily & Weekly Pattern Scanner</p>
+            <span class="badge">v2.0 - Multi-Timeframe 3-1 Strat</span>
         </div>
         
         <!-- Tab Navigation -->
@@ -480,6 +480,9 @@
             </button>
             <button class="tab-button" onclick="switchTab('daily')">
                 📈 Daily Plays (3-1 Strat)
+            </button>
+            <button class="tab-button" onclick="switchTab('weekly')">
+                📊 Weekly Plays (3-1 Strat)
             </button>
         </div>
         
@@ -567,6 +570,44 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Weekly Plays Tab -->
+        <div id="weeklyTab" class="tab-content">
+            <div class="content">
+                <div class="settings-panel">
+                    <h2>📚 The 3-1 Strat Pattern (Weekly Timeframe)</h2>
+                    <div style="background: #FFE97F; padding: 20px; border-radius: 10px;">
+                        <ul style="margin-top: 10px; margin-left: 20px; line-height: 1.8; font-size: 1.1em;">
+                            <li><strong>"3" = Outside Bar:</strong> Higher high + lower low than previous week (expansion)</li>
+                            <li><strong>"1" = Inside Bar:</strong> Lower high + higher low than previous week (consolidation)</li>
+                            <li><strong>Setup:</strong> Weekly patterns signal potential multi-day/week moves</li>
+                        </ul>
+                        <p style="margin-top: 15px; padding: 10px; background: white; border-radius: 5px; font-style: italic;">
+                            💡 Weekly scans look for larger timeframe setups - these can signal bigger moves!
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="scan-section">
+                    <button id="weeklyButton" class="scan-button" onclick="startWeeklyScan()">
+                        📊 SCAN WEEKLY PATTERNS 🎯
+                    </button>
+                </div>
+                
+                <div id="weeklyLoading" class="loading">
+                    <div class="spinner"></div>
+                    <div class="loading-text">Squeezing weekly lemons... 🍋📊</div>
+                </div>
+                
+                <div id="weeklyResults" class="results"></div>
+                
+                <div class="disclaimer">
+                    <strong>⚠️ IMPORTANT DISCLAIMER</strong>
+                    Technical patterns are educational tools, not guarantees. Weekly patterns suggest larger moves but markets are unpredictable.
+                    Always use proper risk management, set stop losses, and never risk more than you can afford to lose. This is NOT financial advice!
+                </div>
+            </div>
+        </div>
     </div>
     
     <script>
@@ -589,6 +630,8 @@
                 document.getElementById('squeezeTab').classList.add('active');
             } else if (tab === 'daily') {
                 document.getElementById('dailyTab').classList.add('active');
+            } else if (tab === 'weekly') {
+                document.getElementById('weeklyTab').classList.add('active');
             }
         }
         
@@ -939,6 +982,178 @@
                                 </div>
                                 <div class="metric-item">
                                     <span class="metric-label">Avg Volume:</span>
+                                    <span class="metric-value">${stock.avgVolume.toLocaleString()}</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">Volume Ratio:</span>
+                                    <span class="metric-value">${(stock.volume / stock.avgVolume).toFixed(2)}x</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            resultsDiv.innerHTML = html;
+        }
+        
+        // Weekly Plays Scanner
+        async function startWeeklyScan() {
+            if (isScanning) return;
+            
+            isScanning = true;
+            document.getElementById('weeklyButton').disabled = true;
+            document.getElementById('weeklyButton').textContent = '⏳ SCANNING...';
+            document.getElementById('weeklyLoading').classList.add('active');
+            document.getElementById('weeklyResults').classList.remove('active');
+            
+            try {
+                const response = await fetch('/api/weekly-plays', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({})  // No filters needed
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayWeeklyResults(data.results);
+                } else {
+                    alert('Error: ' + data.error);
+                }
+                
+            } catch (error) {
+                alert('Error scanning: ' + error.message);
+                console.error('Weekly scan error:', error);
+            } finally {
+                isScanning = false;
+                document.getElementById('weeklyButton').disabled = false;
+                document.getElementById('weeklyButton').textContent = '📊 SCAN WEEKLY PATTERNS 🎯';
+                document.getElementById('weeklyLoading').classList.remove('active');
+            }
+        }
+        
+        function displayWeeklyResults(patterns) {
+            const resultsDiv = document.getElementById('weeklyResults');
+            resultsDiv.classList.add('active');
+            
+            if (patterns.length === 0) {
+                resultsDiv.innerHTML = `
+                    <div class="no-results">
+                        <h3>🎯 No Weekly Patterns Found</h3>
+                        <p style="font-size: 1.2em; color: #666; margin: 20px 0;">
+                            No stocks showed the 3-1 Strat pattern on weekly timeframe
+                        </p>
+                        <p style="color: #999;">
+                            💡 Weekly patterns are less common but signal larger moves.<br>
+                            Check back next week!
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const bullishCount = patterns.filter(p => p.pattern.direction === 'bullish').length;
+            const bearishCount = patterns.filter(p => p.pattern.direction === 'bearish').length;
+            const totalVolume = patterns.reduce((sum, p) => sum + p.volume, 0);
+            const avgVolume = totalVolume / patterns.length;
+            
+            let html = `
+                <div class="results-header">
+                    <h2>📊 Weekly 3-1 Strat Patterns Found!</h2>
+                    <p style="font-size: 1.2em; color: #666; margin: 10px 0;">
+                        ${new Date().toLocaleString()}
+                    </p>
+                    <div class="summary-stats">
+                        <div class="stat">
+                            <span class="stat-value">${patterns.length}</span>
+                            <span class="stat-label">Total Patterns</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" style="color: #10b981;">${bullishCount}</span>
+                            <span class="stat-label">Bullish</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" style="color: #ef4444;">${bearishCount}</span>
+                            <span class="stat-label">Bearish</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">${(avgVolume / 1000000).toFixed(1)}M</span>
+                            <span class="stat-label">Avg Weekly Vol</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            patterns.forEach((stock, idx) => {
+                const pattern = stock.pattern;
+                const patternClass = pattern.direction === 'bullish' ? 'pattern-bullish' : 'pattern-bearish';
+                const patternEmoji = pattern.direction === 'bullish' ? '📈' : '📉';
+                
+                html += `
+                    <div class="pattern-card">
+                        <div class="stock-header">
+                            <div class="stock-ticker">#${idx + 1}. ${stock.ticker}</div>
+                            <div class="pattern-badge ${patternClass}">
+                                ${patternEmoji} ${pattern.direction.toUpperCase()} (WEEKLY)
+                            </div>
+                        </div>
+                        <div class="stock-company">${stock.company}</div>
+                        
+                        <div class="pattern-info">
+                            <h4 style="color: #FFA500; margin-bottom: 10px;">📊 Weekly Pattern Details</h4>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                                <div>
+                                    <strong style="color: #666;">3️⃣ Outside Week (${pattern.three_candle.date}):</strong><br>
+                                    High: $${pattern.three_candle.high.toFixed(2)}<br>
+                                    Low: $${pattern.three_candle.low.toFixed(2)}<br>
+                                    Close: $${pattern.three_candle.close.toFixed(2)}
+                                </div>
+                                <div>
+                                    <strong style="color: #666;">1️⃣ Inside Week (${pattern.one_candle.date}):</strong><br>
+                                    High: $${pattern.one_candle.high.toFixed(2)}<br>
+                                    Low: $${pattern.one_candle.low.toFixed(2)}<br>
+                                    Open: $${pattern.one_candle.open.toFixed(2)}<br>
+                                    Close: $${pattern.one_candle.close.toFixed(2)}
+                                </div>
+                            </div>
+                            <div style="background: white; padding: 10px; border-radius: 5px; margin-top: 10px;">
+                                <strong>💡 Interpretation:</strong> 
+                                Weekly pattern! The stock formed an outside week (expansion) followed by an inside week (consolidation). 
+                                This ${pattern.direction} setup on the weekly timeframe suggests potential for a multi-day/week move 
+                                ${pattern.direction === 'bullish' ? 'above' : 'below'} the inside week's range.
+                            </div>
+                        </div>
+                        
+                        <div class="metrics-grid" style="margin-top: 20px;">
+                            <div class="metric-section">
+                                <h4>💰 Price Info</h4>
+                                <div class="metric-item">
+                                    <span class="metric-label">Current Price:</span>
+                                    <span class="metric-value">$${stock.currentPrice.toFixed(2)}</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">Weekly Change:</span>
+                                    <span class="metric-value" style="color: ${stock.weeklyChange >= 0 ? '#10b981' : '#ef4444'};">
+                                        ${stock.weeklyChange >= 0 ? '+' : ''}${stock.weeklyChange.toFixed(2)}%
+                                    </span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">Market Cap:</span>
+                                    <span class="metric-value">$${(stock.marketCap / 1000000).toFixed(1)}M</span>
+                                </div>
+                            </div>
+                            
+                            <div class="metric-section">
+                                <h4>📊 Volume Info</h4>
+                                <div class="metric-item">
+                                    <span class="metric-label">This Week Vol:</span>
+                                    <span class="metric-value">${stock.volume.toLocaleString()}</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">Avg Weekly Vol:</span>
                                     <span class="metric-value">${stock.avgVolume.toLocaleString()}</span>
                                 </div>
                                 <div class="metric-item">
