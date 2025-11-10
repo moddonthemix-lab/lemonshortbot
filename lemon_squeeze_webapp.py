@@ -218,12 +218,8 @@ def scan():
 
 @app.route('/api/daily-plays', methods=['POST'])
 def daily_plays():
-    """API endpoint to scan for 3-1 Strat patterns"""
+    """API endpoint to scan for 3-1 Strat patterns - NO FILTERS"""
     try:
-        data = request.json
-        min_volume = int(data.get('minVolume', 500000))  # Minimum 500k volume
-        pattern_type = data.get('patternType', 'both')  # bullish, bearish, or both
-        
         # Get popular stocks list (you can customize this)
         popular_tickers = [
             'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD',
@@ -235,7 +231,6 @@ def daily_plays():
             'XOM', 'CVX', 'COP', 'SLB',
             'PFE', 'JNJ', 'MRNA', 'BNTX',
             'WMT', 'TGT', 'COST', 'HD', 'LOW',
-            # Add the high short stocks too
         ]
         
         # Add high short stocks to the list
@@ -245,8 +240,13 @@ def daily_plays():
                 popular_tickers.append(stock['ticker'])
         
         results = []
+        processed = 0
+        total = len(popular_tickers)
+        
+        print(f"\n🎯 Starting Daily Plays scan for {total} stocks...")
         
         for ticker in popular_tickers:
+            processed += 1
             try:
                 stock_data = yf.Ticker(ticker)
                 hist = stock_data.history(period='1mo')
@@ -257,14 +257,6 @@ def daily_plays():
                     
                     if has_pattern:
                         current_volume = hist['Volume'].iloc[-1]
-                        
-                        # Check volume filter
-                        if current_volume < min_volume:
-                            continue
-                        
-                        # Check pattern type filter
-                        if pattern_type != 'both' and pattern_data['direction'] != pattern_type:
-                            continue
                         
                         # Calculate daily change
                         current_price = hist['Close'].iloc[-1]
@@ -286,14 +278,22 @@ def daily_plays():
                             'marketCap': int(market_cap),
                             'pattern': pattern_data
                         })
+                        
+                        print(f"✅ Found {pattern_data['direction']} pattern: {ticker} ({processed}/{total})")
+                
+                if processed % 10 == 0:
+                    print(f"📊 Progress: {processed}/{total} stocks scanned, {len(results)} patterns found")
                 
                 time.sleep(0.05)  # Faster for more stocks
                 
             except Exception as e:
+                print(f"❌ Error on {ticker}: {e}")
                 continue
         
         # Sort by volume (most active first)
         results.sort(key=lambda x: x['volume'], reverse=True)
+        
+        print(f"\n✅ Scan complete! Found {len(results)} total patterns")
         
         return jsonify({
             'success': True,
@@ -302,6 +302,7 @@ def daily_plays():
         })
         
     except Exception as e:
+        print(f"💥 Error in daily_plays: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
@@ -364,4 +365,13 @@ def save_scan_to_history(results, min_short, min_gain, min_vol_ratio, min_risk):
 if __name__ == '__main__':
     import os
     port = int(os.environ.get('PORT', 8080))
+    
+    print("\n" + "="*60)
+    print("🍋 LEMON SQUEEZE WEB APP v2.0 🍋")
+    print("="*60)
+    print("\n✅ Server starting...")
+    print("📱 Open your browser and go to: http://localhost:8080")
+    print("🛑 Press Ctrl+C to stop the server")
+    print("\n" + "="*60 + "\n")
+    
     app.run(debug=False, host='0.0.0.0', port=port)
