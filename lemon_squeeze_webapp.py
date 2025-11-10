@@ -310,6 +310,201 @@ def daily_plays():
             'error': str(e)
         }), 500
 
+@app.route('/api/hourly-plays', methods=['POST'])
+def hourly_plays():
+    """API endpoint to scan for 3-1 Strat patterns on HOURLY timeframe"""
+    try:
+        # Get popular stocks list
+        popular_tickers = [
+            'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD',
+            'SPY', 'QQQ', 'IWM', 'DIA',
+            'NFLX', 'DIS', 'BABA', 'PYPL', 'SQ', 'ROKU', 'SNAP', 'UBER',
+            'F', 'GM', 'NIO', 'LCID', 'RIVN',
+            'BA', 'GE', 'CAT', 'DE',
+            'JPM', 'BAC', 'GS', 'MS', 'C',
+            'XOM', 'CVX', 'COP', 'SLB',
+            'PFE', 'JNJ', 'MRNA', 'BNTX',
+            'WMT', 'TGT', 'COST', 'HD', 'LOW',
+        ]
+        
+        # Add high short stocks to the list
+        high_short_stocks = load_stock_data()
+        for stock in high_short_stocks:
+            if stock['ticker'] not in popular_tickers:
+                popular_tickers.append(stock['ticker'])
+        
+        results = []
+        processed = 0
+        total = len(popular_tickers)
+        
+        print(f"\n⏰ Starting Hourly Plays scan for {total} stocks...")
+        
+        for ticker in popular_tickers:
+            processed += 1
+            try:
+                stock_data = yf.Ticker(ticker)
+                # Get last 60 days with hourly intervals
+                hist = stock_data.history(period='60d', interval='1h')
+                
+                # Remove any rows with NaN values
+                hist = hist.dropna()
+                
+                info = stock_data.info
+                
+                if len(hist) >= 3:
+                    has_pattern, pattern_data = check_strat_31(hist)
+                    
+                    if has_pattern:
+                        current_volume = hist['Volume'].iloc[-1]
+                        
+                        # Calculate hourly change
+                        current_price = hist['Close'].iloc[-1]
+                        previous_close = hist['Close'].iloc[-2]
+                        hourly_change = ((current_price - previous_close) / previous_close) * 100
+                        
+                        # Get company name
+                        company_name = info.get('longName', ticker)
+                        market_cap = info.get('marketCap', 0)
+                        avg_volume = hist['Volume'].mean()
+                        
+                        results.append({
+                            'ticker': ticker,
+                            'company': company_name,
+                            'currentPrice': float(current_price),
+                            'hourlyChange': float(hourly_change),
+                            'volume': int(current_volume),
+                            'avgVolume': int(avg_volume),
+                            'marketCap': int(market_cap),
+                            'pattern': pattern_data,
+                            'timeframe': 'hourly'
+                        })
+                        
+                        print(f"✅ Found {pattern_data['direction']} hourly pattern: {ticker} ({processed}/{total})")
+                
+                if processed % 10 == 0:
+                    print(f"📊 Progress: {processed}/{total} stocks scanned, {len(results)} patterns found")
+                
+                time.sleep(0.05)
+                
+            except Exception as e:
+                print(f"❌ Error on {ticker}: {e}")
+                continue
+        
+        # Sort by volume (most active first)
+        results.sort(key=lambda x: x['volume'], reverse=True)
+        
+        print(f"\n✅ Hourly scan complete! Found {len(results)} total patterns")
+        
+        return jsonify({
+            'success': True,
+            'results': results,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        print(f"💥 Error in hourly_plays: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/crypto-plays', methods=['POST'])
+def crypto_plays():
+    """API endpoint to scan for 3-1 Strat patterns on CRYPTO (all timeframes)"""
+    try:
+        # Crypto tickers on yfinance
+        crypto_tickers = {
+            'BTC-USD': 'Bitcoin',
+            'ETH-USD': 'Ethereum',
+            'XRP-USD': 'Ripple',
+            'SOL-USD': 'Solana',
+            'DOGE-USD': 'Dogecoin',
+            'HYPE-USD': 'Hyperliquid'
+        }
+        
+        # Timeframes to check
+        timeframes = [
+            {'period': '60d', 'interval': '1h', 'name': 'Hourly'},
+            {'period': '3mo', 'interval': '1d', 'name': 'Daily'},
+            {'period': '6mo', 'interval': '1wk', 'name': 'Weekly'}
+        ]
+        
+        results = []
+        processed = 0
+        total = len(crypto_tickers) * len(timeframes)
+        
+        print(f"\n₿ Starting Crypto scan for {len(crypto_tickers)} cryptos across {len(timeframes)} timeframes...")
+        
+        for ticker, name in crypto_tickers.items():
+            for tf in timeframes:
+                processed += 1
+                try:
+                    stock_data = yf.Ticker(ticker)
+                    hist = stock_data.history(period=tf['period'], interval=tf['interval'])
+                    
+                    # Remove any rows with NaN values
+                    hist = hist.dropna()
+                    
+                    if len(hist) >= 3:
+                        has_pattern, pattern_data = check_strat_31(hist)
+                        
+                        if has_pattern:
+                            current_volume = hist['Volume'].iloc[-1]
+                            
+                            # Calculate change
+                            current_price = hist['Close'].iloc[-1]
+                            previous_close = hist['Close'].iloc[-2]
+                            change = ((current_price - previous_close) / previous_close) * 100
+                            
+                            avg_volume = hist['Volume'].mean()
+                            
+                            # Get market cap if available
+                            info = stock_data.info
+                            market_cap = info.get('marketCap', 0)
+                            
+                            results.append({
+                                'ticker': ticker.replace('-USD', ''),
+                                'fullTicker': ticker,
+                                'company': name,
+                                'currentPrice': float(current_price),
+                                'change': float(change),
+                                'volume': int(current_volume),
+                                'avgVolume': int(avg_volume),
+                                'marketCap': int(market_cap),
+                                'pattern': pattern_data,
+                                'timeframe': tf['name']
+                            })
+                            
+                            print(f"✅ Found {pattern_data['direction']} {tf['name']} pattern: {ticker} ({processed}/{total})")
+                    
+                    if processed % 5 == 0:
+                        print(f"📊 Progress: {processed}/{total} scans complete, {len(results)} patterns found")
+                    
+                    time.sleep(0.1)
+                    
+                except Exception as e:
+                    print(f"❌ Error on {ticker} {tf['name']}: {e}")
+                    continue
+        
+        # Sort by timeframe importance (Weekly > Daily > Hourly) then by volume
+        timeframe_order = {'Weekly': 0, 'Daily': 1, 'Hourly': 2}
+        results.sort(key=lambda x: (timeframe_order.get(x['timeframe'], 3), -x['volume']))
+        
+        print(f"\n✅ Crypto scan complete! Found {len(results)} total patterns")
+        
+        return jsonify({
+            'success': True,
+            'results': results,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        print(f"💥 Error in crypto_plays: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.route('/api/weekly-plays', methods=['POST'])
 def weekly_plays():
     """API endpoint to scan for 3-1 Strat patterns on WEEKLY timeframe"""
@@ -502,8 +697,10 @@ if __name__ == '__main__':
     
     print("\n📊 Features:")
     print("  - Short Squeeze Scanner")
+    print("  - Hourly Plays (3-1 Strat)")
     print("  - Daily Plays (3-1 Strat)")
     print("  - Weekly Plays (3-1 Strat)")
+    print("  - Crypto Scanner (BTC, ETH, XRP, SOL, DOGE, HYPE)")
     print("\n🛑 Press Ctrl+C to stop the server")
     print("\n" + "="*60 + "\n")
     
