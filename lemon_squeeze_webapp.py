@@ -310,6 +310,113 @@ def daily_plays():
             'error': str(e)
         }), 500
 
+@app.route('/api/weekly-plays', methods=['POST'])
+def weekly_plays():
+    """API endpoint to scan for 3-1 Strat patterns on WEEKLY timeframe"""
+    try:
+        # Get popular stocks list
+        popular_tickers = [
+            'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD',
+            'SPY', 'QQQ', 'IWM', 'DIA',
+            'NFLX', 'DIS', 'BABA', 'PYPL', 'SQ', 'ROKU', 'SNAP', 'UBER',
+            'F', 'GM', 'NIO', 'LCID', 'RIVN',
+            'BA', 'GE', 'CAT', 'DE',
+            'JPM', 'BAC', 'GS', 'MS', 'C',
+            'XOM', 'CVX', 'COP', 'SLB',
+            'PFE', 'JNJ', 'MRNA', 'BNTX',
+            'WMT', 'TGT', 'COST', 'HD', 'LOW',
+        ]
+        
+        # Add high short stocks to the list
+        high_short_stocks = load_stock_data()
+        for stock in high_short_stocks:
+            if stock['ticker'] not in popular_tickers:
+                popular_tickers.append(stock['ticker'])
+        
+        results = []
+        processed = 0
+        total = len(popular_tickers)
+        
+        print(f"\n📊 Starting Weekly Plays scan for {total} stocks...")
+        
+        for ticker in popular_tickers:
+            processed += 1
+            try:
+                stock_data = yf.Ticker(ticker)
+                # Get 6 months of data for weekly analysis
+                hist = stock_data.history(period='6mo')
+                
+                # Resample to weekly data (week ending Friday)
+                weekly = hist.resample('W-FRI').agg({
+                    'Open': 'first',
+                    'High': 'max',
+                    'Low': 'min',
+                    'Close': 'last',
+                    'Volume': 'sum'
+                })
+                
+                # Remove any rows with NaN values
+                weekly = weekly.dropna()
+                
+                info = stock_data.info
+                
+                if len(weekly) >= 3:
+                    has_pattern, pattern_data = check_strat_31(weekly)
+                    
+                    if has_pattern:
+                        current_volume = weekly['Volume'].iloc[-1]
+                        
+                        # Calculate weekly change
+                        current_price = weekly['Close'].iloc[-1]
+                        previous_close = weekly['Close'].iloc[-2]
+                        weekly_change = ((current_price - previous_close) / previous_close) * 100
+                        
+                        # Get company name
+                        company_name = info.get('longName', ticker)
+                        market_cap = info.get('marketCap', 0)
+                        avg_volume = weekly['Volume'].mean()
+                        
+                        results.append({
+                            'ticker': ticker,
+                            'company': company_name,
+                            'currentPrice': float(current_price),
+                            'weeklyChange': float(weekly_change),
+                            'volume': int(current_volume),
+                            'avgVolume': int(avg_volume),
+                            'marketCap': int(market_cap),
+                            'pattern': pattern_data,
+                            'timeframe': 'weekly'
+                        })
+                        
+                        print(f"✅ Found {pattern_data['direction']} weekly pattern: {ticker} ({processed}/{total})")
+                
+                if processed % 10 == 0:
+                    print(f"📊 Progress: {processed}/{total} stocks scanned, {len(results)} patterns found")
+                
+                time.sleep(0.05)
+                
+            except Exception as e:
+                print(f"❌ Error on {ticker}: {e}")
+                continue
+        
+        # Sort by volume (most active first)
+        results.sort(key=lambda x: x['volume'], reverse=True)
+        
+        print(f"\n✅ Weekly scan complete! Found {len(results)} total patterns")
+        
+        return jsonify({
+            'success': True,
+            'results': results,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        print(f"💥 Error in weekly_plays: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.route('/api/history', methods=['GET'])
 def get_history():
     """Get scan history"""
@@ -373,7 +480,11 @@ if __name__ == '__main__':
     print("="*60)
     print("\n✅ Server starting...")
     print("📱 Open your browser and go to: http://localhost:8080")
-    print("🛑 Press Ctrl+C to stop the server")
+    print("\n📊 Features:")
+    print("  - Short Squeeze Scanner")
+    print("  - Daily Plays (3-1 Strat)")
+    print("  - Weekly Plays (3-1 Strat)")
+    print("\n🛑 Press Ctrl+C to stop the server")
     print("\n" + "="*60 + "\n")
     
     app.run(debug=False, host='0.0.0.0', port=port)
