@@ -26,9 +26,11 @@ def load_stock_data():
                 parts = line.strip().split(',')
                 if len(parts) == 3:
                     ticker, company, short_pct = parts
+                    # Clean ticker - remove $ and whitespace
+                    ticker = ticker.strip().replace('$', '')
                     try:
                         short_interest = float(short_pct)
-                        if short_interest >= 25.0:
+                        if short_interest >= 25.0 and ticker:  # Make sure ticker isn't empty
                             stocks.append({
                                 'ticker': ticker,
                                 'company': company,
