@@ -1710,14 +1710,16 @@
                         </div>
                         
                         <div class="chart-container" id="chart-${stock.ticker}-squeeze-${idx}"></div>
-                        <script>
-                            setTimeout(() => createChart('chart-${stock.ticker}-squeeze-${idx}', '${stock.ticker}', 'daily'), 100);
-                        </script>
                     </div>
                 `;
             });
             
             resultsDiv.innerHTML = html;
+            
+            // Create charts after HTML is rendered
+            candidates.forEach((stock, idx) => {
+                setTimeout(() => createChart(`chart-${stock.ticker}-squeeze-${idx}`, stock.ticker, 'daily'), 200 + (idx * 100));
+            });
         }
         
         // Daily Plays Scanner
@@ -1890,14 +1892,16 @@
                         </div>
                         
                         <div class="chart-container" id="chart-${stock.ticker}-daily-${idx}"></div>
-                        <script>
-                            setTimeout(() => createChart('chart-${stock.ticker}-daily-${idx}', '${stock.ticker}', 'daily'), 100);
-                        </script>
                     </div>
                 `;
             });
             
             resultsDiv.innerHTML = html;
+            
+            // Create charts after HTML is rendered
+            patterns.forEach((stock, idx) => {
+                setTimeout(() => createChart(`chart-${stock.ticker}-daily-${idx}`, stock.ticker, 'daily'), 200 + (idx * 100));
+            });
         }
         
         // Weekly Plays Scanner
@@ -2070,14 +2074,16 @@
                         </div>
                         
                         <div class="chart-container" id="chart-${stock.ticker}-weekly-${idx}"></div>
-                        <script>
-                            setTimeout(() => createChart('chart-${stock.ticker}-weekly-${idx}', '${stock.ticker}', 'weekly'), 100);
-                        </script>
                     </div>
                 `;
             });
             
             resultsDiv.innerHTML = html;
+            
+            // Create charts after HTML is rendered
+            patterns.forEach((stock, idx) => {
+                setTimeout(() => createChart(`chart-${stock.ticker}-weekly-${idx}`, stock.ticker, 'weekly'), 200 + (idx * 100));
+            });
         }
         
         // Hourly Plays Scanner
@@ -2226,14 +2232,16 @@
                         </div>
                         
                         <div class="chart-container" id="chart-${stock.ticker}-hourly-${idx}"></div>
-                        <script>
-                            setTimeout(() => createChart('chart-${stock.ticker}-hourly-${idx}', '${stock.ticker}', 'hourly'), 100);
-                        </script>
                     </div>
                 `;
             });
             
             resultsDiv.innerHTML = html;
+            
+            // Create charts after HTML is rendered
+            patterns.forEach((stock, idx) => {
+                setTimeout(() => createChart(`chart-${stock.ticker}-hourly-${idx}`, stock.ticker, 'hourly'), 200 + (idx * 100));
+            });
         }
         
         // Crypto Scanner
@@ -2397,14 +2405,16 @@
                         </div>
                         
                         <div class="chart-container" id="chart-${crypto.ticker}-crypto-${idx}"></div>
-                        <script>
-                            setTimeout(() => createChart('chart-${crypto.ticker}-crypto-${idx}', '${crypto.fullTicker}', 'crypto'), 100);
-                        </script>
                     </div>
                 `;
             });
             
             resultsDiv.innerHTML = html;
+            
+            // Create charts after HTML is rendered
+            patterns.forEach((crypto, idx) => {
+                setTimeout(() => createChart(`chart-${crypto.ticker}-crypto-${idx}`, crypto.fullTicker, 'crypto'), 200 + (idx * 100));
+            });
         }
     </script>
 </body>
