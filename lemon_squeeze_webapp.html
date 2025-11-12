@@ -5,15 +5,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🍋 Lemon Squeeze Web App v2.0</title>
     <style>
+        :root {
+            /* Light mode colors */
+            --bg-gradient-start: #FFD700;
+            --bg-gradient-end: #FFA500;
+            --container-bg: #FFF9E6;
+            --text-primary: #333;
+            --text-secondary: #666;
+            --card-bg: white;
+            --border-color: #FFD700;
+            --settings-bg: #FFE97F;
+            --shadow: rgba(0,0,0,0.1);
+            --shadow-heavy: rgba(0,0,0,0.3);
+        }
+        
+        [data-theme="dark"] {
+            /* Dark mode colors */
+            --bg-gradient-start: #1a1a2e;
+            --bg-gradient-end: #16213e;
+            --container-bg: #0f3460;
+            --text-primary: #eee;
+            --text-secondary: #ccc;
+            --card-bg: #1a1a2e;
+            --border-color: #FFA500;
+            --settings-bg: #16213e;
+            --shadow: rgba(0,0,0,0.3);
+            --shadow-heavy: rgba(0,0,0,0.5);
+        }
+        
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
         
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
             min-height: 100vh;
             padding: 20px;
         }
@@ -21,18 +50,92 @@
         .container {
             max-width: 1300px;
             margin: 0 auto;
-            background: #FFF9E6;
+            background: var(--container-bg);
             border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            box-shadow: 0 20px 60px var(--shadow-heavy);
             overflow: hidden;
         }
         
         .header {
-            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-            color: #333;
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            color: var(--text-primary);
             padding: 40px;
             text-align: center;
             position: relative;
+        }
+        
+        /* Toolbar - Desktop */
+        .toolbar {
+            background: var(--card-bg);
+            padding: 15px 40px;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 2px 10px var(--shadow);
+            border-bottom: 2px solid var(--border-color);
+        }
+        
+        /* Floating actions - Hidden on desktop, shown on mobile */
+        .floating-actions {
+            display: none;
+        }
+        
+        /* Dark Mode Toggle */
+        .dark-mode-toggle {
+            background: var(--settings-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 50px;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 1em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-primary);
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .dark-mode-toggle:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px var(--shadow);
+            background: var(--border-color);
+        }
+        
+        /* Favorites Button */
+        .favorites-toggle {
+            background: linear-gradient(135deg, #FFA500 0%, #FF8C00 100%);
+            border: none;
+            border-radius: 50px;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 1em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: white;
+            font-weight: bold;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(255, 165, 0, 0.3);
+        }
+        
+        .favorites-toggle:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 165, 0, 0.5);
+        }
+        
+        .favorites-count {
+            background: white;
+            color: #FFA500;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85em;
+            font-weight: bold;
         }
         
         .header::before, .header::after {
@@ -73,7 +176,7 @@
         .tabs {
             display: flex;
             justify-content: center;
-            background: #FFE97F;
+            background: var(--settings-bg);
             padding: 0;
             margin: 0;
         }
@@ -88,16 +191,17 @@
             font-weight: bold;
             cursor: pointer;
             transition: all 0.3s;
-            color: #666;
+            color: var(--text-secondary);
             border-bottom: 4px solid transparent;
         }
         
         .tab-button:hover {
-            background: rgba(255, 255, 255, 0.2);
+            background: var(--card-bg);
+            opacity: 0.8;
         }
         
         .tab-button.active {
-            background: #FFF9E6;
+            background: var(--container-bg);
             color: #FFA500;
             border-bottom: 4px solid #FFA500;
         }
@@ -115,11 +219,12 @@
         }
         
         .settings-panel {
-            background: white;
+            background: var(--card-bg);
             padding: 30px;
             border-radius: 15px;
             margin-bottom: 30px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 15px var(--shadow);
+            color: var(--text-primary);
         }
         
         .settings-panel h2 {
@@ -142,30 +247,33 @@
         
         label {
             font-weight: 600;
-            color: #333;
+            color: var(--text-primary);
             margin-bottom: 8px;
             font-size: 1.1em;
         }
         
         input[type="number"] {
             padding: 12px;
-            border: 3px solid #FFD700;
+            border: 3px solid var(--border-color);
             border-radius: 10px;
             font-size: 18px;
             font-weight: bold;
             text-align: center;
             transition: all 0.3s;
+            background: var(--card-bg);
+            color: var(--text-primary);
         }
         
         select {
             padding: 12px;
-            border: 3px solid #FFD700;
+            border: 3px solid var(--border-color);
             border-radius: 10px;
             font-size: 18px;
             font-weight: bold;
             transition: all 0.3s;
-            background: white;
+            background: var(--card-bg);
             cursor: pointer;
+            color: var(--text-primary);
         }
         
         input[type="number"]:focus, select:focus {
@@ -249,12 +357,13 @@
         }
         
         .results-header {
-            background: white;
+            background: var(--card-bg);
             padding: 25px;
             border-radius: 15px;
             margin-bottom: 25px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 15px var(--shadow);
             text-align: center;
+            color: var(--text-primary);
         }
         
         .results-header h2 {
@@ -285,22 +394,62 @@
         
         .stat-label {
             font-size: 1em;
-            color: #666;
+            color: var(--text-secondary);
             margin-top: 5px;
         }
         
         .stock-card, .pattern-card {
-            background: white;
+            background: var(--card-bg);
             border-radius: 15px;
             padding: 25px;
             margin-bottom: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 15px var(--shadow);
             transition: transform 0.3s, box-shadow 0.3s;
+            color: var(--text-primary);
+            position: relative;
         }
         
         .stock-card:hover, .pattern-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            box-shadow: 0 8px 25px var(--shadow-heavy);
+        }
+        
+        /* Add to Favorites Button */
+        .favorite-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: transparent;
+            border: 2px solid var(--border-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        
+        .favorite-btn:hover {
+            background: var(--border-color);
+            transform: scale(1.1);
+        }
+        
+        .favorite-btn.active {
+            background: #FFA500;
+            border-color: #FFA500;
+        }
+        
+        /* Chart Container */
+        .chart-container {
+            width: 100%;
+            height: 300px;
+            margin: 20px 0;
+            background: var(--container-bg);
+            border-radius: 10px;
+            overflow: hidden;
         }
         
         .stock-header {
@@ -315,12 +464,12 @@
         .stock-ticker {
             font-size: 2em;
             font-weight: bold;
-            color: #333;
+            color: var(--text-primary);
         }
         
         .stock-company {
             font-size: 1.2em;
-            color: #666;
+            color: var(--text-secondary);
             margin-bottom: 20px;
         }
         
@@ -364,7 +513,7 @@
         }
         
         .metric-section {
-            background: #FFF9E6;
+            background: var(--settings-bg);
             padding: 15px;
             border-radius: 10px;
         }
@@ -379,7 +528,7 @@
             display: flex;
             justify-content: space-between;
             padding: 8px 0;
-            border-bottom: 1px solid #FFE97F;
+            border-bottom: 1px solid var(--border-color);
         }
         
         .metric-item:last-child {
@@ -387,17 +536,17 @@
         }
         
         .metric-label {
-            color: #666;
+            color: var(--text-secondary);
             font-weight: 600;
         }
         
         .metric-value {
-            color: #333;
+            color: var(--text-primary);
             font-weight: bold;
         }
         
         .pattern-info {
-            background: #FFF9E6;
+            background: var(--settings-bg);
             padding: 15px;
             border-radius: 10px;
             margin-top: 15px;
@@ -422,17 +571,179 @@
         }
         
         .no-results {
-            background: white;
+            background: var(--card-bg);
             padding: 50px;
             border-radius: 15px;
             text-align: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 15px var(--shadow);
+            color: var(--text-primary);
         }
         
         .no-results h3 {
             font-size: 2em;
             color: #FFA500;
             margin-bottom: 20px;
+        }
+        
+        /* Favorites Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 20px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px var(--shadow-heavy);
+            color: var(--text-primary);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 15px;
+        }
+        
+        .modal-header h2 {
+            color: #FFA500;
+            font-size: 2em;
+        }
+        
+        .modal-close {
+            background: transparent;
+            border: none;
+            font-size: 2em;
+            cursor: pointer;
+            color: var(--text-primary);
+            padding: 0;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.3s;
+        }
+        
+        .modal-close:hover {
+            background: var(--settings-bg);
+            transform: rotate(90deg);
+        }
+        
+        .favorite-item {
+            background: var(--settings-bg);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+        }
+        
+        .favorite-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 15px var(--shadow);
+        }
+        
+        .favorite-info {
+            flex: 1;
+        }
+        
+        .favorite-ticker {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: var(--text-primary);
+        }
+        
+        .favorite-meta {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        
+        .favorite-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .favorite-scan-btn, .favorite-remove-btn {
+            padding: 8px 16px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .favorite-scan-btn {
+            background: #10b981;
+            color: white;
+        }
+        
+        .favorite-scan-btn:hover {
+            background: #059669;
+            transform: scale(1.05);
+        }
+        
+        .favorite-remove-btn {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .favorite-remove-btn:hover {
+            background: #dc2626;
+            transform: scale(1.05);
+        }
+        
+        /* Win Rate Badge */
+        .win-rate-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        
+        .win-rate-high {
+            background: #10b981;
+            color: white;
+        }
+        
+        .win-rate-medium {
+            background: #FFA500;
+            color: white;
+        }
+        
+        .win-rate-low {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .win-rate-new {
+            background: #666;
+            color: white;
         }
         
         .disclaimer {
@@ -454,6 +765,73 @@
                 display: none;
             }
             
+            /* Hide toolbar on mobile */
+            .toolbar {
+                display: none;
+            }
+            
+            /* Show floating buttons on mobile */
+            .floating-actions {
+                display: flex;
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                flex-direction: column;
+                gap: 12px;
+                z-index: 1000;
+            }
+            
+            .floating-actions .dark-mode-toggle {
+                border-radius: 50%;
+                width: 56px;
+                height: 56px;
+                padding: 0;
+                font-size: 1.4em;
+                box-shadow: 0 4px 20px var(--shadow-heavy);
+            }
+            
+            .floating-actions .dark-mode-toggle:hover {
+                transform: scale(1.1) rotate(10deg);
+            }
+            
+            .floating-actions .dark-mode-toggle #darkModeText {
+                display: none;
+            }
+            
+            .floating-actions .favorites-toggle {
+                border-radius: 50%;
+                width: 56px;
+                height: 56px;
+                padding: 0;
+                font-size: 1.6em;
+                position: relative;
+                box-shadow: 0 4px 20px rgba(255, 165, 0, 0.5);
+            }
+            
+            .floating-actions .favorites-toggle:hover {
+                transform: scale(1.1);
+            }
+            
+            .floating-actions .favorites-toggle > span:not(.favorites-count) {
+                display: none;
+            }
+            
+            .floating-actions .favorites-toggle::before {
+                content: '⭐';
+                font-size: 1em;
+            }
+            
+            .floating-actions .favorites-count {
+                position: absolute;
+                top: -5px;
+                right: -5px;
+                background: #ef4444;
+                border: 2px solid white;
+                width: 22px;
+                height: 22px;
+                font-size: 0.7em;
+            }
+            
             .scan-button {
                 padding: 20px 40px;
                 font-size: 20px;
@@ -461,6 +839,11 @@
             
             .stock-ticker {
                 font-size: 1.5em;
+            }
+            
+            .tab-button {
+                font-size: 0.9em;
+                padding: 15px 10px;
             }
         }
     </style>
@@ -471,6 +854,19 @@
             <h1>🍋 Lemon Squeeze v2.0</h1>
             <p>Multi-Timeframe Scanner: Stocks & Crypto</p>
             <span class="badge">v2.0 - Hourly • Daily • Weekly • Crypto</span>
+        </div>
+        
+        <!-- Toolbar with actions -->
+        <div class="toolbar">
+            <button class="favorites-toggle" onclick="toggleFavoritesModal()">
+                <span>⭐</span>
+                <span>Favorites</span>
+                <span class="favorites-count" id="favoritesCount">0</span>
+            </button>
+            <button class="dark-mode-toggle" onclick="toggleDarkMode()" id="darkModeToggle">
+                <span id="darkModeIcon">🌙</span>
+                <span id="darkModeText">Dark</span>
+            </button>
         </div>
         
         <!-- Tab Navigation -->
@@ -693,8 +1089,329 @@
         </div>
     </div>
     
+    <!-- Floating Actions (Mobile Only) -->
+    <div class="floating-actions">
+        <button class="favorites-toggle" onclick="toggleFavoritesModal()">
+            <span>⭐</span>
+            <span>Favorites</span>
+            <span class="favorites-count" id="favoritesCountMobile">0</span>
+        </button>
+        <button class="dark-mode-toggle" onclick="toggleDarkMode()">
+            <span id="darkModeIconMobile">🌙</span>
+            <span id="darkModeTextMobile">Dark</span>
+        </button>
+    </div>
+    
+    <!-- Favorites Modal -->
+    <div id="favoritesModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>⭐ My Favorites</h2>
+                <button class="modal-close" onclick="toggleFavoritesModal()">×</button>
+            </div>
+            <div id="favoritesList">
+                <p style="text-align: center; color: var(--text-secondary); padding: 40px;">
+                    No favorites yet! Click the ⭐ button on any stock to add it.
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
     <script>
         let isScanning = false;
+        
+        // ===== DARK MODE =====
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            // Update both desktop and mobile buttons
+            const icons = [document.getElementById('darkModeIcon'), document.getElementById('darkModeIconMobile')];
+            const texts = [document.getElementById('darkModeText'), document.getElementById('darkModeTextMobile')];
+            
+            icons.forEach(icon => {
+                if (icon) {
+                    icon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+                }
+            });
+            
+            texts.forEach(text => {
+                if (text) {
+                    text.textContent = newTheme === 'dark' ? 'Light' : 'Dark';
+                }
+            });
+        }
+        
+        // Load saved theme on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            
+            if (savedTheme === 'dark') {
+                const icons = [document.getElementById('darkModeIcon'), document.getElementById('darkModeIconMobile')];
+                const texts = [document.getElementById('darkModeText'), document.getElementById('darkModeTextMobile')];
+                
+                icons.forEach(icon => {
+                    if (icon) icon.textContent = '☀️';
+                });
+                
+                texts.forEach(text => {
+                    if (text) text.textContent = 'Light';
+                });
+            }
+            
+            updateFavoritesCount();
+            loadHistoricalData();
+        });
+        
+        // ===== FAVORITES SYSTEM =====
+        function getFavorites() {
+            const favorites = localStorage.getItem('lemonFavorites');
+            return favorites ? JSON.parse(favorites) : [];
+        }
+        
+        function saveFavorites(favorites) {
+            localStorage.setItem('lemonFavorites', JSON.stringify(favorites));
+            updateFavoritesCount();
+        }
+        
+        function addToFavorites(ticker, company, timeframe = 'daily') {
+            const favorites = getFavorites();
+            const exists = favorites.find(f => f.ticker === ticker && f.timeframe === timeframe);
+            
+            if (!exists) {
+                favorites.push({
+                    ticker,
+                    company,
+                    timeframe,
+                    addedAt: new Date().toISOString()
+                });
+                saveFavorites(favorites);
+                alert(`✅ ${ticker} added to favorites!`);
+            } else {
+                alert(`ℹ️ ${ticker} is already in favorites`);
+            }
+        }
+        
+        function removeFromFavorites(ticker, timeframe) {
+            let favorites = getFavorites();
+            favorites = favorites.filter(f => !(f.ticker === ticker && f.timeframe === timeframe));
+            saveFavorites(favorites);
+            displayFavorites();
+        }
+        
+        function updateFavoritesCount() {
+            const count = getFavorites().length;
+            // Update both desktop and mobile counters
+            const desktopCounter = document.getElementById('favoritesCount');
+            const mobileCounter = document.getElementById('favoritesCountMobile');
+            
+            if (desktopCounter) desktopCounter.textContent = count;
+            if (mobileCounter) mobileCounter.textContent = count;
+        }
+        
+        function toggleFavoritesModal() {
+            const modal = document.getElementById('favoritesModal');
+            const isActive = modal.classList.contains('active');
+            
+            if (isActive) {
+                modal.classList.remove('active');
+            } else {
+                modal.classList.add('active');
+                displayFavorites();
+            }
+        }
+        
+        function displayFavorites() {
+            const favorites = getFavorites();
+            const container = document.getElementById('favoritesList');
+            
+            if (favorites.length === 0) {
+                container.innerHTML = `
+                    <p style="text-align: center; color: var(--text-secondary); padding: 40px;">
+                        No favorites yet! Click the ⭐ button on any stock to add it.
+                    </p>
+                `;
+                return;
+            }
+            
+            let html = '';
+            favorites.forEach(fav => {
+                const winRate = getWinRate(fav.ticker, fav.timeframe);
+                html += `
+                    <div class="favorite-item">
+                        <div class="favorite-info">
+                            <div class="favorite-ticker">
+                                ${fav.ticker}
+                                ${winRate.badge}
+                            </div>
+                            <div class="favorite-meta">
+                                ${fav.company} • ${fav.timeframe} • Added ${new Date(fav.addedAt).toLocaleDateString()}
+                            </div>
+                        </div>
+                        <div class="favorite-actions">
+                            <button class="favorite-scan-btn" onclick="scanFavorite('${fav.ticker}', '${fav.timeframe}')">
+                                🔍 Scan
+                            </button>
+                            <button class="favorite-remove-btn" onclick="removeFromFavorites('${fav.ticker}', '${fav.timeframe}')">
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        function scanFavorite(ticker, timeframe) {
+            // Close modal and switch to appropriate tab
+            toggleFavoritesModal();
+            
+            // Switch to the right tab
+            if (timeframe === 'hourly') {
+                switchTab('hourly');
+                startHourlyScan();
+            } else if (timeframe === 'daily') {
+                switchTab('daily');
+                startDailyScan();
+            } else if (timeframe === 'weekly') {
+                switchTab('weekly');
+                startWeeklyScan();
+            } else if (timeframe === 'crypto') {
+                switchTab('crypto');
+                startCryptoScan();
+            }
+        }
+        
+        // ===== HISTORICAL WIN RATE TRACKING =====
+        function getHistoricalData() {
+            const data = localStorage.getItem('lemonHistorical');
+            return data ? JSON.parse(data) : [];
+        }
+        
+        function saveHistoricalData(data) {
+            localStorage.setItem('lemonHistorical', JSON.stringify(data));
+        }
+        
+        function trackPattern(ticker, timeframe, direction, currentPrice, patternDate) {
+            const historical = getHistoricalData();
+            
+            historical.push({
+                ticker,
+                timeframe,
+                direction,
+                entryPrice: currentPrice,
+                patternDate: patternDate,
+                recordedAt: new Date().toISOString(),
+                outcome: 'pending'
+            });
+            
+            saveHistoricalData(historical);
+        }
+        
+        async function loadHistoricalData() {
+            // Check patterns after 7 days to see if they were successful
+            const historical = getHistoricalData();
+            const now = new Date();
+            
+            for (let pattern of historical) {
+                if (pattern.outcome === 'pending') {
+                    const recordedDate = new Date(pattern.recordedAt);
+                    const daysSince = (now - recordedDate) / (1000 * 60 * 60 * 24);
+                    
+                    // Check after 7 days
+                    if (daysSince >= 7) {
+                        try {
+                            const ticker = pattern.ticker.includes('-') ? pattern.ticker : pattern.ticker;
+                            const stock = yf.Ticker(ticker);
+                            const hist = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1mo`);
+                            const data = await hist.json();
+                            
+                            if (data && data.chart && data.chart.result[0]) {
+                                const prices = data.chart.result[0].indicators.quote[0].close;
+                                const currentPrice = prices[prices.length - 1];
+                                const priceChange = ((currentPrice - pattern.entryPrice) / pattern.entryPrice) * 100;
+                                
+                                // Consider it a win if:
+                                // - Bullish pattern and price went up 3%+
+                                // - Bearish pattern and price went down 3%+
+                                if (pattern.direction === 'bullish' && priceChange >= 3) {
+                                    pattern.outcome = 'win';
+                                    pattern.exitPrice = currentPrice;
+                                    pattern.profitPercent = priceChange;
+                                } else if (pattern.direction === 'bearish' && priceChange <= -3) {
+                                    pattern.outcome = 'win';
+                                    pattern.exitPrice = currentPrice;
+                                    pattern.profitPercent = Math.abs(priceChange);
+                                } else if (Math.abs(priceChange) < 3) {
+                                    pattern.outcome = 'neutral';
+                                } else {
+                                    pattern.outcome = 'loss';
+                                    pattern.exitPrice = currentPrice;
+                                    pattern.profitPercent = priceChange;
+                                }
+                            }
+                        } catch (e) {
+                            console.error(`Error checking ${pattern.ticker}:`, e);
+                        }
+                    }
+                }
+            }
+            
+            saveHistoricalData(historical);
+        }
+        
+        function getWinRate(ticker, timeframe) {
+            const historical = getHistoricalData();
+            const patterns = historical.filter(p => 
+                p.ticker === ticker && 
+                p.timeframe === timeframe &&
+                p.outcome !== 'pending'
+            );
+            
+            if (patterns.length === 0) {
+                return {
+                    rate: null,
+                    badge: '<span class="win-rate-badge win-rate-new">NEW</span>'
+                };
+            }
+            
+            const wins = patterns.filter(p => p.outcome === 'win').length;
+            const rate = (wins / patterns.length * 100).toFixed(0);
+            
+            let badgeClass = 'win-rate-medium';
+            if (rate >= 70) badgeClass = 'win-rate-high';
+            else if (rate < 50) badgeClass = 'win-rate-low';
+            
+            return {
+                rate: rate,
+                badge: `<span class="win-rate-badge ${badgeClass}">${rate}% Win (${wins}/${patterns.length})</span>`
+            };
+        }
+        
+        // ===== CHART INTEGRATION =====
+        function createChart(containerId, ticker, timeframe = 'daily') {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-secondary);">Loading chart...</div>';
+            
+            // Use TradingView lightweight chart
+            setTimeout(() => {
+                container.innerHTML = `
+                    <iframe 
+                        src="https://www.tradingview.com/widgetembed/?symbol=${ticker}&interval=D&theme=${document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'}&style=1&locale=en&toolbar_bg=f1f3f6&enable_publishing=false&hide_top_toolbar=false&hide_legend=false&save_image=false&studies=[]&show_popup_button=true&popup_width=1000&popup_height=650"
+                        style="width: 100%; height: 300px; border: none;"
+                    ></iframe>
+                `;
+            }, 100);
+        }
         
         // Tab switching
         function switchTab(tab) {
