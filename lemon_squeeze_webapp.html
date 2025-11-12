@@ -480,29 +480,32 @@
         /* Add to Favorites Button */
         .favorite-btn {
             position: absolute;
-            top: 20px;
-            right: 20px;
+            top: 25px;
+            left: 20px;
             background: transparent;
-            border: 2px solid var(--border-color);
+            border: 3px solid #FFA500;
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
+            width: 45px;
+            height: 45px;
             cursor: pointer;
-            font-size: 1.5em;
+            font-size: 1.6em;
             display: flex;
             align-items: center;
             justify-content: center;
             transition: all 0.3s;
+            z-index: 10;
         }
         
         .favorite-btn:hover {
-            background: var(--border-color);
-            transform: scale(1.1);
+            background: #FFA500;
+            transform: scale(1.15) rotate(15deg);
+            box-shadow: 0 6px 20px rgba(255, 165, 0, 0.5);
         }
         
         .favorite-btn.active {
             background: #FFA500;
-            border-color: #FFA500;
+            border-color: #FF8C00;
+            box-shadow: 0 4px 15px rgba(255, 165, 0, 0.4);
         }
         
         /* Chart Container */
@@ -1468,17 +1471,29 @@
             const container = document.getElementById(containerId);
             if (!container) return;
             
-            container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-secondary);">Loading chart...</div>';
+            // Map timeframe to TradingView interval
+            const intervalMap = {
+                'hourly': '60',
+                'daily': 'D',
+                'weekly': 'W',
+                'crypto': 'D'
+            };
             
-            // Use TradingView lightweight chart
-            setTimeout(() => {
-                container.innerHTML = `
-                    <iframe 
-                        src="https://www.tradingview.com/widgetembed/?symbol=${ticker}&interval=D&theme=${document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'}&style=1&locale=en&toolbar_bg=f1f3f6&enable_publishing=false&hide_top_toolbar=false&hide_legend=false&save_image=false&studies=[]&show_popup_button=true&popup_width=1000&popup_height=650"
-                        style="width: 100%; height: 300px; border: none;"
-                    ></iframe>
-                `;
-            }, 100);
+            const interval = intervalMap[timeframe] || 'D';
+            const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+            
+            // For crypto, use the format expected by TradingView
+            const symbol = ticker.includes('-USD') ? `CRYPTO:${ticker.replace('-USD', 'USD')}` : ticker;
+            
+            container.innerHTML = `
+                <iframe 
+                    src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_chart&symbol=${symbol}&interval=${interval}&hidesidetoolbar=0&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=${theme}&style=1&timezone=Etc%2FUTC&withdateranges=1&showpopupbutton=1&studies_overrides={}&overrides={}&enabled_features=[]&disabled_features=[]&showpopupbutton=1&popup_height=650&popup_width=1000&locale=en"
+                    style="width: 100%; height: 100%; margin: 0; padding: 0; border: none;"
+                    frameborder="0"
+                    allowtransparency="true"
+                    scrolling="no"
+                ></iframe>
+            `;
         }
         
         // Tab switching
@@ -1693,6 +1708,11 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        <div class="chart-container" id="chart-${stock.ticker}-squeeze-${idx}"></div>
+                        <script>
+                            setTimeout(() => createChart('chart-${stock.ticker}-squeeze-${idx}', '${stock.ticker}', 'daily'), 100);
+                        </script>
                     </div>
                 `;
             });
@@ -1868,6 +1888,11 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        <div class="chart-container" id="chart-${stock.ticker}-daily-${idx}"></div>
+                        <script>
+                            setTimeout(() => createChart('chart-${stock.ticker}-daily-${idx}', '${stock.ticker}', 'daily'), 100);
+                        </script>
                     </div>
                 `;
             });
@@ -2043,6 +2068,11 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        <div class="chart-container" id="chart-${stock.ticker}-weekly-${idx}"></div>
+                        <script>
+                            setTimeout(() => createChart('chart-${stock.ticker}-weekly-${idx}', '${stock.ticker}', 'weekly'), 100);
+                        </script>
                     </div>
                 `;
             });
@@ -2194,6 +2224,11 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        <div class="chart-container" id="chart-${stock.ticker}-hourly-${idx}"></div>
+                        <script>
+                            setTimeout(() => createChart('chart-${stock.ticker}-hourly-${idx}', '${stock.ticker}', 'hourly'), 100);
+                        </script>
                     </div>
                 `;
             });
@@ -2360,6 +2395,11 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        <div class="chart-container" id="chart-${crypto.ticker}-crypto-${idx}"></div>
+                        <script>
+                            setTimeout(() => createChart('chart-${crypto.ticker}-crypto-${idx}', '${crypto.fullTicker}', 'crypto'), 100);
+                        </script>
                     </div>
                 `;
             });
