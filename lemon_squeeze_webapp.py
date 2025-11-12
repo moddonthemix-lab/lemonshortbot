@@ -612,6 +612,43 @@ def weekly_plays():
             'error': str(e)
         }), 500
 
+@app.route('/api/track-pattern', methods=['POST'])
+def track_pattern():
+    """Track a pattern for historical win rate"""
+    try:
+        data = request.json
+        ticker = data.get('ticker')
+        timeframe = data.get('timeframe')
+        direction = data.get('direction')
+        entry_price = data.get('entryPrice')
+        pattern_date = data.get('patternDate')
+        
+        # Load existing historical data
+        history_file = 'pattern_history.json'
+        history = []
+        if os.path.exists(history_file):
+            with open(history_file, 'r') as f:
+                history = json.load(f)
+        
+        # Add new pattern
+        history.append({
+            'ticker': ticker,
+            'timeframe': timeframe,
+            'direction': direction,
+            'entryPrice': entry_price,
+            'patternDate': pattern_date,
+            'recordedAt': datetime.now().isoformat(),
+            'outcome': 'pending'
+        })
+        
+        # Save
+        with open(history_file, 'w') as f:
+            json.dump(history, f, indent=2)
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/history', methods=['GET'])
 def get_history():
     """Get scan history"""
