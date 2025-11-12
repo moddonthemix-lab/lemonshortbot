@@ -33,6 +33,69 @@
             --shadow-heavy: rgba(0,0,0,0.5);
         }
         
+        /* Fix text colors in dark mode for info boxes */
+        [data-theme="dark"] .settings-panel div[style*="background: #FFE97F"],
+        [data-theme="dark"] .settings-panel div[style*="background:#FFE97F"] {
+            background: #2d3748 !important;
+            color: #e2e8f0 !important;
+        }
+        
+        [data-theme="dark"] .settings-panel div[style*="background: white"],
+        [data-theme="dark"] .settings-panel div[style*="background:white"],
+        [data-theme="dark"] .pattern-info div[style*="background: white"],
+        [data-theme="dark"] .pattern-info div[style*="background:white"] {
+            background: #1a202c !important;
+            color: #e2e8f0 !important;
+        }
+        
+        [data-theme="dark"] .settings-panel ul,
+        [data-theme="dark"] .settings-panel p,
+        [data-theme="dark"] .settings-panel li,
+        [data-theme="dark"] .settings-panel strong {
+            color: #e2e8f0 !important;
+        }
+        
+        [data-theme="dark"] .pattern-info strong,
+        [data-theme="dark"] .pattern-info p {
+            color: #e2e8f0 !important;
+        }
+        
+        /* Fix summary stats text in dark mode */
+        [data-theme="dark"] .results-header p {
+            color: #cbd5e0 !important;
+        }
+        
+        /* Fix inline styled elements in dark mode */
+        [data-theme="dark"] div[style*="color: #666"],
+        [data-theme="dark"] div[style*="color:#666"],
+        [data-theme="dark"] span[style*="color: #666"],
+        [data-theme="dark"] p[style*="color: #666"] {
+            color: #cbd5e0 !important;
+        }
+        
+        [data-theme="dark"] div[style*="color: #999"],
+        [data-theme="dark"] p[style*="color: #999"] {
+            color: #a0aec0 !important;
+        }
+        
+        /* Fix "no results" message */
+        [data-theme="dark"] .no-results p {
+            color: #cbd5e0 !important;
+        }
+        
+        /* Make sure orange colors pop in dark mode */
+        [data-theme="dark"] .settings-panel h2,
+        [data-theme="dark"] .metric-section h4 {
+            color: #fb923c !important;
+        }
+        
+        /* Improve readability of all paragraph text in dark mode */
+        [data-theme="dark"] p,
+        [data-theme="dark"] li,
+        [data-theme="dark"] span:not(.stat-value):not(.metric-value) {
+            color: #e2e8f0;
+        }
+        
         * {
             margin: 0;
             padding: 0;
@@ -754,6 +817,11 @@
             margin-top: 30px;
             text-align: center;
             line-height: 1.6;
+        }
+        
+        [data-theme="dark"] .disclaimer {
+            background: #991b1b;
+            color: #fee2e2;
         }
         
         @media (max-width: 768px) {
@@ -1565,6 +1633,9 @@
                 
                 html += `
                     <div class="stock-card">
+                        <button class="favorite-btn" onclick="addToFavorites('${stock.ticker}', '${stock.company}', 'squeeze')" title="Add to favorites">
+                            ⭐
+                        </button>
                         <div class="stock-header">
                             <div class="stock-ticker">#${idx + 1}. ${stock.ticker}</div>
                             <div class="risk-badge ${riskClass}">
@@ -1726,6 +1797,9 @@
                 
                 html += `
                     <div class="pattern-card">
+                        <button class="favorite-btn" onclick="addToFavorites('${stock.ticker}', '${stock.company}', 'daily')" title="Add to favorites">
+                            ⭐
+                        </button>
                         <div class="stock-header">
                             <div class="stock-ticker">#${idx + 1}. ${stock.ticker}</div>
                             <div class="pattern-badge ${patternClass}">
@@ -1898,6 +1972,9 @@
                 
                 html += `
                     <div class="pattern-card">
+                        <button class="favorite-btn" onclick="addToFavorites('${stock.ticker}', '${stock.company}', 'weekly')" title="Add to favorites">
+                            ⭐
+                        </button>
                         <div class="stock-header">
                             <div class="stock-ticker">#${idx + 1}. ${stock.ticker}</div>
                             <div class="pattern-badge ${patternClass}">
@@ -2063,6 +2140,9 @@
                 
                 html += `
                     <div class="pattern-card">
+                        <button class="favorite-btn" onclick="addToFavorites('${stock.ticker}', '${stock.company}', 'hourly')" title="Add to favorites">
+                            ⭐
+                        </button>
                         <div class="stock-header">
                             <div class="stock-ticker">#${idx + 1}. ${stock.ticker}</div>
                             <div class="pattern-badge ${patternClass}">
@@ -2211,6 +2291,9 @@
                 
                 html += `
                     <div class="pattern-card">
+                        <button class="favorite-btn" onclick="addToFavorites('${crypto.ticker}', '${crypto.company}', 'crypto')" title="Add to favorites">
+                            ⭐
+                        </button>
                         <div class="stock-header">
                             <div class="stock-ticker">#${idx + 1}. ${crypto.ticker}</div>
                             <div class="pattern-badge ${patternClass}">
