@@ -960,6 +960,9 @@
             <button class="tab-button" onclick="switchTab('crypto')">
                 ₿ Crypto
             </button>
+            <button class="tab-button" onclick="switchTab('volemon')">
+                🔊 Volemon
+            </button>
         </div>
         
         <!-- Short Squeeze Tab -->
@@ -1158,6 +1161,59 @@
                     <strong>⚠️ IMPORTANT DISCLAIMER</strong>
                     Cryptocurrency trading is extremely high-risk and volatile. Prices can swing dramatically in minutes.
                     Never invest more than you can afford to lose. This is NOT financial advice!
+                </div>
+            </div>
+        </div>
+        
+        <!-- Volemon Tab -->
+        <div id="volemonTab" class="tab-content">
+            <div class="content">
+                <div class="settings-panel">
+                    <h2>🔊 Volemon - Volume Monster Scanner</h2>
+                    <div style="background: #FFE97F; padding: 20px; border-radius: 10px;">
+                        <p style="font-size: 1.1em; margin-bottom: 15px;"><strong>Auto-Scanner:</strong> Runs every 20 minutes automatically!</p>
+                        <ul style="margin-left: 20px; line-height: 1.8; font-size: 1.1em;">
+                            <li><strong>2x Volume:</strong> Finds stocks with 2x or more their average volume</li>
+                            <li><strong>Auto-Only:</strong> No manual scanning needed - just watch the results</li>
+                            <li><strong>Smart Timer:</strong> Countdown shows when next scan runs</li>
+                        </ul>
+                        <p style="margin-top: 15px; padding: 10px; background: white; border-radius: 5px; font-style: italic;">
+                            🔊 Volume spikes can signal big moves - Volemon catches them for you!
+                        </p>
+                    </div>
+                    
+                    <div style="margin-top: 20px; padding: 20px; background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%); border-radius: 10px; color: white;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                            <div>
+                                <h3 style="margin-bottom: 5px;">🔄 Scanner Status: ACTIVE</h3>
+                                <p style="opacity: 0.9;">Next scan: <span id="volemonTimer" style="font-family: monospace; font-weight: bold;">20:00</span></p>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 2em; font-weight: bold;" id="totalScans">0</div>
+                                <div style="opacity: 0.9;">Total Scans Today</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 2em; font-weight: bold;" id="stocksFound">0</div>
+                                <div style="opacity: 0.9;">Stocks Found</div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.2);">
+                            <p style="margin: 0; opacity: 0.9;">Last scan: <span id="lastScan">Never</span></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="volemonLoading" class="loading">
+                    <div class="spinner"></div>
+                    <div class="loading-text">Volemon hunting volume monsters... 🔊🍋</div>
+                </div>
+                
+                <div id="volemonResults" class="results"></div>
+                
+                <div class="disclaimer">
+                    <strong>⚠️ IMPORTANT DISCLAIMER</strong>
+                    High volume doesn't guarantee profits. Volume spikes can be due to news, earnings, or other factors.
+                    Always do your own research. This is NOT financial advice!
                 </div>
             </div>
         </div>
@@ -1522,6 +1578,8 @@
                 document.getElementById('weeklyTab').classList.add('active');
             } else if (tab === 'crypto') {
                 document.getElementById('cryptoTab').classList.add('active');
+            } else if (tab === 'volemon') {
+                document.getElementById('volemonTab').classList.add('active');
             }
         }
         
@@ -2429,6 +2487,240 @@
                 setTimeout(() => createChart(`chart-${crypto.ticker}-crypto-${idx}`, crypto.fullTicker, 'crypto'), 200 + (idx * 100));
             });
         }
+        
+        // ===== VOLEMON AUTO-SCANNER =====
+        let volemonInterval = null;
+        let volemonCountdown = null;
+        let volemonTimeLeft = 20 * 60; // 20 minutes in seconds
+        let volemonStats = {
+            totalScans: 0,
+            lastScan: null,
+            stocksFoundToday: 0
+        };
+
+        // Load volemon stats from localStorage
+        function loadVolemonStats() {
+            const saved = localStorage.getItem('volemonStats');
+            if (saved) {
+                const data = JSON.parse(saved);
+                const today = new Date().toDateString();
+                if (data.date === today) {
+                    volemonStats = data.stats;
+                    updateVolemonStatsDisplay();
+                }
+            }
+        }
+
+        function saveVolemonStats() {
+            localStorage.setItem('volemonStats', JSON.stringify({
+                date: new Date().toDateString(),
+                stats: volemonStats
+            }));
+        }
+
+        function updateVolemonStatsDisplay() {
+            document.getElementById('totalScans').textContent = volemonStats.totalScans;
+            document.getElementById('lastScan').textContent = volemonStats.lastScan || 'Never';
+            document.getElementById('stocksFound').textContent = volemonStats.stocksFoundToday;
+        }
+
+        function updateVolemonTimer() {
+            const minutes = Math.floor(volemonTimeLeft / 60);
+            const seconds = volemonTimeLeft % 60;
+            const timerElement = document.getElementById('volemonTimer');
+            if (timerElement) {
+                timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
+        }
+
+        function startVolemonCountdown() {
+            if (volemonCountdown) clearInterval(volemonCountdown);
+            
+            volemonCountdown = setInterval(() => {
+                volemonTimeLeft--;
+                if (volemonTimeLeft < 0) {
+                    volemonTimeLeft = 20 * 60;
+                }
+                updateVolemonTimer();
+            }, 1000);
+        }
+
+        async function performVolemonScan() {
+            console.log('🔊 Volemon scanning...');
+            
+            const loadingDiv = document.getElementById('volemonLoading');
+            const resultsDiv = document.getElementById('volemonResults');
+            
+            loadingDiv.classList.add('active');
+            
+            try {
+                const response = await fetch('/api/volemon-scan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ min_volume_multiple: 2.0 })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    volemonStats.totalScans++;
+                    volemonStats.lastScan = new Date().toLocaleTimeString();
+                    volemonStats.stocksFoundToday += data.results.length;
+                    saveVolemonStats();
+                    updateVolemonStatsDisplay();
+                    displayVolemonResults(data.results);
+                }
+            } catch (error) {
+                console.error('Volemon scan error:', error);
+            } finally {
+                loadingDiv.classList.remove('active');
+            }
+        }
+
+        function displayVolemonResults(stocks) {
+            const resultsDiv = document.getElementById('volemonResults');
+            resultsDiv.classList.add('active');
+            
+            if (stocks.length === 0) {
+                resultsDiv.innerHTML = `
+                    <div style="text-align: center; padding: 60px 20px; background: var(--card-bg); border-radius: 15px; margin-top: 20px;">
+                        <h3 style="font-size: 1.8em; margin-bottom: 15px;">🔊 No Volume Spikes Found</h3>
+                        <p style="font-size: 1.1em; color: var(--text-secondary);">
+                            No stocks with 2x+ volume detected in this scan.
+                        </p>
+                        <p style="color: var(--text-secondary); opacity: 0.8; margin-top: 15px;">
+                            💡 Volemon will scan again in 20 minutes!
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = `
+                <div class="results-header">
+                    <h2>🔊 Volemon Found ${stocks.length} Volume Monster${stocks.length > 1 ? 's' : ''}!</h2>
+                    <p style="opacity: 0.8; margin-top: 10px;">${new Date().toLocaleString()}</p>
+                    <div class="stats-grid" style="margin-top: 20px;">
+                        <div class="stat-item">
+                            <span class="stat-value">${stocks.length}</span>
+                            <span class="stat-label">Stocks Found</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value">${stocks.filter(s => s.volume_multiple >= 3).length}</span>
+                            <span class="stat-label">3x+ Volume</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            stocks.forEach((stock, idx) => {
+                const volColor = stock.volume_multiple >= 3 ? '#10b981' : '#8b5cf6';
+                html += `
+                    <div class="stock-card">
+                        <div class="stock-header">
+                            <div class="header-left">
+                                <button class="favorite-btn" onclick="addToFavorites('${stock.ticker}', '${stock.company}', 'volemon')" title="Add to favorites">
+                                    ⭐
+                                </button>
+                                <div>
+                                    <div class="stock-ticker">#${idx + 1}. ${stock.ticker}</div>
+                                    <div class="stock-company">${stock.company}</div>
+                                </div>
+                            </div>
+                            <div class="badge" style="background: ${volColor}; color: white; padding: 8px 16px; border-radius: 25px; font-weight: bold;">
+                                🔊 ${stock.volume_multiple.toFixed(1)}x Volume
+                            </div>
+                        </div>
+                        
+                        <div class="metrics-grid">
+                            <div class="metric-section">
+                                <h4>💰 Price Info</h4>
+                                <div class="metric-item">
+                                    <span class="metric-label">Price:</span>
+                                    <span class="metric-value">$${stock.price.toFixed(2)}</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">Change:</span>
+                                    <span class="metric-value" style="color: ${stock.change >= 0 ? '#10b981' : '#ef4444'};">
+                                        ${stock.change >= 0 ? '+' : ''}${stock.change.toFixed(2)}%
+                                    </span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">Market Cap:</span>
+                                    <span class="metric-value">$${(stock.market_cap / 1000000).toFixed(1)}M</span>
+                                </div>
+                            </div>
+                            
+                            <div class="metric-section">
+                                <h4>📊 Volume Info</h4>
+                                <div class="metric-item">
+                                    <span class="metric-label">Current Vol:</span>
+                                    <span class="metric-value">${stock.volume.toLocaleString()}</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">Avg Vol:</span>
+                                    <span class="metric-value">${stock.avg_volume.toLocaleString()}</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">Multiple:</span>
+                                    <span class="metric-value" style="color: ${volColor}; font-weight: bold;">
+                                        ${stock.volume_multiple.toFixed(2)}x
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="background: var(--settings-bg); padding: 15px; border-radius: 10px; margin-top: 15px;">
+                            <strong style="color: #8b5cf6;">🔊 Volume Analysis:</strong>
+                            <p style="margin-top: 8px; color: var(--text-secondary);">
+                                ${stock.ticker} is trading at <strong>${stock.volume_multiple.toFixed(1)}x</strong> its average volume!
+                                ${stock.volume_multiple >= 3 
+                                    ? 'This is a significant spike that could indicate strong institutional or retail interest.' 
+                                    : 'Increased volume may signal growing momentum or news-driven activity.'}
+                            </p>
+                        </div>
+                        
+                        <div class="chart-container" id="chart-${stock.ticker}-volemon-${idx}"></div>
+                    </div>
+                `;
+            });
+            
+            resultsDiv.innerHTML = html;
+            
+            // Create charts
+            stocks.forEach((stock, idx) => {
+                setTimeout(() => createChart(`chart-${stock.ticker}-volemon-${idx}`, stock.ticker, 'daily'), 200 + (idx * 100));
+            });
+        }
+
+        // Start Volemon on page load
+        function startVolemonAutoScanner() {
+            console.log('🔊 Starting Volemon auto-scanner...');
+            loadVolemonStats();
+            
+            // Initial scan
+            performVolemonScan();
+            
+            // Set up 20-minute interval
+            volemonInterval = setInterval(() => {
+                performVolemonScan();
+                volemonTimeLeft = 20 * 60;
+            }, 20 * 60 * 1000);
+            
+            // Start countdown
+            startVolemonCountdown();
+        }
+
+        // Initialize Volemon when page loads
+        window.addEventListener('DOMContentLoaded', () => {
+            startVolemonAutoScanner();
+        });
+
+        // Cleanup on unload
+        window.addEventListener('beforeunload', () => {
+            if (volemonInterval) clearInterval(volemonInterval);
+            if (volemonCountdown) clearInterval(volemonCountdown);
+        });
     </script>
 </body>
 </html>
