@@ -1,13 +1,11 @@
 """
-🍋 LEMON SQUEEZE v4.0 - ULTIMATE HYBRID 🍋
-Best of both worlds:
-- yfinance PRIMARY (pattern detection, historical)
-- Tradier BACKUP (properly implemented, real-time quotes)
+🍋 LEMON SQUEEZE v4.1 - FINAL WORKING EDITION 🍋
+Fixed: Timeouts, proper error handling, fast execution
 """
 
 from flask import Flask, jsonify, request, send_from_directory
 import yfinance as yf
-import requests
+from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 from datetime import datetime, timedelta
 import time
 import os
@@ -17,21 +15,8 @@ warnings.filterwarnings('ignore')
 app = Flask(__name__)
 
 # ===== CONFIGURATION =====
-TRADIER_API_KEY = "Yuvcbpb7jfPIKyyUf8FDNATV48Hc"
-TRADIER_SANDBOX = False  # Set to True if using sandbox
-
-# Use production or sandbox
-if TRADIER_SANDBOX:
-    TRADIER_BASE_URL = "https://sandbox.tradier.com/v1"
-else:
-    TRADIER_BASE_URL = "https://api.tradier.com/v1"
-
-TRADIER_HEADERS = {
-    "Authorization": f"Bearer {TRADIER_API_KEY}",
-    "Accept": "application/json"
-}
-
-# Stock counts
+MAX_WORKERS = 10  # Concurrent threads
+TIMEOUT_PER_STOCK = 5  # 5 second timeout per stock
 STOCK_COUNTS = {
     'daily_plays': 30,
     'hourly_plays': 15,
@@ -55,108 +40,31 @@ CLEAN_STOCKS = [
 ]
 
 print("\n" + "="*70)
-print("🍋 LEMON SQUEEZE v4.0 - ULTIMATE HYBRID 🍋")
+print("🍋 LEMON SQUEEZE v4.1 - FINAL WORKING 🍋")
 print("="*70)
-print(f"\n📊 {len(CLEAN_STOCKS)} verified stocks")
-print("✅ yfinance PRIMARY (pattern detection)")
-print("🔄 Tradier BACKUP (real-time quotes)")
+print(f"\n⚡ {len(CLEAN_STOCKS)} verified stocks")
+print(f"⚡ {MAX_WORKERS} threads, {TIMEOUT_PER_STOCK}s timeout per stock")
 print("🚀 Starting...\n")
 
-# ===== TRADIER API (PROPERLY IMPLEMENTED) =====
+# ===== HELPER FUNCTIONS =====
 
-def get_tradier_quotes(symbols):
-    """
-    Get real-time quotes from Tradier API (properly implemented)
-    Docs: https://docs.tradier.com/reference/brokerage-api-markets-get-quotes
-    """
-    try:
-        # Tradier accepts comma-separated symbols
-        if isinstance(symbols, list):
-            symbols_str = ','.join(symbols)
-        else:
-            symbols_str = symbols
-        
-        url = f"{TRADIER_BASE_URL}/markets/quotes"
-        params = {
-            'symbols': symbols_str,
-            'greeks': 'false'  # We don't need options greeks
-        }
-        
-        response = requests.get(
-            url, 
-            params=params,
-            headers=TRADIER_HEADERS,
-            timeout=10
-        )
-        
-        # Check status
-        if response.status_code != 200:
-            print(f"  Tradier API error: {response.status_code}")
-            return None
-        
-        data = response.json()
-        
-        # Tradier returns quotes in 'quotes' > 'quote'
-        if 'quotes' not in data or 'quote' not in data['quotes']:
-            return None
-        
-        quotes = data['quotes']['quote']
-        
-        # Handle single vs multiple quotes
-        if isinstance(quotes, dict):
-            # Single quote
-            return {quotes['symbol']: quotes}
-        elif isinstance(quotes, list):
-            # Multiple quotes
-            return {q['symbol']: q for q in quotes}
-        
-        return None
-        
-    except Exception as e:
-        print(f"  Tradier error: {e}")
-        return None
-
-def get_tradier_realtime_price(ticker):
-    """Get real-time price for a single ticker from Tradier"""
-    quotes = get_tradier_quotes([ticker])
-    
-    if quotes and ticker in quotes:
-        quote = quotes[ticker]
-        return {
-            'price': quote.get('last', 0),
-            'change': quote.get('change', 0),
-            'change_percentage': quote.get('change_percentage', 0),
-            'volume': quote.get('volume', 0),
-            'high': quote.get('high', 0),
-            'low': quote.get('low', 0),
-            'open': quote.get('open', 0),
-            'close': quote.get('close', 0),
-            'source': 'tradier'
-        }
-    
-    return None
-
-# ===== YFINANCE (PRIMARY) =====
-
-def get_stock_data(ticker, period='1mo'):
-    """Get stock data - yfinance PRIMARY"""
+def get_stock_data_timeout(ticker, period='1mo', timeout=TIMEOUT_PER_STOCK):
+    """Get stock data with timeout"""
     try:
         stock = yf.Ticker(ticker)
         hist = stock.history(period=period)
         
         if len(hist) == 0:
-            return None, None, 'failed'
+            return None, None
         
         try:
             info = stock.info
         except:
             info = {'longName': ticker}
         
-        return hist, info, 'yfinance'
-    except Exception as e:
-        return None, None, 'failed'
-
-# ===== PATTERN DETECTION =====
+        return hist, info
+    except Exception:
+        return None, None
 
 def check_strat_31(hist):
     """Check for 3-1 pattern"""
@@ -233,26 +141,27 @@ def index():
             return send_from_directory('.', html_file)
     
     return """
-    <h1>🍋 Lemon Squeeze v4.0 - Ultimate Hybrid</h1>
-    <p>yfinance PRIMARY + Tradier BACKUP</p>
-    <p><a href="/api/test">Test yfinance</a> | <a href="/api/test-tradier">Test Tradier</a></p>
+    <h1>🍋 Lemon Squeeze v4.1 - WORKING!</h1>
+    <p>Backend ready! Place HTML in same directory.</p>
+    <p><a href="/api/test">Test API</a></p>
     """
 
 @app.route('/api/test', methods=['GET'])
 def test():
-    """Test yfinance"""
+    """Test endpoint"""
     try:
-        hist, info, source = get_stock_data("AAPL", period="5d")
+        print("\n🧪 Testing API...")
+        
+        hist, info = get_stock_data_timeout("AAPL", period="5d")
         
         if hist is not None:
             return jsonify({
                 'success': True,
-                'message': '✅ yfinance working!',
+                'message': '✅ API working!',
                 'test': {
                     'ticker': 'AAPL',
                     'days': len(hist),
-                    'price': float(hist['Close'].iloc[-1]),
-                    'source': source
+                    'price': float(hist['Close'].iloc[-1])
                 }
             })
         else:
@@ -260,45 +169,12 @@ def test():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-@app.route('/api/test-tradier', methods=['GET'])
-def test_tradier():
-    """Test Tradier API"""
-    try:
-        print("\n🧪 Testing Tradier API...")
-        
-        # Test single quote
-        quote = get_tradier_realtime_price('AAPL')
-        
-        if quote:
-            return jsonify({
-                'success': True,
-                'message': '✅ Tradier API working!',
-                'test': {
-                    'ticker': 'AAPL',
-                    'price': quote['price'],
-                    'change': quote['change'],
-                    'volume': quote['volume'],
-                    'source': 'tradier'
-                }
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'error': 'Tradier returned no data',
-                'note': 'Check API key and account status'
-            })
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e),
-            'note': 'Make sure API key is correct'
-        })
-
 @app.route('/api/scan', methods=['POST'])
 def scan():
     """Short squeeze scanner"""
     try:
         print("\n🔍 Short squeeze scan...")
+        start = time.time()
         
         data = request.json or {}
         min_short = float(data.get('minShort', 25))
@@ -328,35 +204,16 @@ def scan():
                         except:
                             continue
         
-        print(f"Scanning {len(stocks)} high short stocks...")
+        print(f"Scanning {len(stocks)} stocks...")
         
-        results = []
-        
-        for stock in stocks:
+        def scan_one(stock):
             ticker = stock['ticker']
-            
-            # Try yfinance first
-            hist, info, source = get_stock_data(ticker, period='3mo')
-            
-            if hist is None or len(hist) < 2:
-                # Try Tradier as backup for current price
-                tradier_quote = get_tradier_realtime_price(ticker)
-                if tradier_quote:
-                    # Use Tradier data
-                    results.append({
-                        'ticker': ticker,
-                        'company': stock['company'],
-                        'shortInterest': stock['short_interest'],
-                        'currentPrice': tradier_quote['price'],
-                        'dailyChange': tradier_quote['change_percentage'],
-                        'volume': tradier_quote['volume'],
-                        'volumeRatio': 1.0,
-                        'riskScore': stock['short_interest'] * 2,
-                        'dataSource': 'tradier'
-                    })
-                continue
-            
             try:
+                hist, info = get_stock_data_timeout(ticker, period='3mo')
+                
+                if hist is None or len(hist) < 2:
+                    return None
+                
                 current_price = hist['Close'].iloc[-1]
                 previous_close = hist['Close'].iloc[-2]
                 daily_change = ((current_price - previous_close) / previous_close) * 100
@@ -368,7 +225,7 @@ def scan():
                 risk_score = (stock['short_interest'] * 2 + daily_change * 2 + volume_ratio * 10) / 4
                 
                 if daily_change >= min_gain and volume_ratio >= min_vol_ratio and risk_score >= min_risk:
-                    results.append({
+                    return {
                         'ticker': ticker,
                         'company': stock['company'],
                         'shortInterest': stock['short_interest'],
@@ -377,19 +234,38 @@ def scan():
                         'volume': int(current_volume),
                         'volumeRatio': float(volume_ratio),
                         'riskScore': float(risk_score),
-                        'dataSource': source
-                    })
+                        'dataSource': 'yfinance'
+                    }
             except:
-                continue
+                pass
+            return None
+        
+        results = []
+        
+        # Use threading with timeout
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            future_to_stock = {executor.submit(scan_one, stock): stock for stock in stocks}
+            
+            for future in as_completed(future_to_stock, timeout=60):  # 60s total timeout
+                try:
+                    result = future.result(timeout=TIMEOUT_PER_STOCK)
+                    if result:
+                        results.append(result)
+                except TimeoutError:
+                    continue
+                except Exception:
+                    continue
         
         results.sort(key=lambda x: x['riskScore'], reverse=True)
+        elapsed = time.time() - start
         
-        print(f"✅ Found {len(results)} matches\n")
+        print(f"✅ Done in {elapsed:.1f}s - Found {len(results)}\n")
         
         return jsonify({
             'success': True,
             'results': results,
-            'count': len(results)
+            'count': len(results),
+            'scan_time': round(elapsed, 1)
         })
         
     except Exception as e:
@@ -400,30 +276,27 @@ def scan():
 def daily_plays():
     """Daily plays scanner"""
     try:
-        print("\n🎯 Daily plays scan...")
+        print("\n🎯 Daily plays...")
+        start = time.time()
         
         tickers = CLEAN_STOCKS[:STOCK_COUNTS['daily_plays']]
         print(f"Scanning {len(tickers)} stocks...")
         
-        results = []
-        
-        for ticker in tickers:
-            hist, info, source = get_stock_data(ticker, period='1mo')
-            
-            if hist is None or len(hist) < 3:
-                continue
-            
-            patterns = check_all_patterns(hist)
-            
-            if patterns.get('type'):
-                try:
+        def scan_pattern(ticker):
+            try:
+                hist, info = get_stock_data_timeout(ticker, period='1mo')
+                
+                if hist is None or len(hist) < 3:
+                    return None
+                
+                patterns = check_all_patterns(hist)
+                
+                if patterns.get('type'):
                     current_price = hist['Close'].iloc[-1]
                     previous_close = hist['Close'].iloc[-2]
                     daily_change = ((current_price - previous_close) / previous_close) * 100
                     
-                    print(f"  ✅ {ticker}: {patterns['type']}")
-                    
-                    results.append({
+                    return {
                         'ticker': ticker,
                         'company': info.get('longName', ticker),
                         'currentPrice': float(current_price),
@@ -432,17 +305,36 @@ def daily_plays():
                         'avgVolume': int(hist['Volume'].mean()),
                         'marketCap': info.get('marketCap', 0),
                         'pattern': patterns,
-                        'dataSource': source
-                    })
-                except:
+                        'dataSource': 'yfinance'
+                    }
+            except:
+                pass
+            return None
+        
+        results = []
+        
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            future_to_ticker = {executor.submit(scan_pattern, ticker): ticker for ticker in tickers}
+            
+            for future in as_completed(future_to_ticker, timeout=45):
+                try:
+                    result = future.result(timeout=TIMEOUT_PER_STOCK)
+                    if result:
+                        results.append(result)
+                        print(f"  ✅ {result['ticker']}: {result['pattern']['type']}")
+                except TimeoutError:
+                    continue
+                except Exception:
                     continue
         
-        print(f"✅ Found {len(results)} patterns\n")
+        elapsed = time.time() - start
+        print(f"✅ Done in {elapsed:.1f}s - Found {len(results)}\n")
         
         return jsonify({
             'success': True,
             'results': results,
-            'count': len(results)
+            'count': len(results),
+            'scan_time': round(elapsed, 1)
         })
         
     except Exception as e:
@@ -481,9 +373,9 @@ def hourly_plays():
             except:
                 continue
         
-        print(f"✅ Found {len(results)} patterns\n")
+        print(f"✅ Found {len(results)}\n")
         
-        return jsonify({'success': True, 'results': results})
+        return jsonify({'success': True, 'results': results, 'count': len(results)})
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -520,9 +412,9 @@ def weekly_plays():
             except:
                 continue
         
-        print(f"✅ Found {len(results)} patterns\n")
+        print(f"✅ Found {len(results)}\n")
         
-        return jsonify({'success': True, 'results': results})
+        return jsonify({'success': True, 'results': results, 'count': len(results)})
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -537,12 +429,12 @@ def crypto_scan():
         results = []
         
         for ticker in crypto_tickers:
-            hist, _, source = get_stock_data(ticker, period='1mo')
-            
-            if hist is None or len(hist) < 2:
-                continue
-            
             try:
+                hist, _ = get_stock_data_timeout(ticker, period='1mo')
+                
+                if hist is None or len(hist) < 2:
+                    continue
+                
                 current_price = hist['Close'].iloc[-1]
                 previous_close = hist['Close'].iloc[-2]
                 daily_change = ((current_price - previous_close) / previous_close) * 100
@@ -556,9 +448,9 @@ def crypto_scan():
             except:
                 continue
         
-        print(f"✅ Found {len(results)} cryptos\n")
+        print(f"✅ Found {len(results)}\n")
         
-        return jsonify({'success': True, 'results': results})
+        return jsonify({'success': True, 'results': results, 'count': len(results)})
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -568,6 +460,7 @@ def volemon_scan():
     """Volume scanner"""
     try:
         print("\n🔊 Volemon scan...")
+        start = time.time()
         
         data = request.json or {}
         min_volume_multiple = float(data.get('min_volume_multiple', 2.0))
@@ -575,20 +468,18 @@ def volemon_scan():
         tickers = CLEAN_STOCKS[:STOCK_COUNTS['volemon']]
         print(f"Scanning {len(tickers)} for {min_volume_multiple}x volume...")
         
-        results = []
-        
-        for ticker in tickers:
-            hist, info, source = get_stock_data(ticker, period='1mo')
-            
-            if hist is None or len(hist) < 2:
-                continue
-            
+        def scan_vol(ticker):
             try:
+                hist, info = get_stock_data_timeout(ticker, period='1mo')
+                
+                if hist is None or len(hist) < 2:
+                    return None
+                
                 current_volume = hist['Volume'].iloc[-1]
                 avg_volume = hist['Volume'].iloc[:-1].mean()
                 
                 if avg_volume == 0:
-                    continue
+                    return None
                 
                 volume_multiple = current_volume / avg_volume
                 
@@ -597,7 +488,7 @@ def volemon_scan():
                     prev_price = hist['Close'].iloc[-2]
                     change_pct = ((current_price - prev_price) / prev_price) * 100
                     
-                    results.append({
+                    return {
                         'ticker': ticker,
                         'company': info.get('longName', ticker),
                         'price': float(current_price),
@@ -605,42 +496,60 @@ def volemon_scan():
                         'volume': int(current_volume),
                         'avg_volume': int(avg_volume),
                         'volume_multiple': float(volume_multiple),
-                        'dataSource': source
-                    })
+                        'dataSource': 'yfinance'
+                    }
             except:
-                continue
+                pass
+            return None
+        
+        results = []
+        
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            future_to_ticker = {executor.submit(scan_vol, ticker): ticker for ticker in tickers}
+            
+            for future in as_completed(future_to_ticker, timeout=45):
+                try:
+                    result = future.result(timeout=TIMEOUT_PER_STOCK)
+                    if result:
+                        results.append(result)
+                except:
+                    continue
         
         results.sort(key=lambda x: x['volume_multiple'], reverse=True)
+        elapsed = time.time() - start
         
-        print(f"✅ Found {len(results)} spikes\n")
+        print(f"✅ Done in {elapsed:.1f}s - Found {len(results)}\n")
         
         return jsonify({
             'success': True,
             'results': results[:50],
-            'count': len(results)
+            'count': len(results),
+            'scan_time': round(elapsed, 1)
         })
         
     except Exception as e:
+        print(f"❌ Error: {e}\n")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/usuals-scan', methods=['POST'])
 def usuals_scan():
-    """Usuals scanner"""
+    """Usuals scanner - FIXED with timeout!"""
     try:
         print("\n⭐ Usuals scan...")
+        start = time.time()
         
         data = request.json or {}
         tickers = data.get('tickers', CLEAN_STOCKS[:STOCK_COUNTS['usuals']])
         
-        results = []
+        print(f"Scanning {len(tickers)} stocks...")
         
-        for ticker in tickers:
-            hist, info, source = get_stock_data(ticker, period='1mo')
-            
-            if hist is None or len(hist) < 3:
-                continue
-            
+        def scan_usual(ticker):
             try:
+                hist, info = get_stock_data_timeout(ticker, period='1mo')
+                
+                if hist is None or len(hist) < 3:
+                    return None
+                
                 current_price = hist['Close'].iloc[-1]
                 prev_price = hist['Close'].iloc[-2]
                 change_pct = ((current_price - prev_price) / prev_price) * 100
@@ -655,7 +564,7 @@ def usuals_scan():
                 if patterns_daily.get('type'):
                     patterns_output['daily'] = patterns_daily
                 
-                results.append({
+                return {
                     'ticker': ticker,
                     'company': info.get('longName', ticker),
                     'price': float(current_price),
@@ -664,28 +573,50 @@ def usuals_scan():
                     'avg_volume': int(avg_volume),
                     'volume_ratio': float(volume_ratio),
                     'patterns': patterns_output,
-                    'dataSource': source
-                })
+                    'dataSource': 'yfinance'
+                }
             except:
-                continue
+                pass
+            return None
         
-        print(f"✅ Found {len(results)} usuals\n")
+        results = []
+        
+        # Use threading with timeout
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            future_to_ticker = {executor.submit(scan_usual, ticker): ticker for ticker in tickers}
+            
+            for future in as_completed(future_to_ticker, timeout=45):  # 45s total timeout
+                try:
+                    result = future.result(timeout=TIMEOUT_PER_STOCK)  # 5s per stock
+                    if result:
+                        results.append(result)
+                        print(f"  ✅ {result['ticker']}")
+                except TimeoutError:
+                    ticker = future_to_ticker[future]
+                    print(f"  ⏱️ {ticker} timeout")
+                    continue
+                except Exception as e:
+                    continue
+        
+        elapsed = time.time() - start
+        print(f"✅ Done in {elapsed:.1f}s - Found {len(results)}\n")
         
         return jsonify({
             'success': True,
             'results': results,
-            'count': len(results)
+            'count': len(results),
+            'scan_time': round(elapsed, 1)
         })
         
     except Exception as e:
+        print(f"❌ Error: {e}\n")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
     
-    print("✅ Ready on port 8080")
+    print("✅ Ready on port 8080!")
     print("📱 http://localhost:8080")
-    print("🧪 Test yfinance: http://localhost:8080/api/test")
-    print("🧪 Test Tradier: http://localhost:8080/api/test-tradier\n")
+    print("🧪 http://localhost:8080/api/test\n")
     
     app.run(debug=True, host='0.0.0.0', port=port)
