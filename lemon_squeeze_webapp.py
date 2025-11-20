@@ -333,7 +333,79 @@ def scan_single_stock_for_volume(ticker, min_volume_multiple=2.0):
 
 @app.route('/')
 def index():
-    return send_from_directory('.', 'lemon_squeeze_with_volemon.html')
+    # Try to serve from current directory or templates folder
+    try:
+        return send_from_directory('.', 'lemon_squeeze_with_volemon.html')
+    except:
+        # If not found, return simple HTML with instructions
+        return '''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Lemon Squeeze Setup</title>
+            <style>
+                body { 
+                    font-family: Arial, sans-serif; 
+                    max-width: 800px; 
+                    margin: 50px auto; 
+                    padding: 20px;
+                    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+                }
+                .container {
+                    background: white;
+                    padding: 40px;
+                    border-radius: 20px;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                }
+                h1 { color: #FFA500; }
+                code { 
+                    background: #f4f4f4; 
+                    padding: 2px 6px; 
+                    border-radius: 3px;
+                    font-family: monospace;
+                }
+                pre {
+                    background: #2d2d2d;
+                    color: #f8f8f8;
+                    padding: 15px;
+                    border-radius: 5px;
+                    overflow-x: auto;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>🍋 Lemon Squeeze - Setup Required</h1>
+                <p>The HTML file is not found in the current directory.</p>
+                
+                <h2>Quick Fix:</h2>
+                <p>Make sure <code>lemon_squeeze_with_volemon.html</code> is in the same directory as the Python backend.</p>
+                
+                <pre>your_folder/
+  ├── lemon_squeeze_backend_fast.py
+  └── lemon_squeeze_with_volemon.html  ← Should be here!</pre>
+                
+                <h2>Steps:</h2>
+                <ol>
+                    <li>Stop the server (Ctrl+C)</li>
+                    <li>Place <code>lemon_squeeze_with_volemon.html</code> in the same folder</li>
+                    <li>Restart: <code>python lemon_squeeze_backend_fast.py</code></li>
+                    <li>Refresh this page</li>
+                </ol>
+                
+                <h2>Alternative - Use Templates Folder:</h2>
+                <pre>your_folder/
+  ├── lemon_squeeze_backend_fast.py
+  └── templates/
+      └── lemon_squeeze_with_volemon.html</pre>
+                
+                <p style="margin-top: 30px; color: #666;">
+                    <strong>Current directory:</strong> The backend is looking for the HTML file in the same folder where the .py file is located.
+                </p>
+            </div>
+        </body>
+        </html>
+        '''
 
 @app.route('/api/scan', methods=['POST'])
 def scan():
