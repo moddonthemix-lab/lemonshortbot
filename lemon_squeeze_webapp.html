@@ -1197,8 +1197,11 @@
                                 <div style="opacity: 0.9;">Stocks Found</div>
                             </div>
                         </div>
-                        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.2);">
+                        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.2); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                             <p style="margin: 0; opacity: 0.9;">Last scan: <span id="lastScan">Never</span></p>
+                            <button onclick="clearVolemonResults()" style="background: rgba(239, 68, 68, 0.8); color: white; border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: bold; transition: all 0.3s;" onmouseover="this.style.background='rgba(239, 68, 68, 1)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.8)'">
+                                🗑️ Clear All Results
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -2497,6 +2500,9 @@
             lastScan: null,
             stocksFoundToday: 0
         };
+        
+        // Store all stocks found today
+        let volemonStocksFound = [];
 
         // Load volemon stats from localStorage
         function loadVolemonStats() {
@@ -2506,7 +2512,12 @@
                 const today = new Date().toDateString();
                 if (data.date === today) {
                     volemonStats = data.stats;
+                    volemonStocksFound = data.stocksFound || [];
                     updateVolemonStatsDisplay();
+                    // Display any saved stocks from today
+                    if (volemonStocksFound.length > 0) {
+                        displayVolemonResults(volemonStocksFound, true);
+                    }
                 }
             }
         }
@@ -2514,14 +2525,15 @@
         function saveVolemonStats() {
             localStorage.setItem('volemonStats', JSON.stringify({
                 date: new Date().toDateString(),
-                stats: volemonStats
+                stats: volemonStats,
+                stocksFound: volemonStocksFound
             }));
         }
 
         function updateVolemonStatsDisplay() {
             document.getElementById('totalScans').textContent = volemonStats.totalScans;
             document.getElementById('lastScan').textContent = volemonStats.lastScan || 'Never';
-            document.getElementById('stocksFound').textContent = volemonStats.stocksFoundToday;
+            document.getElementById('stocksFound').textContent = volemonStocksFound.length;
         }
 
         function updateVolemonTimer() {
@@ -2565,10 +2577,28 @@
                 if (data.success) {
                     volemonStats.totalScans++;
                     volemonStats.lastScan = new Date().toLocaleTimeString();
-                    volemonStats.stocksFoundToday += data.results.length;
+                    
+                    // Add scan timestamp to each stock
+                    const timestamp = new Date().toLocaleTimeString();
+                    const newStocks = data.results.map(stock => ({
+                        ...stock,
+                        foundAt: timestamp,
+                        scanNumber: volemonStats.totalScans
+                    }));
+                    
+                    // Add new stocks to the collection (avoid duplicates from same scan)
+                    newStocks.forEach(newStock => {
+                        const existingIndex = volemonStocksFound.findIndex(
+                            s => s.ticker === newStock.ticker && s.scanNumber === newStock.scanNumber
+                        );
+                        if (existingIndex === -1) {
+                            volemonStocksFound.unshift(newStock); // Add to beginning
+                        }
+                    });
+                    
                     saveVolemonStats();
                     updateVolemonStatsDisplay();
-                    displayVolemonResults(data.results);
+                    displayVolemonResults(volemonStocksFound, false);
                 }
             } catch (error) {
                 console.error('Volemon scan error:', error);
@@ -2577,58 +2607,91 @@
             }
         }
 
-        function displayVolemonResults(stocks) {
+        function displayVolemonResults(stocks, isLoadingFromCache = false) {
             const resultsDiv = document.getElementById('volemonResults');
             resultsDiv.classList.add('active');
             
             if (stocks.length === 0) {
                 resultsDiv.innerHTML = `
                     <div style="text-align: center; padding: 60px 20px; background: var(--card-bg); border-radius: 15px; margin-top: 20px;">
-                        <h3 style="font-size: 1.8em; margin-bottom: 15px;">🔊 No Volume Spikes Found</h3>
+                        <h3 style="font-size: 1.8em; margin-bottom: 15px;">🔊 No Volume Spikes Found Yet</h3>
                         <p style="font-size: 1.1em; color: var(--text-secondary);">
-                            No stocks with 2x+ volume detected in this scan.
+                            Volemon is actively scanning every 20 minutes.
                         </p>
                         <p style="color: var(--text-secondary); opacity: 0.8; margin-top: 15px;">
-                            💡 Volemon will scan again in 20 minutes!
+                            💡 Stocks will appear here when volume spikes are detected!
                         </p>
                     </div>
                 `;
                 return;
             }
             
+            // Group stocks by scan
+            const stocksByScan = {};
+            stocks.forEach(stock => {
+                const scanKey = stock.scanNumber || 'Unknown';
+                if (!stocksByScan[scanKey]) {
+                    stocksByScan[scanKey] = [];
+                }
+                stocksByScan[scanKey].push(stock);
+            });
+            
+            // Get unique count (avoid counting same stock multiple times)
+            const uniqueTickers = [...new Set(stocks.map(s => s.ticker))];
+            
             let html = `
                 <div class="results-header">
-                    <h2>🔊 Volemon Found ${stocks.length} Volume Monster${stocks.length > 1 ? 's' : ''}!</h2>
-                    <p style="opacity: 0.8; margin-top: 10px;">${new Date().toLocaleString()}</p>
+                    <h2>🔊 Volemon - Volume Monsters Detected Today!</h2>
+                    <p style="opacity: 0.8; margin-top: 10px;">
+                        ${isLoadingFromCache ? 'Showing stocks found today' : 'Updated: ' + new Date().toLocaleString()}
+                    </p>
                     <div class="stats-grid" style="margin-top: 20px;">
                         <div class="stat-item">
-                            <span class="stat-value">${stocks.length}</span>
-                            <span class="stat-label">Stocks Found</span>
+                            <span class="stat-value">${uniqueTickers.length}</span>
+                            <span class="stat-label">Unique Stocks</span>
                         </div>
                         <div class="stat-item">
                             <span class="stat-value">${stocks.filter(s => s.volume_multiple >= 3).length}</span>
                             <span class="stat-label">3x+ Volume</span>
                         </div>
+                        <div class="stat-item">
+                            <span class="stat-value">${stocks.length}</span>
+                            <span class="stat-label">Total Detections</span>
+                        </div>
                     </div>
+                    ${!isLoadingFromCache ? `
+                        <div style="margin-top: 15px; padding: 12px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 10px; color: white; text-align: center; font-weight: bold;">
+                            ✨ Latest scan completed! Scroll down to see newest results.
+                        </div>
+                    ` : ''}
                 </div>
             `;
             
             stocks.forEach((stock, idx) => {
                 const volColor = stock.volume_multiple >= 3 ? '#10b981' : '#8b5cf6';
+                const isRecent = idx < 10 && !isLoadingFromCache; // Highlight recent finds
+                
                 html += `
-                    <div class="stock-card">
+                    <div class="stock-card" style="${isRecent ? 'border: 3px solid #10b981; animation: pulse 2s infinite;' : ''}">
                         <div class="stock-header">
                             <div class="header-left">
                                 <button class="favorite-btn" onclick="addToFavorites('${stock.ticker}', '${stock.company}', 'volemon')" title="Add to favorites">
                                     ⭐
                                 </button>
                                 <div>
-                                    <div class="stock-ticker">#${idx + 1}. ${stock.ticker}</div>
+                                    <div class="stock-ticker">
+                                        ${isRecent ? '🆕 ' : ''}#${idx + 1}. ${stock.ticker}
+                                    </div>
                                     <div class="stock-company">${stock.company}</div>
                                 </div>
                             </div>
-                            <div class="badge" style="background: ${volColor}; color: white; padding: 8px 16px; border-radius: 25px; font-weight: bold;">
-                                🔊 ${stock.volume_multiple.toFixed(1)}x Volume
+                            <div style="text-align: right;">
+                                <div class="badge" style="background: ${volColor}; color: white; padding: 8px 16px; border-radius: 25px; font-weight: bold; margin-bottom: 5px;">
+                                    🔊 ${stock.volume_multiple.toFixed(1)}x Volume
+                                </div>
+                                <div style="font-size: 0.85em; color: var(--text-secondary); opacity: 0.8;">
+                                    Found: ${stock.foundAt || 'Earlier today'} ${stock.scanNumber ? `(Scan #${stock.scanNumber})` : ''}
+                                </div>
                             </div>
                         </div>
                         
@@ -2673,7 +2736,7 @@
                         <div style="background: var(--settings-bg); padding: 15px; border-radius: 10px; margin-top: 15px;">
                             <strong style="color: #8b5cf6;">🔊 Volume Analysis:</strong>
                             <p style="margin-top: 8px; color: var(--text-secondary);">
-                                ${stock.ticker} is trading at <strong>${stock.volume_multiple.toFixed(1)}x</strong> its average volume!
+                                ${stock.ticker} was detected at <strong>${stock.volume_multiple.toFixed(1)}x</strong> its average volume at ${stock.foundAt || 'earlier today'}!
                                 ${stock.volume_multiple >= 3 
                                     ? 'This is a significant spike that could indicate strong institutional or retail interest.' 
                                     : 'Increased volume may signal growing momentum or news-driven activity.'}
@@ -2691,6 +2754,27 @@
             stocks.forEach((stock, idx) => {
                 setTimeout(() => createChart(`chart-${stock.ticker}-volemon-${idx}`, stock.ticker, 'daily'), 200 + (idx * 100));
             });
+        }
+        
+        function clearVolemonResults() {
+            if (confirm('Are you sure you want to clear all Volemon results? They will start accumulating again from the next scan.')) {
+                volemonStocksFound = [];
+                saveVolemonStats();
+                updateVolemonStatsDisplay();
+                
+                const resultsDiv = document.getElementById('volemonResults');
+                resultsDiv.innerHTML = `
+                    <div style="text-align: center; padding: 60px 20px; background: var(--card-bg); border-radius: 15px; margin-top: 20px;">
+                        <h3 style="font-size: 1.8em; margin-bottom: 15px;">🔊 Results Cleared!</h3>
+                        <p style="font-size: 1.1em; color: var(--text-secondary);">
+                            Volemon is still actively scanning every 20 minutes.
+                        </p>
+                        <p style="color: var(--text-secondary); opacity: 0.8; margin-top: 15px;">
+                            💡 New stocks will appear here as they're detected!
+                        </p>
+                    </div>
+                `;
+            }
         }
 
         // Start Volemon on page load
