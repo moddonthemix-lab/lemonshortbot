@@ -814,6 +814,214 @@ def volemon_scan():
             'error': str(e)
         }), 500
 
+@app.route('/api/usuals-scan', methods=['POST'])
+def usuals_scan():
+    """
+    ⭐ USUALS - Your Watchlist Scanner
+    Scans specific tickers for volume, patterns (all timeframes), and news
+    """
+    try:
+        data = request.json
+        tickers = data.get('tickers', ['SOFI', 'INTC', 'SPY', 'TSLA', 'COIN', 'CDE', 'PLTR', 'AAPL', 'BAC', 'NVDA'])
+        
+        results = []
+        processed = 0
+        total = len(tickers)
+        
+        print(f"\n⭐ Starting Usuals scan for {total} stocks...")
+        
+        for ticker in tickers:
+            processed += 1
+            try:
+                stock_data = yf.Ticker(ticker)
+                info = stock_data.info
+                
+                # Get data for different timeframes
+                hist_5d = stock_data.history(period='5d', interval='1h')  # For hourly
+                hist_1mo = stock_data.history(period='1mo')  # For daily
+                hist_3mo = stock_data.history(period='3mo')  # For weekly
+                hist_60d = stock_data.history(period='60d', interval='1h')  # For 4-hour
+                
+                if len(hist_1mo) < 3:
+                    continue
+                
+                # Current price and change
+                current_price = hist_1mo['Close'].iloc[-1]
+                prev_price = hist_1mo['Close'].iloc[-2]
+                change_pct = ((current_price - prev_price) / prev_price) * 100
+                
+                # Volume analysis
+                current_volume = hist_1mo['Volume'].iloc[-1]
+                avg_volume = hist_1mo['Volume'].iloc[:-1].mean()
+                volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1
+                
+                company_name = info.get('longName', ticker)
+                
+                # Check patterns on all timeframes
+                patterns = {}
+                
+                # Daily pattern
+                if len(hist_1mo) >= 3:
+                    has_pattern, pattern_data = check_strat_31(hist_1mo)
+                    if has_pattern:
+                        patterns['daily'] = {
+                            'type': '3-1 Strat',
+                            'direction': pattern_data['direction']
+                        }
+                    else:
+                        # Check for "1" (inside bar)
+                        current = hist_1mo.iloc[-1]
+                        previous = hist_1mo.iloc[-2]
+                        is_one = (current['High'] < previous['High'] and current['Low'] > previous['Low'])
+                        if is_one:
+                            patterns['daily'] = {
+                                'type': 'Inside Bar (1)',
+                                'direction': 'neutral'
+                            }
+                        else:
+                            patterns['daily'] = None
+                else:
+                    patterns['daily'] = None
+                
+                # Weekly pattern (use weekly data)
+                hist_weekly = stock_data.history(period='6mo', interval='1wk')
+                if len(hist_weekly) >= 3:
+                    has_pattern, pattern_data = check_strat_31(hist_weekly)
+                    if has_pattern:
+                        patterns['weekly'] = {
+                            'type': '3-1 Strat',
+                            'direction': pattern_data['direction']
+                        }
+                    else:
+                        # Check for "1"
+                        current = hist_weekly.iloc[-1]
+                        previous = hist_weekly.iloc[-2]
+                        is_one = (current['High'] < previous['High'] and current['Low'] > previous['Low'])
+                        if is_one:
+                            patterns['weekly'] = {
+                                'type': 'Inside Bar (1)',
+                                'direction': 'neutral'
+                            }
+                        else:
+                            patterns['weekly'] = None
+                else:
+                    patterns['weekly'] = None
+                
+                # Hourly pattern
+                if len(hist_5d) >= 3:
+                    has_pattern, pattern_data = check_strat_31(hist_5d)
+                    if has_pattern:
+                        patterns['hourly'] = {
+                            'type': '3-1 Strat',
+                            'direction': pattern_data['direction']
+                        }
+                    else:
+                        # Check for "1"
+                        current = hist_5d.iloc[-1]
+                        previous = hist_5d.iloc[-2]
+                        is_one = (current['High'] < previous['High'] and current['Low'] > previous['Low'])
+                        if is_one:
+                            patterns['hourly'] = {
+                                'type': 'Inside Bar (1)',
+                                'direction': 'neutral'
+                            }
+                        else:
+                            patterns['hourly'] = None
+                else:
+                    patterns['hourly'] = None
+                
+                # 4-hour pattern (resample hourly to 4H)
+                if len(hist_60d) >= 12:  # Need at least 12 hours for 3 4H candles
+                    try:
+                        # Resample to 4H
+                        hist_4h = hist_60d.resample('4H').agg({
+                            'Open': 'first',
+                            'High': 'max',
+                            'Low': 'min',
+                            'Close': 'last',
+                            'Volume': 'sum'
+                        }).dropna()
+                        
+                        if len(hist_4h) >= 3:
+                            has_pattern, pattern_data = check_strat_31(hist_4h)
+                            if has_pattern:
+                                patterns['four_hour'] = {
+                                    'type': '3-1 Strat',
+                                    'direction': pattern_data['direction']
+                                }
+                            else:
+                                # Check for "1"
+                                current = hist_4h.iloc[-1]
+                                previous = hist_4h.iloc[-2]
+                                is_one = (current['High'] < previous['High'] and current['Low'] > previous['Low'])
+                                if is_one:
+                                    patterns['four_hour'] = {
+                                        'type': 'Inside Bar (1)',
+                                        'direction': 'neutral'
+                                    }
+                                else:
+                                    patterns['four_hour'] = None
+                        else:
+                            patterns['four_hour'] = None
+                    except:
+                        patterns['four_hour'] = None
+                else:
+                    patterns['four_hour'] = None
+                
+                # Get news (top 2)
+                news_list = []
+                try:
+                    news_data = stock_data.news
+                    if news_data and len(news_data) > 0:
+                        for item in news_data[:2]:  # Top 2 only
+                            # Filter out nonsense/promotional news
+                            title = item.get('title', '')
+                            # Skip if title has promotional keywords
+                            skip_keywords = ['buy now', 'subscribe', 'join', 'free trial', 'webinar', 'advertisement']
+                            if not any(keyword in title.lower() for keyword in skip_keywords):
+                                news_list.append({
+                                    'title': title[:100],  # Limit length
+                                    'url': item.get('link', '#'),
+                                    'source': item.get('publisher', 'Unknown'),
+                                    'time': 'Recent'
+                                })
+                except:
+                    pass
+                
+                results.append({
+                    'ticker': ticker,
+                    'company': company_name,
+                    'price': float(current_price),
+                    'change': float(change_pct),
+                    'volume': int(current_volume),
+                    'avg_volume': int(avg_volume),
+                    'volume_ratio': float(volume_ratio),
+                    'patterns': patterns,
+                    'news': news_list
+                })
+                
+                print(f"   ✅ {ticker}: Price ${current_price:.2f} | Vol {volume_ratio:.1f}x | Patterns: {sum(1 for p in patterns.values() if p)}")
+                
+            except Exception as e:
+                print(f"   ❌ Error scanning {ticker}: {e}")
+                continue
+        
+        print(f"\n⭐ Usuals scan complete!")
+        print(f"   Scanned {processed}/{total} stocks\n")
+        
+        return jsonify({
+            'success': True,
+            'results': results,
+            'count': len(results)
+        })
+        
+    except Exception as e:
+        print(f"❌ Usuals scan error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 if __name__ == '__main__':
     import os
     import ssl
@@ -850,6 +1058,7 @@ if __name__ == '__main__':
     print("  - Weekly Plays (3-1 Strat)")
     print("  - Crypto Scanner (BTC, ETH, XRP, SOL, DOGE, HYPE)")
     print("  - 🔊 Volemon (Auto Volume Scanner - 2x+ Volume)")
+    print("  - ⭐ Usuals (Watchlist Scanner - 15min auto)")
     print("\n🛑 Press Ctrl+C to stop the server")
     print("\n" + "="*60 + "\n")
     
