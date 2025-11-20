@@ -1,9 +1,9 @@
 """
-🍋 LEMON SQUEEZE v3.3 - MEGA EDITION 🍋
-MAXIMUM COVERAGE with expanded stock lists!
-- 100+ daily plays
-- 200+ volume scans
-- All major indices and sectors
+🍋 LEMON SQUEEZE v3.4 - OPTIMIZED EDITION 🍋
+Fast + Complete Pattern Detection
+- All original patterns (3-1 + inside bars)
+- Configurable stock counts for speed
+- Original accuracy maintained
 """
 
 from flask import Flask, jsonify, request, send_from_directory
@@ -16,10 +16,24 @@ import requests
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
+import warnings
+warnings.filterwarnings('ignore')
 
 app = Flask(__name__)
 
-# ===== CONFIGURATION =====
+# ===== SPEED CONTROL =====
+# Adjust these to control speed vs coverage
+STOCK_COUNTS = {
+    'daily_plays': 30,      # Lower = faster (try 20-50)
+    'hourly_plays': 15,     # Lower = faster (try 10-30)
+    'weekly_plays': 20,     # Lower = faster (try 15-40)
+    'volemon': 50,          # Lower = faster (try 30-100)
+    'usuals': 20            # Your watchlist (10-30)
+}
+
+MAX_WORKERS = 10  # Threads (5=slower/stable, 15=faster/aggressive)
+
+# ===== API CONFIG =====
 TRADIER_API_KEY = "Yuvcbpb7jfPIKyyUf8FDNATV48Hc"
 TRADIER_BASE_URL = "https://api.tradier.com/v1"
 TRADIER_HEADERS = {
@@ -27,137 +41,21 @@ TRADIER_HEADERS = {
     "Accept": "application/json"
 }
 
-# Performance settings
-MAX_WORKERS = 15  # More threads for more stocks!
-CACHE_DURATION = 300  # 5 minutes
-MIN_REQUEST_INTERVAL = 0.05  # 50ms
-
-# ===== MEGA STOCK LISTS =====
-
-# MEGA Tech Stocks (50)
-TECH_STOCKS = [
-    'AAPL', 'MSFT', 'GOOGL', 'GOOG', 'AMZN', 'META', 'NVDA', 'AMD', 'INTC', 'TSM',
-    'AVGO', 'ORCL', 'CRM', 'ADBE', 'CSCO', 'ACN', 'IBM', 'QCOM', 'TXN', 'NOW',
-    'INTU', 'AMAT', 'MU', 'LRCX', 'KLAC', 'SNPS', 'CDNS', 'NXPI', 'MRVL', 'FTNT',
-    'PANW', 'CRWD', 'PLTR', 'SNOW', 'NET', 'DDOG', 'ZS', 'OKTA', 'TEAM', 'HUBS',
-    'TWLO', 'ZM', 'DOCU', 'SHOP', 'BLOCK', 'COIN', 'RBLX', 'U', 'ROKU', 'PINS'
-]
-
-# MEGA Finance (40)
-FINANCE_STOCKS = [
-    'JPM', 'BAC', 'WFC', 'C', 'GS', 'MS', 'BLK', 'SCHW', 'AXP', 'USB',
-    'PNC', 'TFC', 'COF', 'BK', 'STT', 'NTRS', 'CFG', 'KEY', 'RF', 'FITB',
-    'HBAN', 'CMA', 'ZION', 'EWBC', 'MTB', 'FRC', 'WAL', 'SIVB', 'SBNY', 'PACW',
-    'V', 'MA', 'PYPL', 'BLOCK', 'SOFI', 'AFRM', 'UPST', 'LC', 'NU', 'HOOD'
-]
-
-# MEGA EVs & Auto (30)
-AUTO_EV_STOCKS = [
-    'TSLA', 'F', 'GM', 'TM', 'HMC', 'STLA', 'NIO', 'XPEV', 'LI', 'RIVN',
-    'LCID', 'FSR', 'RIDE', 'WKHS', 'GOEV', 'NKLA', 'HYMTF', 'VWAGY', 'BMWYY', 'POAHY',
-    'LEA', 'APTV', 'BWA', 'ALV', 'ADNT', 'VC', 'LAZR', 'VLDR', 'LIDR', 'OUST'
-]
-
-# MEGA Energy (35)
-ENERGY_STOCKS = [
-    'XOM', 'CVX', 'COP', 'SLB', 'EOG', 'MPC', 'PSX', 'VLO', 'OXY', 'DVN',
-    'FANG', 'HAL', 'BKR', 'WMB', 'KMI', 'OKE', 'LNG', 'TRGP', 'EPD', 'ET',
-    'MRO', 'APA', 'CTRA', 'HES', 'PXD', 'CLR', 'MTDR', 'SM', 'RRC', 'AR',
-    'NEE', 'DUK', 'SO', 'D', 'EXC'
-]
-
-# MEGA Healthcare & Pharma (40)
-HEALTHCARE_STOCKS = [
-    'UNH', 'JNJ', 'LLY', 'ABBV', 'MRK', 'TMO', 'ABT', 'DHR', 'PFE', 'BMY',
-    'AMGN', 'GILD', 'CVS', 'CI', 'ISRG', 'MDT', 'REGN', 'VRTX', 'BSX', 'SYK',
-    'ZTS', 'ELV', 'HCA', 'A', 'BDX', 'MCK', 'CNC', 'IDXX', 'IQV', 'RMD',
-    'MRNA', 'BNTX', 'NVAX', 'CRSP', 'EDIT', 'NTLA', 'BEAM', 'EXAS', 'ILMN', 'TWST'
-]
-
-# MEGA Consumer & Retail (40)
-CONSUMER_STOCKS = [
-    'AMZN', 'WMT', 'HD', 'COST', 'TGT', 'LOW', 'TJX', 'ROST', 'DG', 'DLTR',
-    'NKE', 'LULU', 'SBUX', 'MCD', 'CMG', 'YUM', 'DPZ', 'QSR', 'WEN', 'JACK',
-    'DIS', 'NFLX', 'CMCSA', 'PARA', 'WBD', 'DISCA', 'FOXA', 'LYV', 'MSGS', 'SPGI',
-    'PG', 'KO', 'PEP', 'PM', 'MO', 'CL', 'EL', 'CLX', 'CHD', 'KMB'
-]
-
-# MEGA Industrials (35)
-INDUSTRIAL_STOCKS = [
-    'CAT', 'DE', 'BA', 'HON', 'UPS', 'UNP', 'RTX', 'LMT', 'GD', 'NOC',
-    'GE', 'MMM', 'EMR', 'ETN', 'ITW', 'CMI', 'PH', 'ROK', 'DOV', 'FTV',
-    'IR', 'CARR', 'OTIS', 'PCAR', 'NSC', 'CSX', 'FDX', 'DAL', 'UAL', 'AAL',
-    'LUV', 'JBLU', 'ALK', 'HA', 'SAVE'
-]
-
-# MEGA Crypto Related (25)
-CRYPTO_STOCKS = [
-    'COIN', 'MARA', 'RIOT', 'CLSK', 'HUT', 'BITF', 'CIFR', 'BTBT', 'CAN', 'HIVE',
-    'MSTR', 'BLOCK', 'PYPL', 'HOOD', 'SOFI', 'AFRM', 'NU', 'UPST', 'LC', 'LMND',
-    'SI', 'OPEN', 'RDFN', 'Z', 'COMP'
-]
-
-# MEGA Meme/High Short (40)
-MEME_STOCKS = [
-    'GME', 'AMC', 'BBBY', 'BB', 'NOK', 'WISH', 'CLOV', 'WKHS', 'RIDE', 'SPCE',
-    'PLTR', 'SOFI', 'SKLZ', 'DKNG', 'PENN', 'RSI', 'VICI', 'MGM', 'CZR', 'LVS',
-    'WYNN', 'BYD', 'RCL', 'CCL', 'NCLH', 'AAL', 'UAL', 'DAL', 'JBLU', 'ALK',
-    'SAVE', 'HA', 'PLUG', 'FCEL', 'BLDP', 'BE', 'CLNE', 'BLNK', 'CHPT', 'EVGO'
-]
-
-# ETFs & Indices (15)
-ETF_STOCKS = [
-    'SPY', 'QQQ', 'IWM', 'DIA', 'VTI', 'VOO', 'VEA', 'VWO', 'EEM', 'EFA',
-    'GLD', 'SLV', 'USO', 'UNG', 'TLT'
-]
-
-# Small Cap Momentum (50)
-SMALL_CAP_STOCKS = [
-    'DKNG', 'PENN', 'TLRY', 'CGC', 'SNDL', 'ACB', 'HEXO', 'APHA', 'CRON', 'OGI',
-    'PTON', 'BYND', 'SPCE', 'NKLA', 'RIDE', 'WKHS', 'HYLN', 'BLNK', 'CHPT', 'EVGO',
-    'SKLZ', 'DKNG', 'FUBO', 'VIAC', 'DISCA', 'WISH', 'CLOV', 'BGFV', 'BBIG', 'PROG',
-    'ATER', 'CEI', 'IRNT', 'OPAD', 'LIDR', 'VLDR', 'LAZR', 'OUST', 'AEVA', 'INVZ',
-    'MULN', 'CYCN', 'NILE', 'IMPP', 'MARPS', 'GFAI', 'RGTI', 'DWAC', 'PHUN', 'MARK'
-]
-
-# Combined MEGA list for daily plays
-DAILY_PLAYS_MEGA = (
-    TECH_STOCKS[:30] + 
-    FINANCE_STOCKS[:20] + 
-    AUTO_EV_STOCKS[:15] + 
-    ENERGY_STOCKS[:15] +
-    CONSUMER_STOCKS[:20]
-)  # 100 stocks!
-
-# Combined MEGA list for volume scans
-VOLEMON_MEGA = (
-    TECH_STOCKS[:40] +
-    FINANCE_STOCKS[:30] +
-    AUTO_EV_STOCKS[:20] +
-    ENERGY_STOCKS[:20] +
-    HEALTHCARE_STOCKS[:30] +
-    CONSUMER_STOCKS[:30] +
-    INDUSTRIAL_STOCKS[:20] +
-    CRYPTO_STOCKS[:20] +
-    MEME_STOCKS[:30] +
-    SMALL_CAP_STOCKS[:30]
-)  # 270 stocks!
-
-# Cache & locks
+# Caching
+CACHE_DURATION = 300
 cache = {}
 cache_lock = Lock()
-rate_limit_lock = Lock()
 last_request_time = {}
+rate_limit_lock = Lock()
 
-# ===== HELPER FUNCTIONS =====
 def rate_limit(key):
-    """Fast rate limiting"""
+    """Rate limiting"""
     with rate_limit_lock:
         current_time = time.time()
         if key in last_request_time:
             time_since_last = current_time - last_request_time[key]
-            if time_since_last < MIN_REQUEST_INTERVAL:
-                time.sleep(MIN_REQUEST_INTERVAL - time_since_last)
+            if time_since_last < 0.05:
+                time.sleep(0.05 - time_since_last)
         last_request_time[key] = time.time()
 
 def get_cached(key):
@@ -177,11 +75,9 @@ def set_cache(key, data):
 def get_tradier_quotes_batch(tickers):
     """Batch get quotes"""
     try:
-        rate_limit('tradier_batch')
         url = f"{TRADIER_BASE_URL}/markets/quotes"
         symbols = ','.join(tickers[:50])
-        params = {"symbols": symbols}
-        response = requests.get(url, headers=TRADIER_HEADERS, params=params, timeout=10)
+        response = requests.get(url, headers=TRADIER_HEADERS, params={"symbols": symbols}, timeout=10)
         
         if response.status_code == 200:
             data = response.json()
@@ -205,10 +101,6 @@ def get_stock_data_hybrid(ticker):
     
     try:
         rate_limit('yfinance')
-        # Suppress yfinance warnings
-        import warnings
-        warnings.filterwarnings('ignore')
-        
         stock_data = yf.Ticker(ticker)
         hist = stock_data.history(period='3mo')
         
@@ -217,8 +109,8 @@ def get_stock_data_hybrid(ticker):
             result = (hist, info, data_source, stock_data)
             set_cache(f"stock_{ticker}", result)
             return result
-    except Exception:
-        pass  # Silently fail and try Tradier
+    except:
+        pass
     
     # Tradier fallback
     data_source = "tradier"
@@ -294,7 +186,7 @@ def calculate_risk_score(short_interest, daily_change, volume_ratio, days_to_cov
     return round(risk_score, 1)
 
 def check_strat_31(hist):
-    """Check 3-1 pattern"""
+    """Check for 3-1 pattern (ORIGINAL)"""
     if hist is None or len(hist) < 3:
         return False, None
     
@@ -311,121 +203,87 @@ def check_strat_31(hist):
     direction = "bullish" if current['Close'] > current['Open'] else "bearish"
     
     if is_three and is_one:
-        return True, {'direction': direction}
+        pattern_data = {
+            'has_pattern': True,
+            'direction': direction,
+            'three_candle': {
+                'high': float(previous['High']),
+                'low': float(previous['Low']),
+                'close': float(previous['Close']),
+                'date': previous.name.strftime('%Y-%m-%d')
+            },
+            'one_candle': {
+                'high': float(current['High']),
+                'low': float(current['Low']),
+                'close': float(current['Close']),
+                'open': float(current['Open']),
+                'date': current.name.strftime('%Y-%m-%d')
+            }
+        }
+        return True, pattern_data
     
     return False, None
 
-# ===== SCANNER FUNCTIONS =====
-def scan_stock_squeeze(stock):
-    """Scan for squeeze"""
-    ticker = stock['ticker']
+def check_inside_bar(hist):
+    """Check for inside bar (RESTORED!)"""
+    if hist is None or len(hist) < 2:
+        return False
     
-    try:
-        hist, info, source, _ = get_stock_data_hybrid(ticker)
-        
-        if hist is None or len(hist) < 2:
-            return None
-        
-        current_price = hist['Close'].iloc[-1]
-        previous_close = hist['Close'].iloc[-2]
-        daily_change = ((current_price - previous_close) / previous_close) * 100
-        
-        current_volume = hist['Volume'].iloc[-1]
-        avg_volume = hist['Volume'].iloc[-21:-1].mean() if len(hist) > 20 else hist['Volume'].mean()
-        volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1.0
-        
-        float_shares = info.get('floatShares', info.get('sharesOutstanding', 0))
-        
-        short_shares = (float_shares * stock['short_interest'] / 100) if float_shares > 0 else 0
-        days_to_cover = short_shares / avg_volume if avg_volume > 0 else 0
-        
-        risk_score = calculate_risk_score(
-            stock['short_interest'],
-            daily_change,
-            volume_ratio,
-            days_to_cover,
-            float_shares
-        )
-        
-        return {
-            'ticker': ticker,
-            'company': stock['company'],
-            'shortInterest': stock['short_interest'],
-            'currentPrice': float(current_price),
-            'dailyChange': float(daily_change),
-            'volume': int(current_volume),
-            'volumeRatio': float(volume_ratio),
-            'riskScore': float(risk_score),
-            'dataSource': source
-        }
-        
-    except Exception as e:
-        # Silently skip problematic tickers
-        return None
+    current = hist.iloc[-1]
+    previous = hist.iloc[-2]
+    
+    is_inside = (current['High'] < previous['High'] and 
+                 current['Low'] > previous['Low'])
+    
+    return is_inside
 
-def scan_stock_pattern(ticker):
-    """Scan for pattern"""
-    try:
-        hist, info, source, _ = get_stock_data_hybrid(ticker)
-        
-        if hist is None or len(hist) < 3:
-            return None
-        
-        has_pattern, pattern_data = check_strat_31(hist)
-        
-        if not has_pattern:
-            return None
-        
-        current_price = hist['Close'].iloc[-1]
-        previous_close = hist['Close'].iloc[-2]
-        daily_change = ((current_price - previous_close) / previous_close) * 100
-        
-        return {
-            'ticker': ticker,
-            'company': info.get('longName', ticker),
-            'currentPrice': float(current_price),
-            'dailyChange': float(daily_change),
-            'volume': int(hist['Volume'].iloc[-1]),
-            'pattern': pattern_data,
-            'dataSource': source
-        }
-        
-    except:
-        return None
+def check_all_patterns(hist):
+    """Check ALL patterns like original (COMPLETE!)"""
+    patterns = {}
+    
+    if hist is None or len(hist) < 3:
+        return patterns
+    
+    # Check 3-1 pattern first
+    has_31, pattern_data = check_strat_31(hist)
+    
+    if has_31:
+        patterns['type'] = '3-1 Strat'
+        patterns['direction'] = pattern_data['direction']
+        patterns['data'] = pattern_data
+    else:
+        # Check for inside bar
+        if check_inside_bar(hist):
+            patterns['type'] = 'Inside Bar (1)'
+            patterns['direction'] = 'neutral'
+        else:
+            patterns['type'] = None
+            patterns['direction'] = None
+    
+    return patterns
 
-def scan_stock_volume(ticker, min_multiple):
-    """Scan for volume"""
-    try:
-        hist, info, source, _ = get_stock_data_hybrid(ticker)
-        
-        if hist is None or len(hist) < 2:
-            return None
-        
-        current_volume = hist['Volume'].iloc[-1]
-        avg_volume = hist['Volume'].iloc[:-1].mean()
-        
-        if avg_volume == 0:
-            return None
-        
-        volume_multiple = current_volume / avg_volume
-        
-        if volume_multiple >= min_multiple:
-            current_price = hist['Close'].iloc[-1]
-            prev_price = hist['Close'].iloc[-2]
-            change_pct = ((current_price - prev_price) / prev_price) * 100
-            
-            return {
-                'ticker': ticker,
-                'company': info.get('longName', ticker),
-                'price': float(current_price),
-                'change': float(change_pct),
-                'volume': int(current_volume),
-                'avg_volume': int(avg_volume),
-                'volume_multiple': float(volume_multiple),
-                'dataSource': source
-            }
-    except:
-        return None
+# ===== STOCK LISTS (BALANCED) =====
+TOP_STOCKS = [
+    # Tech
+    'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD', 'INTC', 'CRM',
+    'ADBE', 'CSCO', 'ORCL', 'AVGO', 'QCOM', 'TXN', 'NOW', 'INTU', 'AMAT', 'MU',
+    'PLTR', 'SNOW', 'NET', 'DDOG', 'ZS', 'CRWD', 'PANW', 'COIN', 'BLOCK', 'SHOP',
+    # Finance
+    'JPM', 'BAC', 'WFC', 'C', 'GS', 'MS', 'V', 'MA', 'PYPL', 'SOFI',
+    'AFRM', 'UPST', 'LC', 'NU', 'HOOD', 'BLK', 'SCHW', 'AXP', 'USB', 'COF',
+    # Auto/EV
+    'F', 'GM', 'NIO', 'XPEV', 'LI', 'RIVN', 'LCID', 'FSR', 'WKHS',
+    # Energy
+    'XOM', 'CVX', 'COP', 'SLB', 'EOG', 'MPC', 'PSX', 'VLO', 'OXY', 'FANG',
+    # Consumer
+    'WMT', 'HD', 'COST', 'TGT', 'LOW', 'NKE', 'LULU', 'SBUX', 'MCD', 'CMG',
+    # Healthcare
+    'UNH', 'JNJ', 'LLY', 'ABBV', 'MRK', 'PFE', 'TMO', 'ABT', 'MRNA', 'BNTX',
+    # Meme/Popular
+    'GME', 'AMC', 'BBBY', 'BB', 'DKNG', 'PENN', 'TLRY', 'SNDL', 'SPCE', 'NKLA',
+    # ETFs
+    'SPY', 'QQQ', 'IWM', 'DIA', 'VTI'
+]
 
 # ===== ROUTES =====
 @app.route('/')
@@ -441,8 +299,7 @@ def index():
         if os.path.exists(html_file):
             return send_from_directory('.', html_file)
     
-    return """<h1>🍋 Lemon Squeeze v3.3 - MEGA</h1>
-    <p>Backend running! Maximum stock coverage!</p>"""
+    return "<h1>🍋 Lemon Squeeze v3.4 - Optimized</h1><p>Place HTML in same directory</p>"
 
 @app.route('/api/scan', methods=['POST'])
 def scan():
@@ -455,35 +312,75 @@ def scan():
         min_risk = float(data.get('minRisk', 60))
         
         stocks = load_stock_data()
-        
-        print(f"\n🚀 MEGA SCAN: {len(stocks)} stocks with {MAX_WORKERS} threads...")
-        start_time = time.time()
-        
         results = []
         
+        print(f"\n🔍 Scanning {len(stocks)} stocks with {MAX_WORKERS} threads...")
+        start_time = time.time()
+        
+        def scan_one(stock):
+            ticker = stock['ticker']
+            try:
+                hist, info, source, _ = get_stock_data_hybrid(ticker)
+                
+                if hist is None or len(hist) < 2:
+                    return None
+                
+                current_price = hist['Close'].iloc[-1]
+                previous_close = hist['Close'].iloc[-2]
+                daily_change = ((current_price - previous_close) / previous_close) * 100
+                
+                current_volume = hist['Volume'].iloc[-1]
+                avg_volume = hist['Volume'].iloc[-21:-1].mean() if len(hist) > 20 else hist['Volume'].mean()
+                volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1.0
+                
+                float_shares = info.get('floatShares', info.get('sharesOutstanding', 0))
+                market_cap = info.get('marketCap', 0)
+                
+                short_shares = (float_shares * stock['short_interest'] / 100) if float_shares > 0 else 0
+                days_to_cover = short_shares / avg_volume if avg_volume > 0 else 0
+                
+                risk_score = calculate_risk_score(
+                    stock['short_interest'], daily_change, volume_ratio,
+                    days_to_cover, float_shares
+                )
+                
+                return {
+                    'ticker': ticker,
+                    'company': stock['company'],
+                    'shortInterest': stock['short_interest'],
+                    'currentPrice': float(current_price),
+                    'dailyChange': float(daily_change),
+                    'volume': int(current_volume),
+                    'volumeRatio': float(volume_ratio),
+                    'riskScore': float(risk_score),
+                    'dataSource': source
+                }
+            except:
+                return None
+        
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-            futures = [executor.submit(scan_stock_squeeze, stock) for stock in stocks]
+            futures = [executor.submit(scan_one, stock) for stock in stocks]
             
             for future in as_completed(futures):
                 result = future.result()
-                if result:
-                    if (result['shortInterest'] >= min_short and 
-                        result['dailyChange'] >= min_gain and 
-                        result['volumeRatio'] >= min_vol_ratio and
-                        result['riskScore'] >= min_risk):
-                        results.append(result)
+                if result and (
+                    result['shortInterest'] >= min_short and 
+                    result['dailyChange'] >= min_gain and 
+                    result['volumeRatio'] >= min_vol_ratio and
+                    result['riskScore'] >= min_risk
+                ):
+                    results.append(result)
         
         results.sort(key=lambda x: x['riskScore'], reverse=True)
-        
         elapsed = time.time() - start_time
-        print(f"\n⚡ DONE in {elapsed:.1f}s! Found {len(results)} candidates\n")
+        
+        print(f"⚡ Done in {elapsed:.1f}s! Found {len(results)} candidates\n")
         
         return jsonify({
             'success': True,
             'results': results,
             'count': len(results),
-            'scan_time': round(elapsed, 1),
-            'stocks_scanned': len(stocks)
+            'scan_time': round(elapsed, 1)
         })
         
     except Exception as e:
@@ -491,17 +388,45 @@ def scan():
 
 @app.route('/api/daily-plays', methods=['POST'])
 def daily_plays():
-    """MEGA Daily plays - 100 stocks!"""
+    """Daily plays with FULL pattern detection"""
     try:
-        tickers = DAILY_PLAYS_MEGA  # 100 stocks!
+        tickers = TOP_STOCKS[:STOCK_COUNTS['daily_plays']]
         
-        print(f"\n🎯 MEGA Daily: {len(tickers)} stocks...")
+        print(f"\n🎯 Daily Plays: {len(tickers)} stocks...")
         start_time = time.time()
-        
         results = []
         
+        def scan_pattern(ticker):
+            try:
+                hist, info, source, _ = get_stock_data_hybrid(ticker)
+                
+                if hist is None or len(hist) < 3:
+                    return None
+                
+                # Check ALL patterns (3-1 AND inside bars!)
+                patterns = check_all_patterns(hist)
+                
+                if patterns.get('type'):  # Has any pattern
+                    current_price = hist['Close'].iloc[-1]
+                    previous_close = hist['Close'].iloc[-2]
+                    daily_change = ((current_price - previous_close) / previous_close) * 100
+                    
+                    return {
+                        'ticker': ticker,
+                        'company': info.get('longName', ticker),
+                        'currentPrice': float(current_price),
+                        'dailyChange': float(daily_change),
+                        'volume': int(hist['Volume'].iloc[-1]),
+                        'avgVolume': int(hist['Volume'].mean()),
+                        'marketCap': int(info.get('marketCap', 0)),
+                        'pattern': patterns,
+                        'dataSource': source
+                    }
+            except:
+                return None
+        
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-            futures = [executor.submit(scan_stock_pattern, ticker) for ticker in tickers]
+            futures = [executor.submit(scan_pattern, ticker) for ticker in tickers]
             
             for future in as_completed(futures):
                 result = future.result()
@@ -509,13 +434,12 @@ def daily_plays():
                     results.append(result)
         
         elapsed = time.time() - start_time
-        print(f"⚡ DONE in {elapsed:.1f}s! Found {len(results)} patterns\n")
+        print(f"⚡ Done in {elapsed:.1f}s! Found {len(results)} patterns\n")
         
         return jsonify({
             'success': True,
             'results': results,
-            'scan_time': round(elapsed, 1),
-            'stocks_scanned': len(tickers)
+            'scan_time': round(elapsed, 1)
         })
         
     except Exception as e:
@@ -523,13 +447,13 @@ def daily_plays():
 
 @app.route('/api/hourly-plays', methods=['POST'])
 def hourly_plays():
-    """Hourly plays - Top 30"""
+    """Hourly with full patterns"""
     try:
-        tickers = TECH_STOCKS[:30]
+        tickers = TOP_STOCKS[:STOCK_COUNTS['hourly_plays']]
         
         print(f"\n⏰ Hourly: {len(tickers)} stocks...")
-        
         results = []
+        
         for ticker in tickers:
             try:
                 stock_data = yf.Ticker(ticker)
@@ -538,15 +462,16 @@ def hourly_plays():
                 if len(hist) < 3:
                     continue
                 
-                has_pattern, pattern_data = check_strat_31(hist)
+                patterns = check_all_patterns(hist)
                 
-                if has_pattern:
+                if patterns.get('type'):
+                    info = stock_data.info
                     results.append({
                         'ticker': ticker,
-                        'company': stock_data.info.get('longName', ticker),
+                        'company': info.get('longName', ticker),
                         'currentPrice': float(hist['Close'].iloc[-1]),
                         'volume': int(hist['Volume'].iloc[-1]),
-                        'pattern': pattern_data,
+                        'pattern': patterns,
                         'timeframe': 'hourly'
                     })
             except:
@@ -561,9 +486,9 @@ def hourly_plays():
 
 @app.route('/api/weekly-plays', methods=['POST'])
 def weekly_plays():
-    """Weekly plays - Top 40"""
+    """Weekly with full patterns"""
     try:
-        tickers = (TECH_STOCKS[:20] + FINANCE_STOCKS[:20])
+        tickers = TOP_STOCKS[:STOCK_COUNTS['weekly_plays']]
         
         print(f"\n📅 Weekly: {len(tickers)} stocks...")
         results = []
@@ -576,15 +501,16 @@ def weekly_plays():
                 if len(hist) < 3:
                     continue
                 
-                has_pattern, pattern_data = check_strat_31(hist)
+                patterns = check_all_patterns(hist)
                 
-                if has_pattern:
+                if patterns.get('type'):
+                    info = stock_data.info
                     results.append({
                         'ticker': ticker,
-                        'company': stock_data.info.get('longName', ticker),
+                        'company': info.get('longName', ticker),
                         'currentPrice': float(hist['Close'].iloc[-1]),
                         'volume': int(hist['Volume'].iloc[-1]),
-                        'pattern': pattern_data,
+                        'pattern': patterns,
                         'timeframe': 'weekly'
                     })
             except:
@@ -601,10 +527,8 @@ def weekly_plays():
 def crypto_scan():
     """Crypto scanner"""
     try:
-        crypto_tickers = ['BTC-USD', 'ETH-USD', 'XRP-USD', 'SOL-USD', 'DOGE-USD', 'ADA-USD', 'MATIC-USD', 'DOT-USD']
+        crypto_tickers = ['BTC-USD', 'ETH-USD', 'XRP-USD', 'SOL-USD', 'DOGE-USD', 'ADA-USD']
         results = []
-        
-        print(f"\n💰 Crypto...")
         
         for ticker in crypto_tickers:
             try:
@@ -627,8 +551,6 @@ def crypto_scan():
             except:
                 continue
         
-        print(f"⚡ Done!\n")
-        
         return jsonify({'success': True, 'results': results})
         
     except Exception as e:
@@ -636,77 +558,36 @@ def crypto_scan():
 
 @app.route('/api/volemon-scan', methods=['POST'])
 def volemon_scan():
-    """MEGA Volume - 270 stocks!"""
+    """Volume scanner"""
     try:
         data = request.json
         min_volume_multiple = data.get('min_volume_multiple', 2.0)
         
-        tickers = VOLEMON_MEGA  # 270 stocks!
+        tickers = TOP_STOCKS[:STOCK_COUNTS['volemon']]
         
-        print(f"\n🔊 MEGA Volemon: {len(tickers)} stocks ({min_volume_multiple}x)...")
+        print(f"\n🔊 Volemon: {len(tickers)} stocks ({min_volume_multiple}x)...")
         start_time = time.time()
-        
         results = []
         
-        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-            futures = [executor.submit(scan_stock_volume, ticker, min_volume_multiple) for ticker in tickers]
-            
-            for future in as_completed(futures):
-                result = future.result()
-                if result:
-                    results.append(result)
-        
-        results.sort(key=lambda x: x['volume_multiple'], reverse=True)
-        
-        elapsed = time.time() - start_time
-        print(f"⚡ DONE in {elapsed:.1f}s! Found {len(results)} stocks\n")
-        
-        return jsonify({
-            'success': True,
-            'results': results[:100],  # Top 100
-            'count': len(results),
-            'scan_time': round(elapsed, 1),
-            'stocks_scanned': len(tickers)
-        })
-        
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/usuals-scan', methods=['POST'])
-def usuals_scan():
-    """Usuals scanner"""
-    try:
-        data = request.json
-        tickers = data.get('tickers', (TECH_STOCKS[:15] + FINANCE_STOCKS[:10] + AUTO_EV_STOCKS[:5]))
-        
-        print(f"\n⭐ Usuals: {len(tickers)} stocks...")
-        start_time = time.time()
-        
-        results = []
-        
-        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-            def scan_usual(ticker):
-                try:
-                    hist, info, source, _ = get_stock_data_hybrid(ticker)
-                    
-                    if hist is None or len(hist) < 3:
-                        return None
-                    
+        def scan_vol(ticker):
+            try:
+                hist, info, source, _ = get_stock_data_hybrid(ticker)
+                
+                if hist is None or len(hist) < 2:
+                    return None
+                
+                current_volume = hist['Volume'].iloc[-1]
+                avg_volume = hist['Volume'].iloc[:-1].mean()
+                
+                if avg_volume == 0:
+                    return None
+                
+                volume_multiple = current_volume / avg_volume
+                
+                if volume_multiple >= min_volume_multiple:
                     current_price = hist['Close'].iloc[-1]
                     prev_price = hist['Close'].iloc[-2]
                     change_pct = ((current_price - prev_price) / prev_price) * 100
-                    
-                    current_volume = hist['Volume'].iloc[-1]
-                    avg_volume = hist['Volume'].iloc[:-1].mean()
-                    volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1
-                    
-                    has_pattern, pattern_data = check_strat_31(hist)
-                    patterns = {}
-                    if has_pattern:
-                        patterns['daily'] = {
-                            'type': '3-1 Strat',
-                            'direction': pattern_data['direction']
-                        }
                     
                     return {
                         'ticker': ticker,
@@ -715,13 +596,94 @@ def usuals_scan():
                         'change': float(change_pct),
                         'volume': int(current_volume),
                         'avg_volume': int(avg_volume),
-                        'volume_ratio': float(volume_ratio),
-                        'patterns': patterns,
+                        'volume_multiple': float(volume_multiple),
                         'dataSource': source
                     }
-                except:
-                    return None
+            except:
+                return None
+        
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            futures = [executor.submit(scan_vol, ticker) for ticker in tickers]
             
+            for future in as_completed(futures):
+                result = future.result()
+                if result:
+                    results.append(result)
+        
+        results.sort(key=lambda x: x['volume_multiple'], reverse=True)
+        elapsed = time.time() - start_time
+        
+        print(f"⚡ Done in {elapsed:.1f}s! Found {len(results)}\n")
+        
+        return jsonify({
+            'success': True,
+            'results': results[:50],
+            'count': len(results),
+            'scan_time': round(elapsed, 1)
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/usuals-scan', methods=['POST'])
+def usuals_scan():
+    """Usuals with full patterns"""
+    try:
+        data = request.json
+        tickers = data.get('tickers', TOP_STOCKS[:STOCK_COUNTS['usuals']])
+        
+        print(f"\n⭐ Usuals: {len(tickers)} stocks...")
+        start_time = time.time()
+        results = []
+        
+        def scan_usual(ticker):
+            try:
+                hist, info, source, stock_data = get_stock_data_hybrid(ticker)
+                
+                if hist is None or len(hist) < 3:
+                    return None
+                
+                current_price = hist['Close'].iloc[-1]
+                prev_price = hist['Close'].iloc[-2]
+                change_pct = ((current_price - prev_price) / prev_price) * 100
+                
+                current_volume = hist['Volume'].iloc[-1]
+                avg_volume = hist['Volume'].iloc[:-1].mean()
+                volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1
+                
+                # Check ALL patterns
+                patterns_daily = check_all_patterns(hist)
+                patterns_output = {}
+                
+                if patterns_daily.get('type'):
+                    patterns_output['daily'] = patterns_daily
+                
+                # Try weekly too if we have stock_data
+                if stock_data:
+                    try:
+                        hist_weekly = stock_data.history(period='6mo', interval='1wk')
+                        if len(hist_weekly) >= 3:
+                            patterns_weekly = check_all_patterns(hist_weekly)
+                            if patterns_weekly.get('type'):
+                                patterns_output['weekly'] = patterns_weekly
+                    except:
+                        pass
+                
+                return {
+                    'ticker': ticker,
+                    'company': info.get('longName', ticker),
+                    'price': float(current_price),
+                    'change': float(change_pct),
+                    'volume': int(current_volume),
+                    'avg_volume': int(avg_volume),
+                    'volume_ratio': float(volume_ratio),
+                    'patterns': patterns_output,
+                    'dataSource': source
+                }
+            except:
+                return None
+        
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
             futures = [executor.submit(scan_usual, ticker) for ticker in tickers]
             
             for future in as_completed(futures):
@@ -730,7 +692,7 @@ def usuals_scan():
                     results.append(result)
         
         elapsed = time.time() - start_time
-        print(f"⚡ DONE in {elapsed:.1f}s!\n")
+        print(f"⚡ Done in {elapsed:.1f}s!\n")
         
         return jsonify({
             'success': True,
@@ -742,67 +704,27 @@ def usuals_scan():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/stock-lists', methods=['GET'])
-def get_stock_lists():
-    """Get all stock lists"""
-    return jsonify({
-        'success': True,
-        'lists': {
-            'tech': TECH_STOCKS,
-            'finance': FINANCE_STOCKS,
-            'auto_ev': AUTO_EV_STOCKS,
-            'energy': ENERGY_STOCKS,
-            'healthcare': HEALTHCARE_STOCKS,
-            'consumer': CONSUMER_STOCKS,
-            'industrial': INDUSTRIAL_STOCKS,
-            'crypto': CRYPTO_STOCKS,
-            'meme': MEME_STOCKS,
-            'small_cap': SMALL_CAP_STOCKS,
-            'etf': ETF_STOCKS
-        },
-        'counts': {
-            'tech': len(TECH_STOCKS),
-            'finance': len(FINANCE_STOCKS),
-            'auto_ev': len(AUTO_EV_STOCKS),
-            'energy': len(ENERGY_STOCKS),
-            'healthcare': len(HEALTHCARE_STOCKS),
-            'consumer': len(CONSUMER_STOCKS),
-            'industrial': len(INDUSTRIAL_STOCKS),
-            'crypto': len(CRYPTO_STOCKS),
-            'meme': len(MEME_STOCKS),
-            'small_cap': len(SMALL_CAP_STOCKS),
-            'daily_plays_mega': len(DAILY_PLAYS_MEGA),
-            'volemon_mega': len(VOLEMON_MEGA)
-        }
-    })
-
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
     
-    print("\n" + "="*80)
-    print("🔥 LEMON SQUEEZE v3.3 - MEGA EDITION 🔥")
-    print("="*80)
-    print("\n📊 MEGA STOCK COVERAGE:")
-    print(f"  • Tech: {len(TECH_STOCKS)} stocks")
-    print(f"  • Finance: {len(FINANCE_STOCKS)} stocks")
-    print(f"  • Auto/EV: {len(AUTO_EV_STOCKS)} stocks")
-    print(f"  • Energy: {len(ENERGY_STOCKS)} stocks")
-    print(f"  • Healthcare: {len(HEALTHCARE_STOCKS)} stocks")
-    print(f"  • Consumer: {len(CONSUMER_STOCKS)} stocks")
-    print(f"  • Industrial: {len(INDUSTRIAL_STOCKS)} stocks")
-    print(f"  • Crypto Related: {len(CRYPTO_STOCKS)} stocks")
-    print(f"  • Meme/High Short: {len(MEME_STOCKS)} stocks")
-    print(f"  • Small Cap: {len(SMALL_CAP_STOCKS)} stocks")
-    print("\n🎯 SCANNER COVERAGE:")
-    print(f"  • Daily Plays: {len(DAILY_PLAYS_MEGA)} stocks (100!)")
-    print(f"  • Volemon: {len(VOLEMON_MEGA)} stocks (270!)")
-    print(f"  • Short Squeeze: All from CSV")
-    print("\n⚡ PERFORMANCE:")
-    print(f"  • {MAX_WORKERS} concurrent threads")
-    print(f"  • 5-minute caching")
-    print(f"  • Batch API calls")
+    print("\n" + "="*70)
+    print("🍋 LEMON SQUEEZE v3.4 - OPTIMIZED EDITION 🍋")
+    print("="*70)
+    print("\n⚙️  SPEED CONTROLS (edit in code):")
+    print(f"  • Threads: {MAX_WORKERS} (5=stable, 15=fast)")
+    print(f"  • Daily Plays: {STOCK_COUNTS['daily_plays']} stocks")
+    print(f"  • Hourly Plays: {STOCK_COUNTS['hourly_plays']} stocks")
+    print(f"  • Weekly Plays: {STOCK_COUNTS['weekly_plays']} stocks")
+    print(f"  • Volemon: {STOCK_COUNTS['volemon']} stocks")
+    print(f"  • Usuals: {STOCK_COUNTS['usuals']} stocks")
+    print("\n✅ PATTERN DETECTION:")
+    print("  • 3-1 Strat patterns ✓")
+    print("  • Inside bars (1) ✓")
+    print("  • All timeframes ✓")
+    print("\n💡 TIP: Lower stock counts = faster scans!")
+    print("     Edit STOCK_COUNTS at top of file")
     print("\n📱 Open: http://localhost:8080")
     print("🛑 Press Ctrl+C to stop")
-    print("\n" + "="*80 + "\n")
+    print("\n" + "="*70 + "\n")
     
     app.run(debug=False, host='0.0.0.0', port=port)
