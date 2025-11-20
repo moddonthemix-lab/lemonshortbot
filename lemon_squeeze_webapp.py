@@ -266,7 +266,127 @@ def check_strat_31(hist):
 @app.route('/')
 def index():
     """Serve the main page"""
-    return send_from_directory('.', 'lemon_squeeze_with_volemon__4_.html')
+    # Try different HTML filenames
+    html_files = [
+        'lemon_squeeze_with_volemon__4_.html',
+        'lemon_squeeze.html',
+        'index.html'
+    ]
+    
+    for html_file in html_files:
+        if os.path.exists(html_file):
+            return send_from_directory('.', html_file)
+    
+    # If no HTML file found, return a simple interface
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Lemon Squeeze v3.0</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                max-width: 800px;
+                margin: 50px auto;
+                padding: 20px;
+                background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            }
+            .container {
+                background: white;
+                padding: 40px;
+                border-radius: 20px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            }
+            h1 { color: #FFA500; }
+            button {
+                background: #FFD700;
+                border: none;
+                padding: 15px 30px;
+                font-size: 18px;
+                border-radius: 10px;
+                cursor: pointer;
+                margin: 10px 5px;
+            }
+            button:hover { background: #FFA500; }
+            .results {
+                margin-top: 20px;
+                padding: 20px;
+                background: #f5f5f5;
+                border-radius: 10px;
+            }
+            .error { color: red; }
+            .success { color: green; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🍋 Lemon Squeeze v3.0</h1>
+            <p>Backend is running! Put your HTML file in the same directory as the Python file.</p>
+            
+            <h3>Expected HTML filename:</h3>
+            <ul>
+                <li>lemon_squeeze_with_volemon__4_.html</li>
+                <li>lemon_squeeze.html</li>
+                <li>index.html</li>
+            </ul>
+            
+            <h3>Quick Test:</h3>
+            <button onclick="testTradier()">Test Tradier API</button>
+            <button onclick="testScan()">Test Scanner</button>
+            
+            <div id="results" class="results" style="display:none;">
+                <h3>Results:</h3>
+                <pre id="output"></pre>
+            </div>
+        </div>
+        
+        <script>
+            async function testTradier() {
+                const results = document.getElementById('results');
+                const output = document.getElementById('output');
+                results.style.display = 'block';
+                output.textContent = 'Testing Tradier API...';
+                
+                try {
+                    const response = await fetch('/api/test_tradier');
+                    const data = await response.json();
+                    output.textContent = JSON.stringify(data, null, 2);
+                    output.className = data.success ? 'success' : 'error';
+                } catch (error) {
+                    output.textContent = 'Error: ' + error.message;
+                    output.className = 'error';
+                }
+            }
+            
+            async function testScan() {
+                const results = document.getElementById('results');
+                const output = document.getElementById('output');
+                results.style.display = 'block';
+                output.textContent = 'Running scan...';
+                
+                try {
+                    const response = await fetch('/api/scan', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            minShort: 25,
+                            minGain: 10,
+                            minVolRatio: 1.5,
+                            minRisk: 50
+                        })
+                    });
+                    const data = await response.json();
+                    output.textContent = JSON.stringify(data, null, 2);
+                    output.className = data.success ? 'success' : 'error';
+                } catch (error) {
+                    output.textContent = 'Error: ' + error.message;
+                    output.className = 'error';
+                }
+            }
+        </script>
+    </body>
+    </html>
+    """
 
 @app.route('/api/scan', methods=['POST'])
 def scan():
