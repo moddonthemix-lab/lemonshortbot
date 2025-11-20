@@ -1,8 +1,10 @@
 """
-🍋 LEMON SQUEEZE WEB APP v2.0 🍋
+🍋 LEMON SQUEEZE WEB APP v2.1 - VOLEMON EDITION 🍋
 Flask-based web interface with:
 - Short Squeeze Scanner
-- Daily Plays (3-1 Strat Pattern Scanner)
+- Daily/Weekly/Hourly Plays (3-1 Strat Pattern Scanner)
+- Crypto Scanner
+- 🔊 Volemon (Auto Volume Scanner)
 """
 
 from flask import Flask, render_template, jsonify, request, send_from_directory
@@ -703,6 +705,115 @@ def save_scan_to_history(results, min_short, min_gain, min_vol_ratio, min_risk):
     except Exception as e:
         print(f"Error saving history: {e}")
 
+@app.route('/api/volemon-scan', methods=['POST'])
+def volemon_scan():
+    """
+    🔊 VOLEMON - Volume Monster Scanner
+    Scans for stocks with 2x or more their average volume
+    """
+    try:
+        data = request.json
+        min_volume_multiple = data.get('min_volume_multiple', 2.0)
+        
+        # Get stock universe - same as daily plays
+        popular_tickers = [
+            'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD',
+            'SPY', 'QQQ', 'IWM', 'DIA',
+            'NFLX', 'DIS', 'BABA', 'PYPL', 'SQ', 'ROKU', 'SNAP', 'UBER',
+            'F', 'GM', 'NIO', 'LCID', 'RIVN',
+            'BA', 'GE', 'CAT', 'DE',
+            'JPM', 'BAC', 'GS', 'MS', 'C',
+            'XOM', 'CVX', 'COP', 'SLB',
+            'PFE', 'JNJ', 'MRNA', 'BNTX',
+            'WMT', 'TGT', 'COST', 'HD', 'LOW',
+        ]
+        
+        # Add high short stocks
+        high_short_stocks = load_stock_data()
+        for stock in high_short_stocks:
+            if stock['ticker'] not in popular_tickers:
+                popular_tickers.append(stock['ticker'])
+        
+        results = []
+        processed = 0
+        total = len(popular_tickers)
+        
+        print(f"\n🔊 Starting Volemon scan for {total} stocks...")
+        print(f"   Looking for {min_volume_multiple}x+ volume...")
+        
+        for ticker in popular_tickers:
+            processed += 1
+            try:
+                stock_data = yf.Ticker(ticker)
+                hist = stock_data.history(period='5d')  # Last 5 days
+                info = stock_data.info
+                
+                if len(hist) < 2:
+                    continue
+                
+                # Get current volume and average volume (excluding today)
+                current_volume = hist['Volume'].iloc[-1]
+                avg_volume = hist['Volume'].iloc[:-1].mean()
+                
+                if avg_volume == 0 or current_volume == 0:
+                    continue
+                
+                volume_multiple = current_volume / avg_volume
+                
+                # Filter for stocks with 2x+ volume
+                if volume_multiple >= min_volume_multiple:
+                    current_price = hist['Close'].iloc[-1]
+                    prev_price = hist['Close'].iloc[-2]
+                    change_pct = ((current_price - prev_price) / prev_price) * 100
+                    
+                    company_name = info.get('longName', ticker)
+                    market_cap = info.get('marketCap', 0)
+                    
+                    results.append({
+                        'ticker': ticker,
+                        'company': company_name,
+                        'price': float(current_price),
+                        'change': float(change_pct),
+                        'volume': int(current_volume),
+                        'avg_volume': int(avg_volume),
+                        'volume_multiple': float(volume_multiple),
+                        'market_cap': int(market_cap)
+                    })
+                    
+                    print(f"   ✅ {ticker}: {volume_multiple:.1f}x volume!")
+                
+                # Progress indicator
+                if processed % 10 == 0:
+                    print(f"   Progress: {processed}/{total} stocks scanned...")
+                    
+            except Exception as e:
+                print(f"   ❌ Error scanning {ticker}: {e}")
+                continue
+        
+        # Sort by volume multiple (highest first)
+        results.sort(key=lambda x: x['volume_multiple'], reverse=True)
+        
+        # Limit to top 50
+        results = results[:50]
+        
+        print(f"\n🔊 Volemon scan complete!")
+        print(f"   Found {len(results)} stocks with {min_volume_multiple}x+ volume")
+        print(f"   Scanned {processed} stocks total\n")
+        
+        return jsonify({
+            'success': True,
+            'results': results,
+            'count': len(results),
+            'scanned': processed
+        })
+        
+    except Exception as e:
+        print(f"❌ Volemon scan error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 if __name__ == '__main__':
     import os
     import ssl
@@ -738,6 +849,7 @@ if __name__ == '__main__':
     print("  - Daily Plays (3-1 Strat)")
     print("  - Weekly Plays (3-1 Strat)")
     print("  - Crypto Scanner (BTC, ETH, XRP, SOL, DOGE, HYPE)")
+    print("  - 🔊 Volemon (Auto Volume Scanner - 2x+ Volume)")
     print("\n🛑 Press Ctrl+C to stop the server")
     print("\n" + "="*60 + "\n")
     
