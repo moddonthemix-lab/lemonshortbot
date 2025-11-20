@@ -333,79 +333,90 @@ def scan_single_stock_for_volume(ticker, min_volume_multiple=2.0):
 
 @app.route('/')
 def index():
-    # Try to serve from current directory or templates folder
-    try:
-        return send_from_directory('.', 'lemon_squeeze_with_volemon.html')
-    except:
-        # If not found, return simple HTML with instructions
-        return '''
+    # Railway-compatible file serving
+    import os
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    html_path = os.path.join(base_dir, 'lemon_squeeze_with_volemon.html')
+    
+    if os.path.exists(html_path):
+        return send_file(html_path)
+    else:
+        # Show debug info if file not found
+        files_in_dir = os.listdir(base_dir)
+        return f'''
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Lemon Squeeze Setup</title>
+            <title>Lemon Squeeze - File Not Found</title>
             <style>
-                body { 
+                body {{ 
                     font-family: Arial, sans-serif; 
                     max-width: 800px; 
                     margin: 50px auto; 
                     padding: 20px;
                     background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-                }
-                .container {
+                }}
+                .container {{
                     background: white;
                     padding: 40px;
                     border-radius: 20px;
                     box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-                }
-                h1 { color: #FFA500; }
-                code { 
+                }}
+                h1 {{ color: #FFA500; }}
+                code {{ 
                     background: #f4f4f4; 
                     padding: 2px 6px; 
                     border-radius: 3px;
                     font-family: monospace;
-                }
-                pre {
+                }}
+                pre {{
                     background: #2d2d2d;
                     color: #f8f8f8;
                     padding: 15px;
                     border-radius: 5px;
                     overflow-x: auto;
-                }
+                }}
             </style>
         </head>
         <body>
             <div class="container">
                 <h1>🍋 Lemon Squeeze - Setup Required</h1>
-                <p>The HTML file is not found in the current directory.</p>
+                <p><strong>HTML file not found!</strong></p>
                 
-                <h2>Quick Fix:</h2>
-                <p>Make sure <code>lemon_squeeze_with_volemon.html</code> is in the same directory as the Python backend.</p>
+                <p>Looking for: <code>{html_path}</code></p>
                 
-                <pre>your_folder/
-  ├── lemon_squeeze_backend_fast.py
-  └── lemon_squeeze_with_volemon.html  ← Should be here!</pre>
+                <h2>Files found in directory:</h2>
+                <pre>{chr(10).join(files_in_dir)}</pre>
                 
-                <h2>Steps:</h2>
+                <h2>For Railway Deployment:</h2>
                 <ol>
-                    <li>Stop the server (Ctrl+C)</li>
-                    <li>Place <code>lemon_squeeze_with_volemon.html</code> in the same folder</li>
-                    <li>Restart: <code>python lemon_squeeze_backend_fast.py</code></li>
+                    <li>Make sure <code>lemon_squeeze_with_volemon.html</code> is in your GitHub repo</li>
+                    <li>Commit both files:
+                        <pre>git add lemon_squeeze_backend_fast.py
+git add lemon_squeeze_with_volemon.html
+git add requirements.txt
+git commit -m "Add HTML file"
+git push origin main</pre>
+                    </li>
+                    <li>Railway will auto-redeploy</li>
                     <li>Refresh this page</li>
                 </ol>
                 
-                <h2>Alternative - Use Templates Folder:</h2>
-                <pre>your_folder/
-  ├── lemon_squeeze_backend_fast.py
-  └── templates/
-      └── lemon_squeeze_with_volemon.html</pre>
+                <h2>Files needed in your repo:</h2>
+                <pre>your-repo/
+├── lemon_squeeze_backend_fast.py
+├── lemon_squeeze_with_volemon.html  ← Missing!
+└── requirements.txt</pre>
                 
                 <p style="margin-top: 30px; color: #666;">
-                    <strong>Current directory:</strong> The backend is looking for the HTML file in the same folder where the .py file is located.
+                    <strong>Debug Info:</strong><br>
+                    Base directory: {base_dir}<br>
+                    Python version: {os.sys.version}
                 </p>
             </div>
         </body>
         </html>
-        '''
+        ''', 404
 
 @app.route('/api/scan', methods=['POST'])
 def scan():
