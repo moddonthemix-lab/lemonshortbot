@@ -963,6 +963,9 @@
             <button class="tab-button" onclick="switchTab('volemon')">
                 🔊 Volemon
             </button>
+            <button class="tab-button" onclick="switchTab('usuals')">
+                ⭐ Usuals
+            </button>
         </div>
         
         <!-- Short Squeeze Tab -->
@@ -1216,6 +1219,60 @@
                 <div class="disclaimer">
                     <strong>⚠️ IMPORTANT DISCLAIMER</strong>
                     High volume doesn't guarantee profits. Volume spikes can be due to news, earnings, or other factors.
+                    Always do your own research. This is NOT financial advice!
+                </div>
+            </div>
+        </div>
+        
+        <!-- Usuals Tab -->
+        <div id="usualsTab" class="tab-content">
+            <div class="content">
+                <div class="settings-panel">
+                    <h2>⭐ The Usuals - Your Watchlist</h2>
+                    <div style="background: #FFE97F; padding: 20px; border-radius: 10px;">
+                        <p style="font-size: 1.1em; margin-bottom: 15px;"><strong>Tracking:</strong> SOFI, INTC, SPY, TSLA, COIN, CDE, PLTR, AAPL, BAC, NVDA</p>
+                        <ul style="margin-left: 20px; line-height: 1.8; font-size: 1.1em;">
+                            <li><strong>Auto-Updates:</strong> Scans every 15 minutes automatically</li>
+                            <li><strong>Multi-Timeframe:</strong> Shows 3-1 patterns on Daily, Weekly, Hourly, 4H</li>
+                            <li><strong>Volume Analysis:</strong> Current vs average volume with percentage</li>
+                            <li><strong>Top News:</strong> Latest 2 headlines per stock (no fluff!)</li>
+                        </ul>
+                        <p style="margin-top: 15px; padding: 10px; background: white; border-radius: 5px; font-style: italic;">
+                            ⭐ Your go-to stocks, always monitored, always updated!
+                        </p>
+                    </div>
+                    
+                    <div style="margin-top: 20px; padding: 20px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 10px; color: white;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                            <div>
+                                <h3 style="margin-bottom: 5px;">🔄 Scanner Status: ACTIVE</h3>
+                                <p style="opacity: 0.9;">Next scan: <span id="usualsTimer" style="font-family: monospace; font-weight: bold;">15:00</span></p>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 2em; font-weight: bold;" id="usualsTotalScans">0</div>
+                                <div style="opacity: 0.9;">Scans Today</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 2em; font-weight: bold;" id="usualsPatterns">0</div>
+                                <div style="opacity: 0.9;">Patterns Found</div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.2);">
+                            <p style="margin: 0; opacity: 0.9;">Last update: <span id="usualsLastScan">Never</span></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="usualsLoading" class="loading">
+                    <div class="spinner"></div>
+                    <div class="loading-text">Scanning your usuals... ⭐🍋</div>
+                </div>
+                
+                <div id="usualsResults" class="results"></div>
+                
+                <div class="disclaimer">
+                    <strong>⚠️ IMPORTANT DISCLAIMER</strong>
+                    This is for informational purposes only. Stock prices are volatile and past performance doesn't guarantee future results.
                     Always do your own research. This is NOT financial advice!
                 </div>
             </div>
@@ -1583,6 +1640,8 @@
                 document.getElementById('cryptoTab').classList.add('active');
             } else if (tab === 'volemon') {
                 document.getElementById('volemonTab').classList.add('active');
+            } else if (tab === 'usuals') {
+                document.getElementById('usualsTab').classList.add('active');
             }
         }
         
@@ -2804,6 +2863,277 @@
         window.addEventListener('beforeunload', () => {
             if (volemonInterval) clearInterval(volemonInterval);
             if (volemonCountdown) clearInterval(volemonCountdown);
+        });
+        
+        // ===== USUALS AUTO-SCANNER =====
+        let usualsInterval = null;
+        let usualsCountdown = null;
+        let usualsTimeLeft = 15 * 60; // 15 minutes in seconds
+        let usualsStats = {
+            totalScans: 0,
+            lastScan: null,
+            patternsFound: 0
+        };
+        
+        const USUALS_TICKERS = ['SOFI', 'INTC', 'SPY', 'TSLA', 'COIN', 'CDE', 'PLTR', 'AAPL', 'BAC', 'NVDA'];
+        
+        // Load usuals stats from localStorage
+        function loadUsualsStats() {
+            const saved = localStorage.getItem('usualsStats');
+            if (saved) {
+                const data = JSON.parse(saved);
+                const today = new Date().toDateString();
+                if (data.date === today) {
+                    usualsStats = data.stats;
+                    updateUsualsStatsDisplay();
+                }
+            }
+        }
+        
+        function saveUsualsStats() {
+            localStorage.setItem('usualsStats', JSON.stringify({
+                date: new Date().toDateString(),
+                stats: usualsStats
+            }));
+        }
+        
+        function updateUsualsStatsDisplay() {
+            document.getElementById('usualsTotalScans').textContent = usualsStats.totalScans;
+            document.getElementById('usualsLastScan').textContent = usualsStats.lastScan || 'Never';
+            document.getElementById('usualsPatterns').textContent = usualsStats.patternsFound;
+        }
+        
+        function updateUsualsTimer() {
+            const minutes = Math.floor(usualsTimeLeft / 60);
+            const seconds = usualsTimeLeft % 60;
+            const timerElement = document.getElementById('usualsTimer');
+            if (timerElement) {
+                timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
+        }
+        
+        function startUsualsCountdown() {
+            if (usualsCountdown) clearInterval(usualsCountdown);
+            
+            usualsCountdown = setInterval(() => {
+                usualsTimeLeft--;
+                if (usualsTimeLeft < 0) {
+                    usualsTimeLeft = 15 * 60;
+                }
+                updateUsualsTimer();
+            }, 1000);
+        }
+        
+        async function performUsualsScan() {
+            console.log('⭐ Usuals scanning...');
+            
+            const loadingDiv = document.getElementById('usualsLoading');
+            const resultsDiv = document.getElementById('usualsResults');
+            
+            loadingDiv.classList.add('active');
+            
+            try {
+                const response = await fetch('/api/usuals-scan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tickers: USUALS_TICKERS })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    usualsStats.totalScans++;
+                    usualsStats.lastScan = new Date().toLocaleTimeString();
+                    
+                    // Count patterns
+                    let patternsCount = 0;
+                    data.results.forEach(stock => {
+                        if (stock.patterns) {
+                            patternsCount += Object.values(stock.patterns).filter(p => p !== null).length;
+                        }
+                    });
+                    usualsStats.patternsFound = patternsCount;
+                    
+                    saveUsualsStats();
+                    updateUsualsStatsDisplay();
+                    displayUsualsResults(data.results);
+                }
+            } catch (error) {
+                console.error('Usuals scan error:', error);
+            } finally {
+                loadingDiv.classList.remove('active');
+            }
+        }
+        
+        function displayUsualsResults(stocks) {
+            const resultsDiv = document.getElementById('usualsResults');
+            resultsDiv.classList.add('active');
+            
+            if (stocks.length === 0) {
+                resultsDiv.innerHTML = `
+                    <div style="text-align: center; padding: 60px 20px; background: var(--card-bg); border-radius: 15px; margin-top: 20px;">
+                        <h3 style="font-size: 1.8em; margin-bottom: 15px;">⭐ Loading Usuals...</h3>
+                        <p style="font-size: 1.1em; color: var(--text-secondary);">
+                            First scan in progress...
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = `
+                <div class="results-header">
+                    <h2>⭐ The Usuals - Real-Time Updates</h2>
+                    <p style="opacity: 0.8; margin-top: 10px;">Updated: ${new Date().toLocaleString()}</p>
+                </div>
+            `;
+            
+            stocks.forEach((stock, idx) => {
+                // Determine volume status
+                const volRatio = stock.volume_ratio || 1;
+                const volStatus = volRatio >= 1.5 ? 'HIGH' : volRatio >= 1.0 ? 'NORMAL' : 'LOW';
+                const volColor = volRatio >= 1.5 ? '#10b981' : volRatio >= 1.0 ? '#f59e0b' : '#ef4444';
+                
+                // Check for patterns
+                const patterns = stock.patterns || {};
+                const hasPatterns = Object.values(patterns).some(p => p !== null);
+                
+                // Get news
+                const news = stock.news || [];
+                
+                html += `
+                    <div class="stock-card" style="${hasPatterns ? 'border-left: 5px solid #10b981;' : ''}">
+                        <div class="stock-header">
+                            <div class="header-left">
+                                <button class="favorite-btn" onclick="addToFavorites('${stock.ticker}', '${stock.company}', 'usuals')" title="Add to favorites">
+                                    ⭐
+                                </button>
+                                <div>
+                                    <div class="stock-ticker">${stock.ticker}</div>
+                                    <div class="stock-company">${stock.company}</div>
+                                </div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: 1.4em; font-weight: bold; color: ${stock.change >= 0 ? '#10b981' : '#ef4444'};">
+                                    $${stock.price.toFixed(2)}
+                                </div>
+                                <div style="color: ${stock.change >= 0 ? '#10b981' : '#ef4444'}; font-weight: bold;">
+                                    ${stock.change >= 0 ? '+' : ''}${stock.change.toFixed(2)}%
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Volume Section -->
+                        <div style="background: var(--settings-bg); padding: 15px; border-radius: 10px; margin-top: 15px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                                <div>
+                                    <h4 style="color: #f59e0b; margin-bottom: 5px;">📊 Volume Analysis</h4>
+                                    <p style="color: var(--text-secondary); margin: 0;">
+                                        Current: ${stock.volume.toLocaleString()} | Avg: ${stock.avg_volume.toLocaleString()}
+                                    </p>
+                                </div>
+                                <div class="badge" style="background: ${volColor}; color: white; padding: 8px 16px; border-radius: 20px; font-weight: bold;">
+                                    ${volStatus} (${volRatio.toFixed(2)}x)
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Patterns Section -->
+                        <div class="metrics-grid" style="margin-top: 15px;">
+                            <div class="metric-section">
+                                <h4>📈 Pattern Detection</h4>
+                                ${patterns.daily ? `
+                                    <div class="metric-item" style="background: rgba(16, 185, 129, 0.1); padding: 8px; border-radius: 5px; margin-bottom: 5px;">
+                                        <span class="metric-label">Daily:</span>
+                                        <span class="metric-value" style="color: #10b981;">
+                                            ${patterns.daily.direction === 'bullish' ? '📈' : '📉'} ${patterns.daily.type}
+                                        </span>
+                                    </div>
+                                ` : '<div class="metric-item"><span class="metric-label">Daily:</span><span class="metric-value">No pattern</span></div>'}
+                                
+                                ${patterns.weekly ? `
+                                    <div class="metric-item" style="background: rgba(16, 185, 129, 0.1); padding: 8px; border-radius: 5px; margin-bottom: 5px;">
+                                        <span class="metric-label">Weekly:</span>
+                                        <span class="metric-value" style="color: #10b981;">
+                                            ${patterns.weekly.direction === 'bullish' ? '📈' : '📉'} ${patterns.weekly.type}
+                                        </span>
+                                    </div>
+                                ` : '<div class="metric-item"><span class="metric-label">Weekly:</span><span class="metric-value">No pattern</span></div>'}
+                                
+                                ${patterns.hourly ? `
+                                    <div class="metric-item" style="background: rgba(16, 185, 129, 0.1); padding: 8px; border-radius: 5px; margin-bottom: 5px;">
+                                        <span class="metric-label">Hourly:</span>
+                                        <span class="metric-value" style="color: #10b981;">
+                                            ${patterns.hourly.direction === 'bullish' ? '📈' : '📉'} ${patterns.hourly.type}
+                                        </span>
+                                    </div>
+                                ` : '<div class="metric-item"><span class="metric-label">Hourly:</span><span class="metric-value">No pattern</span></div>'}
+                                
+                                ${patterns.four_hour ? `
+                                    <div class="metric-item" style="background: rgba(16, 185, 129, 0.1); padding: 8px; border-radius: 5px;">
+                                        <span class="metric-label">4-Hour:</span>
+                                        <span class="metric-value" style="color: #10b981;">
+                                            ${patterns.four_hour.direction === 'bullish' ? '📈' : '📉'} ${patterns.four_hour.type}
+                                        </span>
+                                    </div>
+                                ` : '<div class="metric-item"><span class="metric-label">4-Hour:</span><span class="metric-value">No pattern</span></div>'}
+                            </div>
+                            
+                            <div class="metric-section">
+                                <h4>📰 Latest News</h4>
+                                ${news.length > 0 ? news.map(item => `
+                                    <div style="background: rgba(245, 158, 11, 0.1); padding: 10px; border-radius: 5px; margin-bottom: 8px;">
+                                        <a href="${item.url}" target="_blank" style="color: var(--text-primary); text-decoration: none; font-weight: 500; display: block; margin-bottom: 3px;">
+                                            📌 ${item.title}
+                                        </a>
+                                        <span style="font-size: 0.85em; color: var(--text-secondary);">
+                                            ${item.source} • ${item.time}
+                                        </span>
+                                    </div>
+                                `).join('') : '<p style="color: var(--text-secondary);">No recent news</p>'}
+                            </div>
+                        </div>
+                        
+                        <div class="chart-container" id="chart-${stock.ticker}-usuals-${idx}"></div>
+                    </div>
+                `;
+            });
+            
+            resultsDiv.innerHTML = html;
+            
+            // Create charts
+            stocks.forEach((stock, idx) => {
+                setTimeout(() => createChart(`chart-${stock.ticker}-usuals-${idx}`, stock.ticker, 'daily'), 200 + (idx * 100));
+            });
+        }
+        
+        // Start Usuals on page load
+        function startUsualsAutoScanner() {
+            console.log('⭐ Starting Usuals auto-scanner...');
+            loadUsualsStats();
+            
+            // Initial scan
+            performUsualsScan();
+            
+            // Set up 15-minute interval
+            usualsInterval = setInterval(() => {
+                performUsualsScan();
+                usualsTimeLeft = 15 * 60;
+            }, 15 * 60 * 1000);
+            
+            // Start countdown
+            startUsualsCountdown();
+        }
+        
+        // Initialize Usuals when page loads
+        window.addEventListener('DOMContentLoaded', () => {
+            startUsualsAutoScanner();
+        });
+        
+        // Cleanup on unload
+        window.addEventListener('beforeunload', () => {
+            if (usualsInterval) clearInterval(usualsInterval);
+            if (usualsCountdown) clearInterval(usualsCountdown);
         });
     </script>
 </body>
