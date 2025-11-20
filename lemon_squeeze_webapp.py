@@ -10,7 +10,7 @@ Flask-based web interface with:
 - 📈 EXPANDED COVERAGE - 500+ stocks
 """
 
-from flask import Flask, render_template, jsonify, request, send_from_directory
+from flask import Flask, render_template, jsonify, request, send_from_directory, send_file
 import yfinance as yf
 from datetime import datetime
 import time
@@ -333,90 +333,39 @@ def scan_single_stock_for_volume(ticker, min_volume_multiple=2.0):
 
 @app.route('/')
 def index():
-    # Railway-compatible file serving
-    import os
+    # Simple, Railway-compatible file serving
     base_dir = os.path.dirname(os.path.abspath(__file__))
     html_path = os.path.join(base_dir, 'lemon_squeeze_with_volemon.html')
     
-    if os.path.exists(html_path):
-        return send_file(html_path)
-    else:
-        # Show debug info if file not found
-        files_in_dir = os.listdir(base_dir)
-        return f'''
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Lemon Squeeze - File Not Found</title>
-            <style>
-                body {{ 
-                    font-family: Arial, sans-serif; 
-                    max-width: 800px; 
-                    margin: 50px auto; 
-                    padding: 20px;
-                    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-                }}
-                .container {{
-                    background: white;
-                    padding: 40px;
-                    border-radius: 20px;
-                    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-                }}
-                h1 {{ color: #FFA500; }}
-                code {{ 
-                    background: #f4f4f4; 
-                    padding: 2px 6px; 
-                    border-radius: 3px;
-                    font-family: monospace;
-                }}
-                pre {{
-                    background: #2d2d2d;
-                    color: #f8f8f8;
-                    padding: 15px;
-                    border-radius: 5px;
-                    overflow-x: auto;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h1>🍋 Lemon Squeeze - Setup Required</h1>
-                <p><strong>HTML file not found!</strong></p>
-                
+    try:
+        if os.path.exists(html_path):
+            return send_file(html_path)
+        else:
+            # File not found - show helpful message
+            files_in_dir = os.listdir(base_dir)
+            return f'''
+            <html>
+            <head><title>File Not Found</title></head>
+            <body style="font-family: Arial; max-width: 800px; margin: 50px auto; padding: 20px;">
+                <h1>HTML File Not Found</h1>
                 <p>Looking for: <code>{html_path}</code></p>
-                
-                <h2>Files found in directory:</h2>
-                <pre>{chr(10).join(files_in_dir)}</pre>
-                
-                <h2>For Railway Deployment:</h2>
-                <ol>
-                    <li>Make sure <code>lemon_squeeze_with_volemon.html</code> is in your GitHub repo</li>
-                    <li>Commit both files:
-                        <pre>git add lemon_squeeze_backend_fast.py
-git add lemon_squeeze_with_volemon.html
-git add requirements.txt
-git commit -m "Add HTML file"
-git push origin main</pre>
-                    </li>
-                    <li>Railway will auto-redeploy</li>
-                    <li>Refresh this page</li>
-                </ol>
-                
-                <h2>Files needed in your repo:</h2>
-                <pre>your-repo/
-├── lemon_squeeze_backend_fast.py
-├── lemon_squeeze_with_volemon.html  ← Missing!
-└── requirements.txt</pre>
-                
-                <p style="margin-top: 30px; color: #666;">
-                    <strong>Debug Info:</strong><br>
-                    Base directory: {base_dir}<br>
-                    Python version: {os.sys.version}
-                </p>
-            </div>
+                <h2>Files in directory:</h2>
+                <ul>{"".join([f"<li>{f}</li>" for f in files_in_dir])}</ul>
+                <p>Make sure <code>lemon_squeeze_with_volemon.html</code> is in your GitHub repo and pushed!</p>
+            </body>
+            </html>
+            ''', 404
+    except Exception as e:
+        return f'''
+        <html>
+        <head><title>Error</title></head>
+        <body style="font-family: Arial; max-width: 800px; margin: 50px auto; padding: 20px;">
+            <h1>Error Loading Page</h1>
+            <p>Error: {str(e)}</p>
+            <p>Check Railway logs for details.</p>
         </body>
         </html>
-        ''', 404
+        ''', 500
 
 @app.route('/api/scan', methods=['POST'])
 def scan():
