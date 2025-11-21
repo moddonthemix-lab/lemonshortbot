@@ -688,26 +688,16 @@ def usuals_scan():
                     avg_volume = hist['Volume'].iloc[:-1].mean()
                     volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1
                     
-                    # Check patterns
-                    patterns = {}
+                    # Check patterns using improved detection
                     has_pattern, pattern_data = check_strat_31(hist)
                     
-                    if has_pattern:
+                    patterns = {}
+                    if has_pattern and pattern_data:
+                        # Pattern detected (3-1 or Inside bar)
                         patterns['daily'] = {
-                            'type': '3-1 Strat',
-                            'direction': pattern_data['direction']
+                            'type': pattern_data.get('type', 'Unknown'),
+                            'direction': pattern_data.get('direction', 'neutral')
                         }
-                    else:
-                        # Check inside bar
-                        current = hist.iloc[-1]
-                        previous = hist.iloc[-2]
-                        is_inside = (current['High'] < previous['High'] and 
-                                   current['Low'] > previous['Low'])
-                        if is_inside:
-                            patterns['daily'] = {
-                                'type': 'Inside Bar (1)',
-                                'direction': 'neutral'
-                            }
                     
                     results.append({
                         'ticker': ticker,
