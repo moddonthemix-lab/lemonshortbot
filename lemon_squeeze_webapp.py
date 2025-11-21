@@ -266,6 +266,10 @@ def daily_plays():
         for ticker in popular_tickers:
             processed += 1
             try:
+                time.sleep(0.5)  # Avoid rate limiting
+                # Add delay to avoid rate limiting (CRITICAL!)
+                time.sleep(0.5)  # 500ms delay between requests
+                
                 stock_data = yf.Ticker(ticker)
                 hist = stock_data.history(period='1mo')
                 info = stock_data.info
@@ -358,6 +362,7 @@ def hourly_plays():
         for ticker in popular_tickers:
             processed += 1
             try:
+                time.sleep(0.5)  # Avoid rate limiting
                 stock_data = yf.Ticker(ticker)
                 # Get last 60 days with hourly intervals
                 hist = stock_data.history(period='60d', interval='1h')
@@ -553,6 +558,7 @@ def weekly_plays():
         for ticker in popular_tickers:
             processed += 1
             try:
+                time.sleep(0.5)  # Avoid rate limiting
                 stock_data = yf.Ticker(ticker)
                 # Get 6 months of data for weekly analysis
                 hist = stock_data.history(period='6mo')
@@ -758,6 +764,7 @@ def volemon_scan():
         for ticker in popular_tickers:
             processed += 1
             try:
+                time.sleep(0.5)  # Avoid rate limiting
                 stock_data = yf.Ticker(ticker)
                 hist = stock_data.history(period='5d')  # Last 5 days
                 info = stock_data.info
@@ -847,6 +854,10 @@ def usuals_scan():
         for ticker in tickers:
             processed += 1
             try:
+                time.sleep(0.5)  # Avoid rate limiting
+                # Add delay to avoid rate limiting (CRITICAL!)
+                time.sleep(0.5)  # 500ms delay between requests
+                
                 stock_data = yf.Ticker(ticker)
                 info = stock_data.info
                 
