@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🍋 Lemon Squeeze Web App v2.0</title>
+    <title>🍋 Lemon Squeeze v5.0 - Find A Play Multi-Timeframe Scanner</title>
     <style>
         :root {
             /* Light mode colors */
@@ -920,6 +920,94 @@
                 padding: 15px 10px;
             }
         }
+        /* Multi-Timeframe Table Styles for Find A Play */
+        .timeframe-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--card-bg);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px var(--shadow);
+            margin-bottom: 20px;
+        }
+        
+        .timeframe-table thead {
+            background: linear-gradient(135deg, #FFA500 0%, #FF8C00 100%);
+            color: white;
+        }
+        
+        .timeframe-table th {
+            padding: 18px;
+            text-align: left;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+        
+        .timeframe-table td {
+            padding: 15px 18px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+        
+        .timeframe-table tr:hover {
+            background: var(--settings-bg);
+        }
+        
+        .strength-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        
+        .strength-3 {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        .strength-2 {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(251, 191, 36, 0.4);
+        }
+        
+        .strength-1 {
+            background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+            color: white;
+        }
+        
+        .pattern-indicator {
+            padding: 6px 12px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.95em;
+            display: inline-block;
+        }
+        
+        .pattern-bullish {
+            background: #10b981;
+            color: white;
+        }
+        
+        .pattern-bearish {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .pattern-neutral {
+            background: #64748b;
+            color: white;
+        }
+        
+        .pattern-none {
+            color: var(--text-secondary);
+            font-size: 1.2em;
+        }
     </style>
 </head>
 <body>
@@ -948,14 +1036,8 @@
             <button class="tab-button active" onclick="switchTab('squeeze')">
                 🍋 Short Squeeze
             </button>
-            <button class="tab-button" onclick="switchTab('hourly')">
-                ⏰ Hourly Plays
-            </button>
-            <button class="tab-button" onclick="switchTab('daily')">
-                📈 Daily Plays
-            </button>
-            <button class="tab-button" onclick="switchTab('weekly')">
-                📊 Weekly Plays
+            <button class="tab-button" onclick="switchTab('findaplay')">
+                🎯 Find A Play
             </button>
             <button class="tab-button" onclick="switchTab('crypto')">
                 ₿ Crypto
@@ -1015,115 +1097,46 @@
             </div>
         </div>
         
-        <!-- Hourly Plays Tab -->
-        <div id="hourlyTab" class="tab-content">
+        <!-- Find A Play Tab (Multi-Timeframe) -->
+        <div id="findaplayTab" class="tab-content">
             <div class="content">
                 <div class="settings-panel">
-                    <h2>📚 The 3-1 Strat Pattern (Hourly Timeframe)</h2>
+                    <h2>📚 The 3-1 Strat Pattern & Inside Bars</h2>
                     <div style="background: #FFE97F; padding: 20px; border-radius: 10px;">
+                        <p style="font-size: 1.2em; margin-bottom: 15px;"><strong>What This Scanner Detects:</strong></p>
                         <ul style="margin-top: 10px; margin-left: 20px; line-height: 1.8; font-size: 1.1em;">
-                            <li><strong>"3" = Outside Bar:</strong> Higher high + lower low than previous hour (expansion)</li>
-                            <li><strong>"1" = Inside Bar:</strong> Lower high + higher low than previous hour (consolidation)</li>
-                            <li><strong>Setup:</strong> Hourly patterns signal potential intraday moves</li>
+                            <li><strong>"3" = Outside Bar:</strong> Higher high + lower low than previous candle (expansion/volatility)</li>
+                            <li><strong>"1" = Inside Bar:</strong> Lower high + higher low than previous candle (consolidation/pause)</li>
+                            <li><strong>3-1 Setup:</strong> When a "1" follows a "3", it signals consolidation after expansion - prime setup for breakout!</li>
+                            <li><strong>Inside Bars Alone:</strong> Consolidation patterns that often precede significant moves in either direction</li>
+                            <li><strong>Multi-Timeframe:</strong> Checks Daily, Weekly, AND Hourly patterns all at once</li>
+                            <li><strong>Strength Scoring:</strong> ⭐⭐⭐ = Pattern on all 3 timeframes (STRONGEST signal)</li>
                         </ul>
                         <p style="margin-top: 15px; padding: 10px; background: white; border-radius: 5px; font-style: italic;">
-                            ⏰ Hourly scans are perfect for day trading - catch quick moves!
+                            🎯 <strong>Pro Tip:</strong> Professional traders ALWAYS check multiple timeframes. When patterns align across daily, weekly, AND hourly charts, the probability of a successful setup increases dramatically!
+                        </p>
+                        <p style="margin-top: 10px; padding: 10px; background: white; border-radius: 5px; font-style: italic;">
+                            💡 <strong>Pattern Priority:</strong> Look for ⭐⭐⭐ plays first (patterns on all 3 timeframes), then ⭐⭐ plays (2 timeframes), then ⭐ plays (1 timeframe)
                         </p>
                     </div>
                 </div>
                 
                 <div class="scan-section">
-                    <button id="hourlyButton" class="scan-button" onclick="startHourlyScan()">
-                        ⏰ SCAN HOURLY PATTERNS 🎯
+                    <button id="findaplayButton" class="scan-button" onclick="startFindAPlayScan()">
+                        🎯 FIND A PLAY - SCAN ALL TIMEFRAMES! 🍋
                     </button>
                 </div>
                 
-                <div id="hourlyLoading" class="loading">
+                <div id="findaplayLoading" class="loading">
                     <div class="spinner"></div>
-                    <div class="loading-text">Squeezing hourly lemons... 🍋⏰</div>
+                    <div class="loading-text">Scanning 47 stocks across 3 timeframes... 🎯</div>
                 </div>
                 
-                <div id="hourlyResults" class="results"></div>
+                <div id="findaplayResults" class="results"></div>
                 
                 <div class="disclaimer">
                     <strong>⚠️ IMPORTANT DISCLAIMER</strong>
-                    Hourly patterns are for active traders. Intraday moves can be volatile and unpredictable.
-                    Always use proper risk management, set stop losses, and never risk more than you can afford to lose. This is NOT financial advice!
-                </div>
-            </div>
-        </div>
-        
-        <!-- Daily Plays Tab -->
-        <div id="dailyTab" class="tab-content">
-            <div class="content">
-                <div class="settings-panel">
-                    <h2>📚 The 3-1 Strat Pattern</h2>
-                    <div style="background: #FFE97F; padding: 20px; border-radius: 10px;">
-                        <ul style="margin-top: 10px; margin-left: 20px; line-height: 1.8; font-size: 1.1em;">
-                            <li><strong>"3" = Outside Bar:</strong> Higher high + lower low than previous candle (expansion)</li>
-                            <li><strong>"1" = Inside Bar:</strong> Lower high + higher low than previous candle (consolidation)</li>
-                            <li><strong>Setup:</strong> When a "1" follows a "3", it signals consolidation before a potential breakout</li>
-                        </ul>
-                        <p style="margin-top: 15px; padding: 10px; background: white; border-radius: 5px; font-style: italic;">
-                            💡 This scanner checks 100+ popular stocks + high short interest stocks for this pattern
-                        </p>
-                    </div>
-                </div>
-                
-                <div class="scan-section">
-                    <button id="dailyButton" class="scan-button" onclick="startDailyScan()">
-                        📈 SCAN ALL PATTERNS 🎯
-                    </button>
-                </div>
-                
-                <div id="dailyLoading" class="loading">
-                    <div class="spinner"></div>
-                    <div class="loading-text">Squeezing 3 lemons a day... 🍋🍋🍋</div>
-                </div>
-                
-                <div id="dailyResults" class="results"></div>
-                
-                <div class="disclaimer">
-                    <strong>⚠️ IMPORTANT DISCLAIMER</strong>
-                    Technical patterns are educational tools, not guarantees. Markets are unpredictable and pattern failures are common.
-                    Always use proper risk management, set stop losses, and never risk more than you can afford to lose. This is NOT financial advice!
-                </div>
-            </div>
-        </div>
-        
-        <!-- Weekly Plays Tab -->
-        <div id="weeklyTab" class="tab-content">
-            <div class="content">
-                <div class="settings-panel">
-                    <h2>📚 The 3-1 Strat Pattern (Weekly Timeframe)</h2>
-                    <div style="background: #FFE97F; padding: 20px; border-radius: 10px;">
-                        <ul style="margin-top: 10px; margin-left: 20px; line-height: 1.8; font-size: 1.1em;">
-                            <li><strong>"3" = Outside Bar:</strong> Higher high + lower low than previous week (expansion)</li>
-                            <li><strong>"1" = Inside Bar:</strong> Lower high + higher low than previous week (consolidation)</li>
-                            <li><strong>Setup:</strong> Weekly patterns signal potential multi-day/week moves</li>
-                        </ul>
-                        <p style="margin-top: 15px; padding: 10px; background: white; border-radius: 5px; font-style: italic;">
-                            💡 Weekly scans look for larger timeframe setups - these can signal bigger moves!
-                        </p>
-                    </div>
-                </div>
-                
-                <div class="scan-section">
-                    <button id="weeklyButton" class="scan-button" onclick="startWeeklyScan()">
-                        📊 SCAN WEEKLY PATTERNS 🎯
-                    </button>
-                </div>
-                
-                <div id="weeklyLoading" class="loading">
-                    <div class="spinner"></div>
-                    <div class="loading-text">Squeezing weekly lemons... 🍋📊</div>
-                </div>
-                
-                <div id="weeklyResults" class="results"></div>
-                
-                <div class="disclaimer">
-                    <strong>⚠️ IMPORTANT DISCLAIMER</strong>
-                    Technical patterns are educational tools, not guarantees. Weekly patterns suggest larger moves but markets are unpredictable.
+                    Multi-timeframe analysis provides powerful confirmation but does not guarantee success. Markets are unpredictable and pattern failures are common.
                     Always use proper risk management, set stop losses, and never risk more than you can afford to lose. This is NOT financial advice!
                 </div>
             </div>
@@ -1630,12 +1643,8 @@
             
             if (tab === 'squeeze') {
                 document.getElementById('squeezeTab').classList.add('active');
-            } else if (tab === 'hourly') {
-                document.getElementById('hourlyTab').classList.add('active');
-            } else if (tab === 'daily') {
-                document.getElementById('dailyTab').classList.add('active');
-            } else if (tab === 'weekly') {
-                document.getElementById('weeklyTab').classList.add('active');
+            } else if (tab === 'findaplay') {
+                document.getElementById('findaplayTab').classList.add('active');
             } else if (tab === 'crypto') {
                 document.getElementById('cryptoTab').classList.add('active');
             } else if (tab === 'volemon') {
@@ -1847,386 +1856,19 @@
             });
         }
         
-        // Daily Plays Scanner
-        async function startDailyScan() {
+        // Find A Play Scanner (Multi-Timeframe)
+        async function startFindAPlayScan() {
             if (isScanning) return;
             
             isScanning = true;
-            document.getElementById('dailyButton').disabled = true;
-            document.getElementById('dailyButton').textContent = '⏳ SCANNING...';
-            document.getElementById('dailyLoading').classList.add('active');
-            document.getElementById('dailyResults').classList.remove('active');
+            const button = document.getElementById('findaplayButton');
+            button.disabled = true;
+            button.textContent = '🎯 SCANNING...';
+            document.getElementById('findaplayLoading').classList.add('active');
+            document.getElementById('findaplayResults').classList.remove('active');
             
             try {
-                const response = await fetch('/api/daily-plays', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({})  // No filters needed
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    displayDailyResults(data.results);
-                } else {
-                    alert('Error: ' + data.error);
-                }
-                
-            } catch (error) {
-                alert('Error scanning: ' + error.message);
-                console.error('Scan error:', error);
-            } finally {
-                isScanning = false;
-                document.getElementById('dailyButton').disabled = false;
-                document.getElementById('dailyButton').textContent = '📈 SCAN ALL PATTERNS 🎯';
-                document.getElementById('dailyLoading').classList.remove('active');
-            }
-        }
-        
-        function displayDailyResults(patterns) {
-            const resultsDiv = document.getElementById('dailyResults');
-            resultsDiv.classList.add('active');
-            
-            if (patterns.length === 0) {
-                resultsDiv.innerHTML = `
-                    <div class="no-results">
-                        <h3>🎯 No Patterns Found Today</h3>
-                        <p style="font-size: 1.2em; color: #666; margin: 20px 0;">
-                            No stocks showed the 3-1 Strat pattern today
-                        </p>
-                        <p style="color: #999;">
-                            💡 Market conditions may not be favorable right now.<br>
-                            Check back later or try during market hours!
-                        </p>
-                    </div>
-                `;
-                return;
-            }
-            
-            const bullishCount = patterns.filter(p => p.pattern.direction === 'bullish').length;
-            const bearishCount = patterns.filter(p => p.pattern.direction === 'bearish').length;
-            const totalVolume = patterns.reduce((sum, p) => sum + p.volume, 0);
-            const avgVolume = totalVolume / patterns.length;
-            
-            let html = `
-                <div class="results-header">
-                    <h2>🎯 3-1 Strat Patterns Found!</h2>
-                    <p style="font-size: 1.2em; color: #666; margin: 10px 0;">
-                        ${new Date().toLocaleString()}
-                    </p>
-                    <div class="summary-stats">
-                        <div class="stat">
-                            <span class="stat-value">${patterns.length}</span>
-                            <span class="stat-label">Total Patterns</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-value" style="color: #10b981;">${bullishCount}</span>
-                            <span class="stat-label">Bullish</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-value" style="color: #ef4444;">${bearishCount}</span>
-                            <span class="stat-label">Bearish</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-value">${(avgVolume / 1000000).toFixed(1)}M</span>
-                            <span class="stat-label">Avg Volume</span>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            patterns.forEach((stock, idx) => {
-                const pattern = stock.pattern;
-                const patternClass = pattern.direction === 'bullish' ? 'pattern-bullish' : 'pattern-bearish';
-                const patternEmoji = pattern.direction === 'bullish' ? '📈' : '📉';
-                
-                html += `
-                    <div class="pattern-card">
-                        <div class="stock-header">
-                            <div class="stock-title-row">
-                                <button class="favorite-btn" onclick="addToFavorites('${stock.ticker}', '${stock.company}', 'daily')" title="Add to favorites">
-                                    ⭐
-                                </button>
-                                <div class="stock-ticker">#${idx + 1}. ${stock.ticker}</div>
-                            </div>
-                            <div class="pattern-badge ${patternClass}">
-                                ${patternEmoji} ${pattern.direction.toUpperCase()}
-                            </div>
-                        </div>
-                        <div class="stock-company">${stock.company}</div>
-                        
-                        <div class="pattern-info">
-                            <h4 style="color: #FFA500; margin-bottom: 10px;">📊 Pattern Details</h4>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-                                <div>
-                                    <strong style="color: #666;">3️⃣ Outside Bar (${pattern.three_candle.date}):</strong><br>
-                                    High: $${pattern.three_candle.high.toFixed(2)}<br>
-                                    Low: $${pattern.three_candle.low.toFixed(2)}<br>
-                                    Close: $${pattern.three_candle.close.toFixed(2)}
-                                </div>
-                                <div>
-                                    <strong style="color: #666;">1️⃣ Inside Bar (${pattern.one_candle.date}):</strong><br>
-                                    High: $${pattern.one_candle.high.toFixed(2)}<br>
-                                    Low: $${pattern.one_candle.low.toFixed(2)}<br>
-                                    Open: $${pattern.one_candle.open.toFixed(2)}<br>
-                                    Close: $${pattern.one_candle.close.toFixed(2)}
-                                </div>
-                            </div>
-                            <div style="background: white; padding: 10px; border-radius: 5px; margin-top: 10px;">
-                                <strong>💡 Interpretation:</strong> 
-                                The stock formed an outside bar (expansion) followed by an inside bar (consolidation). 
-                                This ${pattern.direction} setup suggests potential breakout ${pattern.direction === 'bullish' ? 'above' : 'below'} 
-                                the inside bar's range.
-                            </div>
-                        </div>
-                        
-                        <div class="metrics-grid" style="margin-top: 20px;">
-                            <div class="metric-section">
-                                <h4>💰 Price Info</h4>
-                                <div class="metric-item">
-                                    <span class="metric-label">Current Price:</span>
-                                    <span class="metric-value">$${stock.currentPrice.toFixed(2)}</span>
-                                </div>
-                                <div class="metric-item">
-                                    <span class="metric-label">Daily Change:</span>
-                                    <span class="metric-value" style="color: ${stock.dailyChange >= 0 ? '#10b981' : '#ef4444'};">
-                                        ${stock.dailyChange >= 0 ? '+' : ''}${stock.dailyChange.toFixed(2)}%
-                                    </span>
-                                </div>
-                                <div class="metric-item">
-                                    <span class="metric-label">Market Cap:</span>
-                                    <span class="metric-value">$${(stock.marketCap / 1000000).toFixed(1)}M</span>
-                                </div>
-                            </div>
-                            
-                            <div class="metric-section">
-                                <h4>📊 Volume Info</h4>
-                                <div class="metric-item">
-                                    <span class="metric-label">Current Vol:</span>
-                                    <span class="metric-value">${stock.volume.toLocaleString()}</span>
-                                </div>
-                                <div class="metric-item">
-                                    <span class="metric-label">Avg Volume:</span>
-                                    <span class="metric-value">${stock.avgVolume.toLocaleString()}</span>
-                                </div>
-                                <div class="metric-item">
-                                    <span class="metric-label">Volume Ratio:</span>
-                                    <span class="metric-value">${(stock.volume / stock.avgVolume).toFixed(2)}x</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="chart-container" id="chart-${stock.ticker}-daily-${idx}"></div>
-                    </div>
-                `;
-            });
-            
-            resultsDiv.innerHTML = html;
-            
-            // Create charts after HTML is rendered
-            patterns.forEach((stock, idx) => {
-                setTimeout(() => createChart(`chart-${stock.ticker}-daily-${idx}`, stock.ticker, 'daily'), 200 + (idx * 100));
-            });
-        }
-        
-        // Weekly Plays Scanner
-        async function startWeeklyScan() {
-            if (isScanning) return;
-            
-            isScanning = true;
-            document.getElementById('weeklyButton').disabled = true;
-            document.getElementById('weeklyButton').textContent = '⏳ SCANNING...';
-            document.getElementById('weeklyLoading').classList.add('active');
-            document.getElementById('weeklyResults').classList.remove('active');
-            
-            try {
-                const response = await fetch('/api/weekly-plays', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({})  // No filters needed
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    displayWeeklyResults(data.results);
-                } else {
-                    alert('Error: ' + data.error);
-                }
-                
-            } catch (error) {
-                alert('Error scanning: ' + error.message);
-                console.error('Weekly scan error:', error);
-            } finally {
-                isScanning = false;
-                document.getElementById('weeklyButton').disabled = false;
-                document.getElementById('weeklyButton').textContent = '📊 SCAN WEEKLY PATTERNS 🎯';
-                document.getElementById('weeklyLoading').classList.remove('active');
-            }
-        }
-        
-        function displayWeeklyResults(patterns) {
-            const resultsDiv = document.getElementById('weeklyResults');
-            resultsDiv.classList.add('active');
-            
-            if (patterns.length === 0) {
-                resultsDiv.innerHTML = `
-                    <div class="no-results">
-                        <h3>🎯 No Weekly Patterns Found</h3>
-                        <p style="font-size: 1.2em; color: #666; margin: 20px 0;">
-                            No stocks showed the 3-1 Strat pattern on weekly timeframe
-                        </p>
-                        <p style="color: #999;">
-                            💡 Weekly patterns are less common but signal larger moves.<br>
-                            Check back next week!
-                        </p>
-                    </div>
-                `;
-                return;
-            }
-            
-            const bullishCount = patterns.filter(p => p.pattern.direction === 'bullish').length;
-            const bearishCount = patterns.filter(p => p.pattern.direction === 'bearish').length;
-            const totalVolume = patterns.reduce((sum, p) => sum + p.volume, 0);
-            const avgVolume = totalVolume / patterns.length;
-            
-            let html = `
-                <div class="results-header">
-                    <h2>📊 Weekly 3-1 Strat Patterns Found!</h2>
-                    <p style="font-size: 1.2em; color: #666; margin: 10px 0;">
-                        ${new Date().toLocaleString()}
-                    </p>
-                    <div class="summary-stats">
-                        <div class="stat">
-                            <span class="stat-value">${patterns.length}</span>
-                            <span class="stat-label">Total Patterns</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-value" style="color: #10b981;">${bullishCount}</span>
-                            <span class="stat-label">Bullish</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-value" style="color: #ef4444;">${bearishCount}</span>
-                            <span class="stat-label">Bearish</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-value">${(avgVolume / 1000000).toFixed(1)}M</span>
-                            <span class="stat-label">Avg Weekly Vol</span>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            patterns.forEach((stock, idx) => {
-                const pattern = stock.pattern;
-                const patternClass = pattern.direction === 'bullish' ? 'pattern-bullish' : 'pattern-bearish';
-                const patternEmoji = pattern.direction === 'bullish' ? '📈' : '📉';
-                
-                html += `
-                    <div class="pattern-card">
-                        <div class="stock-header">
-                            <div class="stock-title-row">
-                                <button class="favorite-btn" onclick="addToFavorites('${stock.ticker}', '${stock.company}', 'weekly')" title="Add to favorites">
-                                    ⭐
-                                </button>
-                                <div class="stock-ticker">#${idx + 1}. ${stock.ticker}</div>
-                            </div>
-                            <div class="pattern-badge ${patternClass}">
-                                ${patternEmoji} ${pattern.direction.toUpperCase()} (WEEKLY)
-                            </div>
-                        </div>
-                        <div class="stock-company">${stock.company}</div>
-                        
-                        <div class="pattern-info">
-                            <h4 style="color: #FFA500; margin-bottom: 10px;">📊 Weekly Pattern Details</h4>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-                                <div>
-                                    <strong style="color: #666;">3️⃣ Outside Week (${pattern.three_candle.date}):</strong><br>
-                                    High: $${pattern.three_candle.high.toFixed(2)}<br>
-                                    Low: $${pattern.three_candle.low.toFixed(2)}<br>
-                                    Close: $${pattern.three_candle.close.toFixed(2)}
-                                </div>
-                                <div>
-                                    <strong style="color: #666;">1️⃣ Inside Week (${pattern.one_candle.date}):</strong><br>
-                                    High: $${pattern.one_candle.high.toFixed(2)}<br>
-                                    Low: $${pattern.one_candle.low.toFixed(2)}<br>
-                                    Open: $${pattern.one_candle.open.toFixed(2)}<br>
-                                    Close: $${pattern.one_candle.close.toFixed(2)}
-                                </div>
-                            </div>
-                            <div style="background: white; padding: 10px; border-radius: 5px; margin-top: 10px;">
-                                <strong>💡 Interpretation:</strong> 
-                                Weekly pattern! The stock formed an outside week (expansion) followed by an inside week (consolidation). 
-                                This ${pattern.direction} setup on the weekly timeframe suggests potential for a multi-day/week move 
-                                ${pattern.direction === 'bullish' ? 'above' : 'below'} the inside week's range.
-                            </div>
-                        </div>
-                        
-                        <div class="metrics-grid" style="margin-top: 20px;">
-                            <div class="metric-section">
-                                <h4>💰 Price Info</h4>
-                                <div class="metric-item">
-                                    <span class="metric-label">Current Price:</span>
-                                    <span class="metric-value">$${stock.currentPrice.toFixed(2)}</span>
-                                </div>
-                                <div class="metric-item">
-                                    <span class="metric-label">Weekly Change:</span>
-                                    <span class="metric-value" style="color: ${stock.weeklyChange >= 0 ? '#10b981' : '#ef4444'};">
-                                        ${stock.weeklyChange >= 0 ? '+' : ''}${stock.weeklyChange.toFixed(2)}%
-                                    </span>
-                                </div>
-                                <div class="metric-item">
-                                    <span class="metric-label">Market Cap:</span>
-                                    <span class="metric-value">$${(stock.marketCap / 1000000).toFixed(1)}M</span>
-                                </div>
-                            </div>
-                            
-                            <div class="metric-section">
-                                <h4>📊 Volume Info</h4>
-                                <div class="metric-item">
-                                    <span class="metric-label">This Week Vol:</span>
-                                    <span class="metric-value">${stock.volume.toLocaleString()}</span>
-                                </div>
-                                <div class="metric-item">
-                                    <span class="metric-label">Avg Weekly Vol:</span>
-                                    <span class="metric-value">${stock.avgVolume.toLocaleString()}</span>
-                                </div>
-                                <div class="metric-item">
-                                    <span class="metric-label">Volume Ratio:</span>
-                                    <span class="metric-value">${(stock.volume / stock.avgVolume).toFixed(2)}x</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="chart-container" id="chart-${stock.ticker}-weekly-${idx}"></div>
-                    </div>
-                `;
-            });
-            
-            resultsDiv.innerHTML = html;
-            
-            // Create charts after HTML is rendered
-            patterns.forEach((stock, idx) => {
-                setTimeout(() => createChart(`chart-${stock.ticker}-weekly-${idx}`, stock.ticker, 'weekly'), 200 + (idx * 100));
-            });
-        }
-        
-        // Hourly Plays Scanner
-        async function startHourlyScan() {
-            if (isScanning) return;
-            
-            isScanning = true;
-            document.getElementById('hourlyButton').disabled = true;
-            document.getElementById('hourlyButton').textContent = '⏳ SCANNING...';
-            document.getElementById('hourlyLoading').classList.add('active');
-            document.getElementById('hourlyResults').classList.remove('active');
-            
-            try {
-                const response = await fetch('/api/hourly-plays', {
+                const response = await fetch('/api/find-a-play', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -2237,142 +1879,128 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    displayHourlyResults(data.results);
+                    displayFindAPlayResults(data.results, data.stats);
                 } else {
                     alert('Error: ' + data.error);
                 }
                 
             } catch (error) {
                 alert('Error scanning: ' + error.message);
-                console.error('Hourly scan error:', error);
+                console.error('Find A Play scan error:', error);
             } finally {
                 isScanning = false;
-                document.getElementById('hourlyButton').disabled = false;
-                document.getElementById('hourlyButton').textContent = '⏰ SCAN HOURLY PATTERNS 🎯';
-                document.getElementById('hourlyLoading').classList.remove('active');
+                button.disabled = false;
+                button.textContent = '🎯 FIND A PLAY - SCAN ALL TIMEFRAMES! 🍋';
+                document.getElementById('findaplayLoading').classList.remove('active');
             }
         }
         
-        function displayHourlyResults(patterns) {
-            const resultsDiv = document.getElementById('hourlyResults');
+        function displayFindAPlayResults(plays, stats) {
+            const resultsDiv = document.getElementById('findaplayResults');
             resultsDiv.classList.add('active');
             
-            if (patterns.length === 0) {
+            if (plays.length === 0) {
                 resultsDiv.innerHTML = `
                     <div class="no-results">
-                        <h3>🎯 No Hourly Patterns Found</h3>
-                        <p style="font-size: 1.2em; color: #666; margin: 20px 0;">
-                            No stocks showed the 3-1 Strat pattern on hourly timeframe right now
-                        </p>
-                        <p style="color: #999;">
-                            ⏰ Hourly patterns change frequently - try again in an hour!
-                        </p>
+                        <h3>🎯 No Patterns Found</h3>
+                        <p>No 3-1 Strat patterns or inside bars detected across any timeframes right now.</p>
+                        <p>Try again later or adjust your watchlist!</p>
                     </div>
                 `;
                 return;
             }
             
-            const bullishCount = patterns.filter(p => p.pattern.direction === 'bullish').length;
-            const bearishCount = patterns.filter(p => p.pattern.direction === 'bearish').length;
-            
             let html = `
                 <div class="results-header">
-                    <h2>⏰ Hourly 3-1 Strat Patterns Found!</h2>
-                    <p style="font-size: 1.2em; color: #666; margin: 10px 0;">
-                        ${new Date().toLocaleString()}
-                    </p>
+                    <h2>🎯 ${plays.length} Plays Found!</h2>
                     <div class="summary-stats">
                         <div class="stat">
-                            <span class="stat-value">${patterns.length}</span>
-                            <span class="stat-label">Total Patterns</span>
+                            <span class="stat-value">${stats.total_scanned}</span>
+                            <span class="stat-label">Stocks Scanned</span>
                         </div>
                         <div class="stat">
-                            <span class="stat-value" style="color: #10b981;">${bullishCount}</span>
-                            <span class="stat-label">Bullish</span>
+                            <span class="stat-value" style="color: #10b981;">${stats.three_star}</span>
+                            <span class="stat-label">⭐⭐⭐ Plays</span>
                         </div>
                         <div class="stat">
-                            <span class="stat-value" style="color: #ef4444;">${bearishCount}</span>
-                            <span class="stat-label">Bearish</span>
+                            <span class="stat-value" style="color: #fbbf24;">${stats.two_star}</span>
+                            <span class="stat-label">⭐⭐ Plays</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" style="color: #94a3b8;">${stats.one_star}</span>
+                            <span class="stat-label">⭐ Plays</span>
                         </div>
                     </div>
+                    <p style="margin-top: 15px; font-size: 0.95em; color: var(--text-secondary);">
+                        💡 <strong>Tip:</strong> ⭐⭐⭐ plays have patterns on ALL timeframes - these are the strongest signals!
+                    </p>
                 </div>
+                
+                <table class="timeframe-table">
+                    <thead>
+                        <tr>
+                            <th>Strength</th>
+                            <th>Ticker</th>
+                            <th>Company</th>
+                            <th>Price</th>
+                            <th>Change</th>
+                            <th>Daily</th>
+                            <th>Weekly</th>
+                            <th>Hourly</th>
+                            <th>Volume</th>
+                        </tr>
+                    </thead>
+                    <tbody>
             `;
             
-            patterns.forEach((stock, idx) => {
-                const pattern = stock.pattern;
-                const patternClass = pattern.direction === 'bullish' ? 'pattern-bullish' : 'pattern-bearish';
-                const patternEmoji = pattern.direction === 'bullish' ? '📈' : '📉';
+            plays.forEach(play => {
+                const strengthClass = `strength-${play.strength}`;
+                const stars = '⭐'.repeat(play.strength);
+                const changeClass = play.dailyChange >= 0 ? 'price-positive' : 'price-negative';
                 
                 html += `
-                    <div class="pattern-card">
-                        <div class="stock-header">
-                            <div class="stock-title-row">
-                                <button class="favorite-btn" onclick="addToFavorites('${stock.ticker}', '${stock.company}', 'hourly')" title="Add to favorites">
-                                    ⭐
-                                </button>
-                                <div class="stock-ticker">#${idx + 1}. ${stock.ticker}</div>
-                            </div>
-                            <div class="pattern-badge ${patternClass}">
-                                ${patternEmoji} ${pattern.direction.toUpperCase()} (HOURLY)
-                            </div>
-                        </div>
-                        <div class="stock-company">${stock.company}</div>
-                        
-                        <div class="pattern-info">
-                            <h4 style="color: #FFA500; margin-bottom: 10px;">⏰ Hourly Pattern Details</h4>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-                                <div>
-                                    <strong style="color: #666;">3️⃣ Outside Hour (${pattern.three_candle.date}):</strong><br>
-                                    High: $${pattern.three_candle.high.toFixed(2)}<br>
-                                    Low: $${pattern.three_candle.low.toFixed(2)}<br>
-                                    Close: $${pattern.three_candle.close.toFixed(2)}
-                                </div>
-                                <div>
-                                    <strong style="color: #666;">1️⃣ Inside Hour (${pattern.one_candle.date}):</strong><br>
-                                    High: $${pattern.one_candle.high.toFixed(2)}<br>
-                                    Low: $${pattern.one_candle.low.toFixed(2)}<br>
-                                    Open: $${pattern.one_candle.open.toFixed(2)}<br>
-                                    Close: $${pattern.one_candle.close.toFixed(2)}
-                                </div>
-                            </div>
-                            <div style="background: white; padding: 10px; border-radius: 5px; margin-top: 10px;">
-                                <strong>💡 Interpretation:</strong> 
-                                Hourly pattern! Quick intraday setup showing ${pattern.direction} consolidation after expansion.
-                                Watch for breakout ${pattern.direction === 'bullish' ? 'above' : 'below'} the inside hour's range.
-                            </div>
-                        </div>
-                        
-                        <div class="metrics-grid" style="margin-top: 20px;">
-                            <div class="metric-section">
-                                <h4>💰 Price Info</h4>
-                                <div class="metric-item">
-                                    <span class="metric-label">Current Price:</span>
-                                    <span class="metric-value">$${stock.currentPrice.toFixed(2)}</span>
-                                </div>
-                                <div class="metric-item">
-                                    <span class="metric-label">Hourly Change:</span>
-                                    <span class="metric-value" style="color: ${stock.hourlyChange >= 0 ? '#10b981' : '#ef4444'};">
-                                        ${stock.hourlyChange >= 0 ? '+' : ''}${stock.hourlyChange.toFixed(2)}%
-                                    </span>
-                                </div>
-                                <div class="metric-item">
-                                    <span class="metric-label">Market Cap:</span>
-                                    <span class="metric-value">$${(stock.marketCap / 1000000).toFixed(1)}M</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="chart-container" id="chart-${stock.ticker}-hourly-${idx}"></div>
-                    </div>
+                    <tr>
+                        <td><span class="strength-badge ${strengthClass}">${stars}</span></td>
+                        <td><strong style="font-size: 1.1em;">${play.ticker}</strong></td>
+                        <td style="font-size: 0.9em; color: var(--text-secondary);">${play.company}</td>
+                        <td><strong>$${play.currentPrice.toFixed(2)}</strong></td>
+                        <td class="${changeClass}"><strong>${play.dailyChange >= 0 ? '+' : ''}${play.dailyChange.toFixed(2)}%</strong></td>
+                        <td>${formatPattern(play.patterns.daily)}</td>
+                        <td>${formatPattern(play.patterns.weekly)}</td>
+                        <td>${formatPattern(play.patterns.hourly)}</td>
+                        <td style="font-size: 0.95em;">${(play.volume / 1000000).toFixed(1)}M</td>
+                    </tr>
                 `;
             });
             
-            resultsDiv.innerHTML = html;
+            html += '</tbody></table>';
             
-            // Create charts after HTML is rendered
-            patterns.forEach((stock, idx) => {
-                setTimeout(() => createChart(`chart-${stock.ticker}-hourly-${idx}`, stock.ticker, 'hourly'), 200 + (idx * 100));
-            });
+            resultsDiv.innerHTML = html;
+        }
+        
+        function formatPattern(pattern) {
+            if (!pattern) {
+                return '<span class="pattern-none">-</span>';
+            }
+            
+            const type = pattern.type;
+            const direction = pattern.direction;
+            
+            // 3-1 Pattern
+            if (type === '3-1') {
+                const arrow = direction === 'bullish' ? '↑' : '↓';
+                const patternClass = direction === 'bullish' ? 'pattern-bullish' : 'pattern-bearish';
+                return `<span class="pattern-indicator ${patternClass}">3-1 ${arrow}</span>`;
+            }
+            
+            // Inside Bar
+            if (type === 'Inside') {
+                const arrow = direction === 'bullish' ? '↑' : '↓';
+                return `<span class="pattern-indicator pattern-neutral">Inside ${arrow}</span>`;
+            }
+            
+            // Fallback
+            return '<span class="pattern-none">-</span>';
         }
         
         // Crypto Scanner
