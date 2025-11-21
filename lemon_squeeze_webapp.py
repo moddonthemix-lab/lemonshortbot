@@ -129,7 +129,21 @@ def check_strat_31(hist):
 @app.route('/')
 def index():
     """Serve the main page"""
-    return send_from_directory('.', 'lemon_squeeze_webapp.html')
+    # Try multiple HTML filenames
+    html_files = [
+        'lemon_squeeze_with_volemon__4_.html',
+        'lemon_squeeze_webapp.html',
+        'lemon_squeeze.html',
+        'index.html'
+    ]
+    
+    for html_file in html_files:
+        if os.path.exists(html_file):
+            return send_from_directory('.', html_file)
+    
+    return """<h1>🍋 Lemon Squeeze Backend Running!</h1>
+    <p>Place your HTML file in the same directory.</p>
+    <p>Looking for: lemon_squeeze_with_volemon__4_.html</p>"""
 
 @app.route('/api/scan', methods=['POST'])
 def scan():
