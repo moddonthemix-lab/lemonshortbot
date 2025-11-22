@@ -690,22 +690,41 @@ def usuals_scan():
                     
                     # Validate pattern_data exists and is valid
                     if has_pattern and pattern_data and isinstance(pattern_data, dict):
-                        patterns['daily'] = {
-                            'type': '3-1 Strat',
-                            'direction': pattern_data.get('direction', 'neutral')
-                        }
+                        # Return the FULL pattern data so frontend has all info including dates
+                        patterns['daily'] = pattern_data
                     else:
-                        # Check inside bar
-                        current = hist.iloc[-1]
-                        previous = hist.iloc[-2]
-                        is_inside = (current['High'] < previous['High'] and 
-                                   current['Low'] > previous['Low'])
-                        if is_inside:
-                            patterns['daily'] = {
-                                'type': 'Inside Bar (1)',
-                                'direction': 'neutral'
-                            }
+                        # Check inside bar as fallback
+                        try:
+                            current = hist.iloc[-1]
+                            previous = hist.iloc[-2]
+                            is_inside = (current['High'] < previous['High'] and 
+                                       current['Low'] > previous['Low'])
+                            if is_inside:
+                                # Create a minimal but complete pattern object
+                                patterns['daily'] = {
+                                    'type': 'Inside',
+                                    'has_pattern': True,
+                                    'direction': 'neutral',
+                                    'description': 'Inside Bar - Consolidation pattern',
+                                    'one_candle': {
+                                        'high': round(float(current['High']), 2),
+                                        'low': round(float(current['Low']), 2),
+                                        'close': round(float(current['Close']), 2),
+                                        'open': round(float(current['Open']), 2),
+                                        'date': 'N/A'
+                                    },
+                                    'previous_candle': {
+                                        'high': round(float(previous['High']), 2),
+                                        'low': round(float(previous['Low']), 2),
+                                        'date': 'N/A'
+                                    }
+                                }
+                        except Exception:
+                            # If inside bar check fails, leave patterns empty
+                            pass
                     
+                    # Always return the stock, even if no patterns found
+                    # patterns will be an empty dict {} if no patterns detected
                     results.append({
                         'ticker': ticker,
                         'company': info.get('longName', ticker),
@@ -714,7 +733,7 @@ def usuals_scan():
                         'volume': int(current_volume),
                         'avg_volume': int(avg_volume),
                         'volume_ratio': round(float(volume_ratio), 2),
-                        'patterns': patterns
+                        'patterns': patterns if patterns else {}  # Ensure it's always at least an empty dict
                     })
                     
                     print(f"✅ {ticker}")
