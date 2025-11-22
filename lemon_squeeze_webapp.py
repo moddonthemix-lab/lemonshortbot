@@ -1,11 +1,19 @@
 """
-🍋 LEMON SQUEEZE WEB APP v2.1 - VOLEMON EDITION 🍋
+🍋 LEMON SQUEEZE WEB APP v2.2 - COMPLETE EDITION 🍋
 Flask-based web interface with:
 - Short Squeeze Scanner
 - Daily/Weekly/Hourly Plays (3-1 Strat Pattern Scanner)
 - Crypto Scanner
 - 🔊 Volemon (Auto Volume Scanner)
+- ⭐ Usuals (Favorite Stocks Auto-Scanner)
+- 👤 Profile Management (Bio + Trader Type)
+- 💬 Community Chat (Real-time with trader badges)
 - 🔐 User Authentication System
+
+UPDATED v2.2:
+- Chat messages now include user trader_type for badge display
+- Profile tab integrated with header button
+- Enhanced authentication flow
 """
 
 from flask import Flask, render_template, jsonify, request, send_from_directory, session
@@ -365,23 +373,6 @@ def check_strat_31(hist):
     # No pattern detected
     return False, None
 
-@app.route('/')
-def index():
-    """Serve the main page"""
-    html_files = [
-        'lemon_squeeze_with_howto.html',
-        'lemon_squeeze_with_volemon__4___2_.html',
-        'lemon_squeeze_webapp.html',
-        'lemon_squeeze.html',
-        'index.html'
-    ]
-    
-    for html_file in html_files:
-        if os.path.exists(html_file):
-            return send_from_directory('.', html_file)
-    
-    return "<h1>🍋 Lemon Squeeze - Backend Ready!</h1>"
-
 # ===== AUTHENTICATION ROUTES =====
 
 @app.route('/api/auth/signup', methods=['POST'])
@@ -579,15 +570,25 @@ def update_profile():
 @app.route('/api/chat/messages', methods=['GET'])
 @login_required
 def get_chat_messages():
-    """Get recent chat messages"""
+    """Get recent chat messages with trader type"""
     try:
         limit = int(request.args.get('limit', 50))
         
         db = get_db()
-        messages = db.execute(
-            'SELECT id, user_id, user_name, message, created_at FROM chat_messages ORDER BY created_at DESC LIMIT ?',
-            (limit,)
-        ).fetchall()
+        # JOIN with users table to get trader_type for badges
+        messages = db.execute('''
+            SELECT 
+                cm.id, 
+                cm.user_id, 
+                cm.user_name, 
+                cm.message, 
+                cm.created_at,
+                COALESCE(u.trader_type, 'swing_trader') as user_trader_type
+            FROM chat_messages cm
+            LEFT JOIN users u ON cm.user_id = u.id
+            ORDER BY cm.created_at DESC 
+            LIMIT ?
+        ''', (limit,)).fetchall()
         db.close()
         
         return jsonify({
@@ -622,11 +623,19 @@ def send_chat_message():
         )
         message_id = cursor.lastrowid
         
-        # Get the created message
-        new_message = db.execute(
-            'SELECT id, user_id, user_name, message, created_at FROM chat_messages WHERE id = ?',
-            (message_id,)
-        ).fetchone()
+        # Get the created message with trader_type for badge
+        new_message = db.execute('''
+            SELECT 
+                cm.id, 
+                cm.user_id, 
+                cm.user_name, 
+                cm.message, 
+                cm.created_at,
+                COALESCE(u.trader_type, 'swing_trader') as user_trader_type
+            FROM chat_messages cm
+            LEFT JOIN users u ON cm.user_id = u.id
+            WHERE cm.id = ?
+        ''', (message_id,)).fetchone()
         
         db.commit()
         db.close()
