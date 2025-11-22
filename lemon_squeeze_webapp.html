@@ -1235,397 +1235,6 @@
                 width: 95%;
             }
         }
-    
-        
-        /* Profile & Chat Styles */
-        .profile-container, .chat-container {
-            max-width: 900px;
-            margin: 0 auto;
-        }
-        
-        .profile-header-card {
-            background: var(--card-bg);
-            border-radius: 12px;
-            padding: 30px;
-            box-shadow: 0 4px 6px var(--shadow);
-            margin-bottom: 25px;
-        }
-        
-        .profile-avatar-section {
-            display: flex;
-            align-items: center;
-            gap: 25px;
-        }
-        
-        .profile-avatar-large {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #FF8C00, #FFD700);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 48px;
-            font-weight: bold;
-            flex-shrink: 0;
-        }
-        
-        .profile-section {
-            background: var(--card-bg);
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 4px 6px var(--shadow);
-            margin-bottom: 20px;
-        }
-        
-        .profile-section h4 {
-            margin: 0 0 20px 0;
-            font-size: 18px;
-            color: var(--text-primary);
-        }
-        
-        .profile-bio-input {
-            width: 100%;
-            min-height: 120px;
-            padding: 15px;
-            border: 2px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 16px;
-            font-family: inherit;
-            background: var(--container-bg);
-            color: var(--text-primary);
-            resize: vertical;
-        }
-        
-        .profile-bio-input:focus {
-            outline: none;
-            border-color: #FF8C00;
-        }
-        
-        .trader-type-options {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-        }
-        
-        .trader-type-option {
-            cursor: pointer;
-        }
-        
-        .trader-type-option input[type="radio"] {
-            display: none;
-        }
-        
-        .trader-type-card {
-            background: var(--container-bg);
-            border: 3px solid transparent;
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-            transition: all 0.3s ease;
-        }
-        
-        .trader-type-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px var(--shadow);
-        }
-        
-        .trader-type-option input[type="radio"]:checked + .trader-type-card {
-            border-color: #FF8C00;
-            box-shadow: 0 0 20px rgba(255, 140, 0, 0.3);
-        }
-        
-        .trader-type-icon {
-            font-size: 36px;
-            margin-bottom: 10px;
-        }
-        
-        .trader-type-label {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 5px;
-            color: var(--text-primary);
-        }
-        
-        .trader-type-desc {
-            font-size: 14px;
-            color: var(--text-secondary);
-        }
-        
-        .trader-type-card.day-trader {
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.1));
-        }
-        
-        .trader-type-card.swing-trader {
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.1));
-        }
-        
-        .trader-type-card.hodl {
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.1));
-        }
-        
-        .profile-save-btn {
-            background: linear-gradient(135deg, #FF8C00, #FFD700);
-            color: white;
-            border: none;
-            padding: 15px 40px;
-            font-size: 18px;
-            font-weight: bold;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        
-        .profile-save-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 6px 20px rgba(255, 140, 0, 0.4);
-        }
-        
-        .profile-stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 20px;
-        }
-        
-        .stat-placeholder {
-            background: var(--container-bg);
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
-        }
-        
-        .stat-placeholder .stat-value {
-            font-size: 32px;
-            font-weight: bold;
-            color: var(--text-primary);
-        }
-        
-        .stat-placeholder .stat-label {
-            font-size: 14px;
-            color: var(--text-secondary);
-        }
-        
-        .chat-guidelines {
-            background: linear-gradient(135deg, rgba(255, 193, 7, 0.2), rgba(255, 152, 0, 0.2));
-            border-left: 4px solid #FFA500;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            color: var(--text-primary);
-        }
-        
-        .chat-messages {
-            background: var(--card-bg);
-            border-radius: 12px;
-            padding: 20px;
-            height: 500px;
-            overflow-y: auto;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 6px var(--shadow);
-        }
-        
-        .chat-message {
-            background: var(--container-bg);
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 15px;
-            animation: slideIn 0.3s ease;
-        }
-        
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .chat-message-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 8px;
-            flex-wrap: wrap;
-        }
-        
-        .chat-user-avatar {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #FF8C00, #FFD700);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 14px;
-        }
-        
-        .chat-user-name {
-            font-weight: bold;
-            color: var(--text-primary);
-        }
-        
-        .chat-trader-badge {
-            font-size: 12px;
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-weight: bold;
-        }
-        
-        .chat-trader-badge.day-trader {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
-            color: white;
-        }
-        
-        .chat-trader-badge.swing-trader {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-            color: white;
-        }
-        
-        .chat-trader-badge.hodl {
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-        }
-        
-        .chat-timestamp {
-            font-size: 12px;
-            color: var(--text-secondary);
-            margin-left: auto;
-        }
-        
-        .chat-message-text {
-            color: var(--text-primary);
-            line-height: 1.5;
-            word-wrap: break-word;
-        }
-        
-        .chat-input-container {
-            display: flex;
-            gap: 10px;
-            background: var(--card-bg);
-            padding: 15px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px var(--shadow);
-        }
-        
-        .chat-input {
-            flex: 1;
-            padding: 12px;
-            border: 2px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 16px;
-            font-family: inherit;
-            background: var(--container-bg);
-            color: var(--text-primary);
-            resize: none;
-        }
-        
-        .chat-input:focus {
-            outline: none;
-            border-color: #FF8C00;
-        }
-        
-        .chat-send-btn {
-            background: linear-gradient(135deg, #FF8C00, #FFD700);
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            white-space: nowrap;
-        }
-        
-        .chat-send-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 4px 12px rgba(255, 140, 0, 0.4);
-        }
-        
-        .chat-send-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        .chat-loading, .chat-empty {
-            text-align: center;
-            padding: 40px;
-            color: var(--text-secondary);
-        }
-        
-        .chat-empty-icon {
-            font-size: 48px;
-            margin-bottom: 15px;
-        }
-        
-        @media (max-width: 768px) {
-            .profile-avatar-section {
-                flex-direction: column;
-                text-align: center;
-            }
-            
-            .trader-type-options {
-                grid-template-columns: 1fr;
-            }
-            
-            .chat-input-container {
-                flex-direction: column;
-            }
-        }
-
-    
-        
-        /* Hide protected tabs by default */
-        .protected-tab {
-            display: none !important;
-        }
-        
-        /* Show protected tabs when logged in */
-        body.logged-in .protected-tab {
-            display: inline-flex !important;
-        }
-        
-        /* Header Profile Button */
-        .header-profile-btn {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-            border: none;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            display: none;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.3s ease;
-            margin-right: 10px;
-        }
-        
-        .header-profile-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-        }
-        
-        body.logged-in .header-profile-btn {
-            display: flex;
-        }
-        
-        /* Update auth button for logout state */
-        body.logged-in .auth-button {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
-        }
-        
-        body.logged-in .auth-button:hover {
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
-        }
-
     </style>
 </head>
 <body>
@@ -1650,13 +1259,9 @@
             
             <!-- Auth Container -->
             <div class="auth-container">
-                <button class="header-profile-btn" id="headerProfileBtn" onclick="switchTab('profile')">
+                <button class="auth-button" id="authButton" onclick="openAuthModal()" style="display: flex;">
                     <span>👤</span>
-                    <span>Profile</span>
-                </button>
-                <button class="auth-button" id="authButton" onclick="handleAuthButtonClick()">
-                    <span>👤</span>
-                    <span id="authButtonText">Sign In</span>
+                    <span>Sign In</span>
                 </button>
                 <button class="profile-button" id="profileButton" onclick="toggleProfileDropdown()" style="display: none;">
                     <div class="profile-avatar" id="profileAvatar">U</div>
@@ -1668,7 +1273,7 @@
                 <div class="profile-dropdown" id="profileDropdown">
                     <div class="profile-header">
                         <div class="profile-name" id="dropdownName">User Name</div>
-                        <div class="profile-email" id="dropdownEmail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="f88d8b9d8ab89d95999194d69b9795">[email&#160;protected]</a></div>
+                        <div class="profile-email" id="dropdownEmail">user@email.com</div>
                     </div>
                     <div class="profile-menu">
                         <div class="profile-menu-item" onclick="viewProfile()">
@@ -1709,19 +1314,13 @@
             <button class="tab-button" onclick="switchTab('crypto')">
                 ₿ Crypto
             </button>
-            <button class="tab-button protected-tab" onclick="switchTab('volemon')" data-requires-auth="true">
+            <button class="tab-button" onclick="switchTab('volemon')">
                 🔊 Volemon
             </button>
-            <button class="tab-button protected-tab" onclick="switchTab('usuals')" data-requires-auth="true">
+            <button class="tab-button" onclick="switchTab('usuals')">
                 ⭐ Usuals
             </button>
-            <button class="tab-button protected-tab" onclick="switchTab('chat')" data-requires-auth="true">
-                💬 Chat
-            </button>
-            <button class="tab-button protected-tab" onclick="switchTab('profile')" data-requires-auth="true">
-                👤 Profile
-            </button>
-            <button class="tab-button protected-tab" onclick="switchTab('howto')" data-requires-auth="true">
+            <button class="tab-button" onclick="switchTab('howto')">
                 📚 How to Use
             </button>
         </div>
@@ -2347,138 +1946,6 @@
                 </div>
             </div>
         </div>
-        
-        <!-- Profile Tab -->
-        <div id="profileTab" class="tab-content">
-            <div class="content">
-                <div class="profile-container">
-                    <h2 style="text-align: center; margin-bottom: 30px; color: var(--text-primary);">🍋 YOUR PROFILE</h2>
-                    
-                    <div class="profile-header-card">
-                        <div class="profile-avatar-section">
-                            <div class="profile-avatar-large" id="profileAvatar">J</div>
-                            <div class="profile-info-main">
-                                <h3 id="profileName" style="margin: 0 0 8px 0; color: var(--text-primary);">John Doe</h3>
-                                <p style="color: var(--text-secondary); margin: 0;">📧 <span id="profileEmail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="543e3b3c3a14312c35392438317a373b39">[email&#160;protected]</a></span></p>
-                                <p style="color: var(--text-secondary); margin: 8px 0 0 0;">📅 Member since <span id="profileJoined">Jan 2025</span></p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="profile-section">
-                        <h4>📝 Bio</h4>
-                        <textarea 
-                            id="profileBio" 
-                            class="profile-bio-input" 
-                            maxlength="500" 
-                            placeholder="Tell the community about your trading style, experience, or what you're focusing on..."
-                        ></textarea>
-                        <div style="text-align: right; margin-top: 8px; color: var(--text-secondary); font-size: 14px;">
-                            <span id="bioCharCount">0</span>/500
-                        </div>
-                    </div>
-                    
-                    <div class="profile-section">
-                        <h4>📊 Trader Type</h4>
-                        <div class="trader-type-options">
-                            <label class="trader-type-option">
-                                <input type="radio" name="traderType" value="day_trader">
-                                <div class="trader-type-card day-trader">
-                                    <div class="trader-type-icon">⚡</div>
-                                    <div class="trader-type-label">Day Trader</div>
-                                    <div class="trader-type-desc">Short-term intraday trades</div>
-                                </div>
-                            </label>
-                            
-                            <label class="trader-type-option">
-                                <input type="radio" name="traderType" value="swing_trader" checked>
-                                <div class="trader-type-card swing-trader">
-                                    <div class="trader-type-icon">📊</div>
-                                    <div class="trader-type-label">Swing Trader</div>
-                                    <div class="trader-type-desc">Multi-day position trades</div>
-                                </div>
-                            </label>
-                            
-                            <label class="trader-type-option">
-                                <input type="radio" name="traderType" value="hodl">
-                                <div class="trader-type-card hodl">
-                                    <div class="trader-type-icon">💎</div>
-                                    <div class="trader-type-label">HODL</div>
-                                    <div class="trader-type-desc">Long-term buy & hold</div>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <div style="text-align: center; margin-top: 30px;">
-                        <button class="profile-save-btn" onclick="saveProfile()">
-                            💾 Save Changes
-                        </button>
-                    </div>
-                    
-                    <div class="profile-section" style="margin-top: 40px; opacity: 0.6;">
-                        <h4>📈 Your Stats (Coming Soon)</h4>
-                        <div class="profile-stats-grid">
-                            <div class="stat-placeholder">
-                                <div class="stat-value">0</div>
-                                <div class="stat-label">Patterns Tracked</div>
-                            </div>
-                            <div class="stat-placeholder">
-                                <div class="stat-value">N/A</div>
-                                <div class="stat-label">Win Rate</div>
-                            </div>
-                            <div class="stat-placeholder">
-                                <div class="stat-value">0</div>
-                                <div class="stat-label">Favorite Stocks</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Chat Tab -->
-        <div id="chatTab" class="tab-content">
-            <div class="content">
-                <div class="chat-container">
-                    <h2 style="text-align: center; margin-bottom: 10px; color: var(--text-primary);">🍋 LEMON CHAT 💬</h2>
-                    <p style="text-align: center; color: var(--text-secondary); margin-bottom: 20px;">
-                        Community Discussion (Live)
-                    </p>
-                    
-                    <div class="chat-guidelines">
-                        ⚠️ Be respectful! No spam, pump & dumps, or financial advice. Share setups, not recommendations!
-                    </div>
-                    
-                    <div class="chat-messages" id="chatMessages">
-                        <div class="chat-loading" id="chatLoading">
-                            <div class="spinner"></div>
-                            <p style="color: var(--text-secondary);">Loading messages...</p>
-                        </div>
-                    </div>
-                    
-                    <div class="chat-input-container">
-                        <textarea 
-                            id="chatInput" 
-                            class="chat-input" 
-                            maxlength="500" 
-                            placeholder="Type your message..." 
-                            rows="2"
-                        ></textarea>
-                        <button class="chat-send-btn" onclick="sendChatMessage()">
-                            Send ➤
-                        </button>
-                    </div>
-                    <div style="text-align: right; margin-top: 5px; color: var(--text-secondary); font-size: 14px;">
-                        <span id="chatCharCount">0</span>/500 characters
-                    </div>
-                    <div style="text-align: center; margin-top: 15px; color: var(--text-secondary); font-size: 14px;">
-                        🔄 Auto-refresh every 10 seconds
-                    </div>
-                </div>
-            </div>
-        </div>
-
     </div>
     
     <!-- Floating Actions (Mobile Only) -->
@@ -2573,17 +2040,12 @@
         </div>
     </div>
     
-    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
     <script>
         let isScanning = false;
         
         // ===== AUTHENTICATION SYSTEM =====
         let currentUser = null;
-        
-        // Check if user is logged in
-        function isLoggedIn() {
-            return currentUser !== null;
-        }
         
         // Load user session on page load
         async function loadUserSession() {
@@ -2596,14 +2058,9 @@
                     updateAuthUI();
                     // Load user's favorites from server
                     loadFavoritesFromServer();
-                } else {
-                    currentUser = null;
-                    updateAuthUI();
                 }
             } catch (error) {
                 console.log('No active session');
-                currentUser = null;
-                updateAuthUI();
             }
         }
         
@@ -2717,7 +2174,7 @@
             }
         }
         
-        function updateProfileUI() {
+        function updateAuthUI() {
             const authButton = document.getElementById('authButton');
             const profileButton = document.getElementById('profileButton');
             const authButtonMobile = document.getElementById('authButtonMobile');
@@ -2727,14 +2184,12 @@
                 // Show profile button, hide auth button (both desktop and mobile)
                 authButton.style.display = 'none';
                 profileButton.style.display = 'flex';
-                if (authButtonMobile) authButtonMobile.style.display = 'none';
-                if (profileButtonMobile) profileButtonMobile.style.display = 'flex';
+                authButtonMobile.style.display = 'none';
+                profileButtonMobile.style.display = 'flex';
                 
                 // Update profile info (both desktop and mobile)
                 document.getElementById('profileAvatar').textContent = currentUser.avatar;
-                if (document.getElementById('profileAvatarMobile')) {
-                    document.getElementById('profileAvatarMobile').textContent = currentUser.avatar;
-                }
+                document.getElementById('profileAvatarMobile').textContent = currentUser.avatar;
                 document.getElementById('profileName').textContent = currentUser.name.split(' ')[0]; // First name only
                 document.getElementById('dropdownName').textContent = currentUser.name;
                 document.getElementById('dropdownEmail').textContent = currentUser.email;
@@ -2742,8 +2197,8 @@
                 // Show auth button, hide profile button (both desktop and mobile)
                 authButton.style.display = 'flex';
                 profileButton.style.display = 'none';
-                if (authButtonMobile) authButtonMobile.style.display = 'flex';
-                if (profileButtonMobile) profileButtonMobile.style.display = 'none';
+                authButtonMobile.style.display = 'flex';
+                profileButtonMobile.style.display = 'none';
             }
         }
         
@@ -4675,298 +4130,10 @@
         });
         
         // Cleanup on unload
-         window.addEventListener('beforeunload', () => {
+        window.addEventListener('beforeunload', () => {
             if (usualsInterval) clearInterval(usualsInterval);
             if (usualsCountdown) clearInterval(usualsCountdown);
         });
     </script>
-
-    
-    <script>
-        // ===== PROFILE TAB FUNCTIONS =====
-        let currentProfile = null;
-        
-        // Initialize profile and chat
-        document.addEventListener('DOMContentLoaded', () => {
-            // Character count for bio
-            const bioInput = document.getElementById('profileBio');
-            const charCount = document.getElementById('bioCharCount');
-            if (bioInput && charCount) {
-                bioInput.addEventListener('input', () => {
-                    charCount.textContent = bioInput.value.length;
-                });
-            }
-            
-            // Character count for chat
-            const chatInput = document.getElementById('chatInput');
-            const chatCharCount = document.getElementById('chatCharCount');
-            if (chatInput && chatCharCount) {
-                chatInput.addEventListener('input', () => {
-                    chatCharCount.textContent = chatInput.value.length;
-                });
-            }
-        });
-        
-        async function loadProfile() {
-            try {
-                const response = await fetch('/api/auth/me');
-                const data = await response.json();
-                
-                if (data.success && data.user) {
-                    currentProfile = data.user;
-                    document.getElementById('profileName').textContent = data.user.name;
-                    document.getElementById('profileEmail').textContent = data.user.email;
-                    document.getElementById('profileAvatar').textContent = data.user.avatar;
-                    document.getElementById('profileBio').value = data.user.bio || '';
-                    document.getElementById('bioCharCount').textContent = (data.user.bio || '').length;
-                    
-                    const joinedDate = new Date(data.user.joinedDate);
-                    document.getElementById('profileJoined').textContent = joinedDate.toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        year: 'numeric' 
-                    });
-                    
-                    const traderType = data.user.trader_type || 'swing_trader';
-                    const radio = document.querySelector(`input[name="traderType"][value="${traderType}"]`);
-                    if (radio) radio.checked = true;
-                }
-            } catch (error) {
-                console.error('Error loading profile:', error);
-            }
-        }
-        
-        async function saveProfile() {
-            try {
-                const bio = document.getElementById('profileBio').value.trim();
-                const traderType = document.querySelector('input[name="traderType"]:checked').value;
-                
-                const response = await fetch('/api/profile', {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ bio, trader_type: traderType })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    if (currentProfile) {
-                        currentProfile.bio = bio;
-                        currentProfile.trader_type = traderType;
-                    }
-                    alert('✅ Profile updated successfully!');
-                } else {
-                    alert('❌ Error: ' + (data.error || 'Failed to update profile'));
-                }
-            } catch (error) {
-                console.error('Error saving profile:', error);
-                alert('❌ Error saving profile');
-            }
-        }
-        
-        // ===== CHAT TAB FUNCTIONS =====
-        let chatRefreshInterval = null;
-        
-        async function loadChatMessages() {
-            try {
-                const response = await fetch('/api/chat/messages?limit=50');
-                const data = await response.json();
-                
-                const chatMessages = document.getElementById('chatMessages');
-                
-                if (data.success && data.messages) {
-                    if (data.messages.length === 0) {
-                        chatMessages.innerHTML = `
-                            <div class="chat-empty">
-                                <div class="chat-empty-icon">💬</div>
-                                <p>No messages yet. Be the first!</p>
-                            </div>
-                        `;
-                    } else {
-                        chatMessages.innerHTML = data.messages.map(msg => {
-                            const badges = {
-                                'day_trader': '<span class="chat-trader-badge day-trader">⚡ Day Trader</span>',
-                                'swing_trader': '<span class="chat-trader-badge swing-trader">📊 Swing Trader</span>',
-                                'hodl': '<span class="chat-trader-badge hodl">💎 HODL</span>'
-                            };
-                            const badge = badges[msg.user_trader_type || 'swing_trader'];
-                            
-                            const timestamp = new Date(msg.created_at).toLocaleTimeString('en-US', { 
-                                hour: '2-digit', 
-                                minute: '2-digit' 
-                            });
-                            
-                            const initial = msg.user_name ? msg.user_name[0].toUpperCase() : 'U';
-                            const escapedMsg = escapeHtml(msg.message);
-                            
-                            return `
-                                <div class="chat-message">
-                                    <div class="chat-message-header">
-                                        <div class="chat-user-avatar">${initial}</div>
-                                        <span class="chat-user-name">${msg.user_name}</span>
-                                        ${badge}
-                                        <span class="chat-timestamp">${timestamp}</span>
-                                    </div>
-                                    <div class="chat-message-text">${escapedMsg}</div>
-                                </div>
-                            `;
-                        }).join('');
-                        
-                        chatMessages.scrollTop = chatMessages.scrollHeight;
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading chat:', error);
-            }
-        }
-        
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-        
-        async function sendChatMessage() {
-            try {
-                const chatInput = document.getElementById('chatInput');
-                const message = chatInput.value.trim();
-                
-                if (!message) {
-                    alert('Please enter a message');
-                    return;
-                }
-                
-                const response = await fetch('/api/chat/messages', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    chatInput.value = '';
-                    document.getElementById('chatCharCount').textContent = '0';
-                    await loadChatMessages();
-                } else {
-                    alert('❌ Error: ' + (data.error || 'Failed to send message'));
-                }
-            } catch (error) {
-                console.error('Error sending message:', error);
-                alert('❌ Error sending message');
-            }
-        }
-        
-        function startChatRefresh() {
-            if (chatRefreshInterval) return;
-            loadChatMessages();
-            chatRefreshInterval = setInterval(loadChatMessages, 10000);
-        }
-        
-        function stopChatRefresh() {
-            if (chatRefreshInterval) {
-                clearInterval(chatRefreshInterval);
-                chatRefreshInterval = null;
-            }
-        }
-        
-        
-        
-        // Update auth button based on login state
-        function updateAuthUI() {
-            const authButton = document.getElementById('authButton');
-            const authButtonText = document.getElementById('authButtonText');
-            const headerProfileBtn = document.getElementById('headerProfileBtn');
-            const profileButton = document.getElementById('profileButton');
-            
-            if (isLoggedIn()) {
-                // User is logged in
-                document.body.classList.add('logged-in');
-                if (authButtonText) authButtonText.textContent = 'Logout';
-                if (headerProfileBtn) headerProfileBtn.style.display = 'flex';
-                
-                // Hide old auth button, show profile dropdown
-                if (authButton && !authButtonText) {
-                    authButton.style.display = 'none';
-                }
-                if (profileButton) profileButton.style.display = 'flex';
-                
-                // Update profile info if currentUser exists
-                if (currentUser) {
-                    if (document.getElementById('profileAvatar')) {
-                        document.getElementById('profileAvatar').textContent = currentUser.avatar;
-                    }
-                    if (document.getElementById('profileName')) {
-                        document.getElementById('profileName').textContent = currentUser.name.split(' ')[0];
-                    }
-                    if (document.getElementById('dropdownName')) {
-                        document.getElementById('dropdownName').textContent = currentUser.name;
-                    }
-                    if (document.getElementById('dropdownEmail')) {
-                        document.getElementById('dropdownEmail').textContent = currentUser.email;
-                    }
-                }
-            } else {
-                // User is logged out
-                document.body.classList.remove('logged-in');
-                if (authButtonText) authButtonText.textContent = 'Sign In';
-                if (headerProfileBtn) headerProfileBtn.style.display = 'none';
-                
-                // Show auth button, hide profile dropdown
-                if (authButton) authButton.style.display = 'flex';
-                if (profileButton) profileButton.style.display = 'none';
-            }
-        }
-        
-        // Handle auth button click (Sign In or Logout)
-        function handleAuthButtonClick() {
-            if (isLoggedIn()) {
-                // User is logged in, so logout
-                signOut();
-            } else {
-                // User is logged out, so show sign in modal
-                openAuthModal();
-            }
-        }
-        
-        // Override the original signOut function to update UI
-        const originalSignOut = signOut;
-        signOut = async function() {
-            if (originalSignOut) {
-                await originalSignOut();
-            }
-            updateAuthUI();
-            // Switch to squeeze tab after logout
-            switchTab('squeeze');
-        };
-        
-        // Call updateAuthUI on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            updateAuthUI();
-        });
-        
-        // Update UI after successful login
-        function onLoginSuccess() {
-            updateAuthUI();
-            loadProfile();
-        }
-
-        // Enhanced switchTab function
-        const originalSwitchTab = window.switchTab;
-        window.switchTab = function(tab) {
-            // Check authentication for protected tabs
-            const protectedTabs = ['volemon', 'usuals', 'chat', 'profile', 'howto'];
-            if (protectedTabs.includes(tab) && !isLoggedIn()) {
-                openAuthModal();
-                return;
-            }
-            
-            // Call original function
-            if (originalSwitchTab) {
-                originalSwitchTab(tab);
-            }
-            
-            // Handle chat refresh
-            if (tab === 'chat') {
-                startChatRefresh();
-            } else {
-                stopChatRefresh()
+</body>
+</html>
