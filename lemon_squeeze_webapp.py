@@ -196,21 +196,22 @@ def check_strat_31(hist):
                 
                 # Inside bar should be notably smaller (at least 20% smaller)
                 if curr_range < prev_range * 0.8:
+                    # Ensure all values are valid floats
                     pattern_data = {
+                        'type': '3-1',
                         'has_pattern': True,
                         'direction': direction,
-                        'type': '3-1',
                         'three_candle': {
-                            'high': float(prev_high),
-                            'low': float(prev_low),
-                            'close': float(prev_close),
+                            'high': round(float(prev_high), 2),
+                            'low': round(float(prev_low), 2),
+                            'close': round(float(prev_close), 2),
                             'date': get_date_string(previous)
                         },
                         'one_candle': {
-                            'high': float(curr_high),
-                            'low': float(curr_low),
-                            'close': float(curr_close),
-                            'open': float(curr_open),
+                            'high': round(float(curr_high), 2),
+                            'low': round(float(curr_low), 2),
+                            'close': round(float(curr_close), 2),
+                            'open': round(float(curr_open), 2),
                             'date': get_date_string(current)
                         }
                     }
@@ -220,27 +221,21 @@ def check_strat_31(hist):
     # STANDALONE INSIDE BAR
     # ========================================
     if is_inside_bar:
-        # Return in same format as 3-1 to avoid JavaScript errors
         pattern_data = {
+            'type': 'Inside',
             'has_pattern': True,
             'direction': direction,
-            'type': 'Inside',
-            'three_candle': {
-                'high': float(prev_high),
-                'low': float(prev_low),
-                'close': float(prev_close),
-                'date': get_date_string(previous)
-            },
+            'description': 'Inside Bar - Consolidation pattern',
             'one_candle': {
-                'high': float(curr_high),
-                'low': float(curr_low),
-                'close': float(curr_close),
-                'open': float(curr_open),
+                'high': round(float(curr_high), 2),
+                'low': round(float(curr_low), 2),
+                'close': round(float(curr_close), 2),
+                'open': round(float(curr_open), 2),
                 'date': get_date_string(current)
             },
             'previous_candle': {
-                'high': float(prev_high),
-                'low': float(prev_low),
+                'high': round(float(prev_high), 2),
+                'low': round(float(prev_low), 2),
                 'date': get_date_string(previous)
             }
         }
@@ -289,18 +284,18 @@ def scan():
                 info = stock_data.info
                 
                 if len(hist) >= 2:
-                    current_price = hist['Close'].iloc[-1]
-                    previous_close = hist['Close'].iloc[-2]
-                    daily_change = ((current_price - previous_close) / previous_close) * 100
+                    current_price = float(hist['Close'].iloc[-1])
+                    previous_close = float(hist['Close'].iloc[-2])
+                    daily_change = ((current_price - previous_close) / previous_close) * 100 if previous_close > 0 else 0.0
                     
-                    current_volume = hist['Volume'].iloc[-1]
-                    avg_volume = hist['Volume'].iloc[-21:-1].mean() if len(hist) > 20 else hist['Volume'].mean()
+                    current_volume = float(hist['Volume'].iloc[-1])
+                    avg_volume = float(hist['Volume'].iloc[-21:-1].mean() if len(hist) > 20 else hist['Volume'].mean())
                     volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1.0
                     
-                    float_shares = info.get('floatShares', info.get('sharesOutstanding', 0))
-                    market_cap = info.get('marketCap', 0)
-                    week_high_52 = info.get('fiftyTwoWeekHigh', current_price)
-                    week_low_52 = info.get('fiftyTwoWeekLow', current_price)
+                    float_shares = float(info.get('floatShares', info.get('sharesOutstanding', 0)) or 0)
+                    market_cap = float(info.get('marketCap', 0) or 0)
+                    week_high_52 = float(info.get('fiftyTwoWeekHigh', current_price) or current_price)
+                    week_low_52 = float(info.get('fiftyTwoWeekLow', current_price) or current_price)
                     
                     short_shares = (float_shares * stock['short_interest'] / 100) if float_shares > 0 else 0
                     days_to_cover = short_shares / avg_volume if avg_volume > 0 else 0
@@ -321,19 +316,19 @@ def scan():
                         results.append({
                             'ticker': ticker,
                             'company': stock['company'],
-                            'shortInterest': stock['short_interest'],
-                            'previousClose': float(previous_close),
-                            'currentPrice': float(current_price),
-                            'dailyChange': float(daily_change),
+                            'shortInterest': round(float(stock['short_interest']), 2),
+                            'previousClose': round(float(previous_close), 2),
+                            'currentPrice': round(float(current_price), 2),
+                            'dailyChange': round(float(daily_change), 2),
                             'volume': int(current_volume),
                             'avgVolume': int(avg_volume),
-                            'volumeRatio': float(volume_ratio),
+                            'volumeRatio': round(float(volume_ratio), 2),
                             'floatShares': int(float_shares),
                             'marketCap': int(market_cap),
-                            'daysToCover': float(days_to_cover),
-                            'weekHigh52': float(week_high_52),
-                            'weekLow52': float(week_low_52),
-                            'riskScore': float(risk_score)
+                            'daysToCover': round(float(days_to_cover), 2),
+                            'weekHigh52': round(float(week_high_52), 2),
+                            'weekLow52': round(float(week_low_52), 2),
+                            'riskScore': round(float(risk_score), 2)
                         })
                 
             except Exception as e:
@@ -387,18 +382,18 @@ def daily_plays():
                     has_pattern, pattern_data = check_strat_31(hist)
                     
                     if has_pattern:
-                        current_price = hist['Close'].iloc[-1]
-                        previous_close = hist['Close'].iloc[-2]
-                        daily_change = ((current_price - previous_close) / previous_close) * 100
+                        current_price = float(hist['Close'].iloc[-1])
+                        previous_close = float(hist['Close'].iloc[-2])
+                        daily_change = ((current_price - previous_close) / previous_close) * 100 if previous_close > 0 else 0.0
                         
                         results.append({
                             'ticker': ticker,
                             'company': info.get('longName', ticker),
-                            'currentPrice': float(current_price),
-                            'dailyChange': float(daily_change),
+                            'currentPrice': round(float(current_price), 2),
+                            'dailyChange': round(float(daily_change), 2),
                             'volume': int(hist['Volume'].iloc[-1]),
                             'avgVolume': int(hist['Volume'].mean()),
-                            'marketCap': info.get('marketCap', 0),
+                            'marketCap': int(info.get('marketCap', 0) or 0),
                             'pattern': pattern_data
                         })
                         
@@ -453,7 +448,7 @@ def hourly_plays():
                         results.append({
                             'ticker': ticker,
                             'company': info.get('longName', ticker),
-                            'currentPrice': float(hist['Close'].iloc[-1]),
+                            'currentPrice': round(float(hist['Close'].iloc[-1]), 2),
                             'volume': int(hist['Volume'].iloc[-1]),
                             'pattern': pattern_data,
                             'timeframe': 'hourly'
@@ -498,7 +493,7 @@ def weekly_plays():
                         results.append({
                             'ticker': ticker,
                             'company': info.get('longName', ticker),
-                            'currentPrice': float(hist['Close'].iloc[-1]),
+                            'currentPrice': round(float(hist['Close'].iloc[-1]), 2),
                             'volume': int(hist['Volume'].iloc[-1]),
                             'pattern': pattern_data,
                             'timeframe': 'weekly'
@@ -541,15 +536,15 @@ def crypto_plays():
                     has_pattern, pattern_data = check_strat_31(hist)
                     
                     if has_pattern:
-                        current_price = hist['Close'].iloc[-1]
-                        prev_price = hist['Close'].iloc[-2]
-                        change = ((current_price - prev_price) / prev_price) * 100
+                        current_price = float(hist['Close'].iloc[-1])
+                        prev_price = float(hist['Close'].iloc[-2])
+                        change = ((current_price - prev_price) / prev_price) * 100 if prev_price > 0 else 0.0
                         
                         results.append({
                             'ticker': ticker.replace('-USD', ''),
                             'company': name,
-                            'currentPrice': float(current_price),
-                            'change': float(change),
+                            'currentPrice': round(float(current_price), 2),
+                            'change': round(float(change), 2),
                             'volume': int(hist['Volume'].iloc[-1]),
                             'pattern': pattern_data,
                             'timeframe': 'daily'
@@ -593,26 +588,26 @@ def volemon_scan():
                 info = stock_data.info
                 
                 if len(hist) >= 2:
-                    current_volume = hist['Volume'].iloc[-1]
-                    avg_volume = hist['Volume'].iloc[:-1].mean()
+                    current_volume = float(hist['Volume'].iloc[-1])
+                    avg_volume = float(hist['Volume'].iloc[:-1].mean())
                     
                     if avg_volume > 0:
                         volume_multiple = current_volume / avg_volume
                         
                         if volume_multiple >= min_volume_multiple:
-                            current_price = hist['Close'].iloc[-1]
-                            prev_price = hist['Close'].iloc[-2]
-                            change = ((current_price - prev_price) / prev_price) * 100
+                            current_price = float(hist['Close'].iloc[-1])
+                            prev_price = float(hist['Close'].iloc[-2])
+                            change = ((current_price - prev_price) / prev_price) * 100 if prev_price > 0 else 0.0
                             
                             results.append({
                                 'ticker': ticker,
                                 'company': info.get('longName', ticker),
-                                'price': float(current_price),
-                                'change': float(change),
+                                'price': round(float(current_price), 2),
+                                'change': round(float(change), 2),
                                 'volume': int(current_volume),
                                 'avg_volume': int(avg_volume),
-                                'volume_multiple': float(volume_multiple),
-                                'market_cap': info.get('marketCap', 0)
+                                'volume_multiple': round(float(volume_multiple), 2),
+                                'market_cap': int(info.get('marketCap', 0) or 0)
                             })
                             
                             print(f"✅ {ticker}: {volume_multiple:.1f}x")
@@ -648,13 +643,13 @@ def usuals_scan():
                 info = stock_data.info
                 
                 if len(hist) >= 3:
-                    current_price = hist['Close'].iloc[-1]
-                    prev_price = hist['Close'].iloc[-2]
-                    change = ((current_price - prev_price) / prev_price) * 100
+                    current_price = float(hist['Close'].iloc[-1])
+                    prev_price = float(hist['Close'].iloc[-2])
+                    change = ((current_price - prev_price) / prev_price) * 100 if prev_price > 0 else 0.0
                     
-                    current_volume = hist['Volume'].iloc[-1]
-                    avg_volume = hist['Volume'].iloc[:-1].mean()
-                    volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1
+                    current_volume = float(hist['Volume'].iloc[-1])
+                    avg_volume = float(hist['Volume'].iloc[:-1].mean())
+                    volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1.0
                     
                     # Check patterns
                     patterns = {}
@@ -680,11 +675,11 @@ def usuals_scan():
                     results.append({
                         'ticker': ticker,
                         'company': info.get('longName', ticker),
-                        'price': float(current_price),
-                        'change': float(change),
+                        'price': round(float(current_price), 2),
+                        'change': round(float(change), 2),
                         'volume': int(current_volume),
                         'avg_volume': int(avg_volume),
-                        'volume_ratio': float(volume_ratio),
+                        'volume_ratio': round(float(volume_ratio), 2),
                         'patterns': patterns
                     })
                     
