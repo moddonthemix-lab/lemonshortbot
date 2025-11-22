@@ -830,6 +830,272 @@
             color: #fee2e2;
         }
         
+        /* Authentication Styles */
+        .auth-button {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border: none;
+            border-radius: 50px;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 1em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: white;
+            font-weight: bold;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+        
+        .auth-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+        }
+        
+        .profile-button {
+            background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+            border: none;
+            border-radius: 50px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 1em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: white;
+            font-weight: bold;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+        }
+        
+        .profile-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5);
+        }
+        
+        .profile-avatar {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: white;
+            color: #8b5cf6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        
+        .auth-modal {
+            display: none;
+            position: fixed;
+            z-index: 3000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .auth-modal.active {
+            display: flex;
+        }
+        
+        .auth-modal-content {
+            background: var(--card-bg);
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 450px;
+            width: 90%;
+            box-shadow: 0 20px 60px var(--shadow-heavy);
+            color: var(--text-primary);
+            position: relative;
+        }
+        
+        .auth-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid var(--border-color);
+        }
+        
+        .auth-tab {
+            flex: 1;
+            padding: 15px;
+            background: transparent;
+            border: none;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            color: var(--text-secondary);
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .auth-tab.active {
+            color: #10b981;
+            border-bottom: 3px solid #10b981;
+        }
+        
+        .auth-form {
+            display: none;
+        }
+        
+        .auth-form.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 1em;
+            background: var(--card-bg);
+            color: var(--text-primary);
+            transition: all 0.3s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #10b981;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+        }
+        
+        .auth-submit {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+        
+        .auth-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+        }
+        
+        .auth-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: transparent;
+            border: none;
+            font-size: 2em;
+            cursor: pointer;
+            color: var(--text-primary);
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.3s;
+        }
+        
+        .auth-close:hover {
+            background: var(--settings-bg);
+            transform: rotate(90deg);
+        }
+        
+        .profile-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 10px;
+            background: var(--card-bg);
+            border-radius: 15px;
+            box-shadow: 0 8px 25px var(--shadow-heavy);
+            min-width: 250px;
+            z-index: 1000;
+            overflow: hidden;
+        }
+        
+        .profile-dropdown.active {
+            display: block;
+        }
+        
+        .profile-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+            color: white;
+        }
+        
+        .profile-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .profile-email {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .profile-menu {
+            padding: 10px 0;
+        }
+        
+        .profile-menu-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .profile-menu-item:hover {
+            background: var(--settings-bg);
+        }
+        
+        .profile-menu-item.danger {
+            color: #ef4444;
+        }
+        
+        .profile-menu-item.danger:hover {
+            background: #fee2e2;
+        }
+        
+        [data-theme="dark"] .profile-menu-item.danger:hover {
+            background: #991b1b;
+        }
+        
+        .auth-container {
+            position: relative;
+        }
+        
+        @media (max-width: 768px) {
+            .auth-modal-content {
+                padding: 30px 20px;
+            }
+            
+            .profile-dropdown {
+                right: -10px;
+            }
+        }
+        
         @media (max-width: 768px) {
             .header h1 {
                 font-size: 2em;
@@ -853,6 +1119,49 @@
                 flex-direction: column;
                 gap: 12px;
                 z-index: 1000;
+            }
+            
+            /* Auth button mobile styles */
+            .floating-actions .auth-button {
+                border-radius: 50%;
+                width: 56px;
+                height: 56px;
+                padding: 0;
+                font-size: 1.4em;
+                box-shadow: 0 4px 20px rgba(16, 185, 129, 0.5);
+            }
+            
+            .floating-actions .auth-button span:not(:first-child) {
+                display: none;
+            }
+            
+            .floating-actions .profile-button {
+                border-radius: 50%;
+                width: 56px;
+                height: 56px;
+                padding: 0;
+                position: relative;
+            }
+            
+            .floating-actions .profile-button > span:not(.profile-avatar) {
+                display: none;
+            }
+            
+            .floating-actions .profile-avatar {
+                width: 100%;
+                height: 100%;
+                font-size: 1.5em;
+            }
+            
+            /* Profile dropdown positioning for mobile */
+            .profile-dropdown {
+                position: fixed;
+                top: auto;
+                bottom: 90px;
+                right: 20px;
+                left: 20px;
+                margin: 0;
+                max-width: calc(100vw - 40px);
             }
             
             .floating-actions .dark-mode-toggle {
@@ -919,7 +1228,404 @@
                 font-size: 0.9em;
                 padding: 15px 10px;
             }
+            
+            /* Auth modal mobile adjustments */
+            .auth-modal-content {
+                padding: 30px 20px;
+                width: 95%;
+            }
         }
+    
+        
+        /* Profile & Chat Styles */
+        .profile-container, .chat-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .profile-header-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px var(--shadow);
+            margin-bottom: 25px;
+        }
+        
+        .profile-avatar-section {
+            display: flex;
+            align-items: center;
+            gap: 25px;
+        }
+        
+        .profile-avatar-large {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #FF8C00, #FFD700);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        
+        .profile-section {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 6px var(--shadow);
+            margin-bottom: 20px;
+        }
+        
+        .profile-section h4 {
+            margin: 0 0 20px 0;
+            font-size: 18px;
+            color: var(--text-primary);
+        }
+        
+        .profile-bio-input {
+            width: 100%;
+            min-height: 120px;
+            padding: 15px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: inherit;
+            background: var(--container-bg);
+            color: var(--text-primary);
+            resize: vertical;
+        }
+        
+        .profile-bio-input:focus {
+            outline: none;
+            border-color: #FF8C00;
+        }
+        
+        .trader-type-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .trader-type-option {
+            cursor: pointer;
+        }
+        
+        .trader-type-option input[type="radio"] {
+            display: none;
+        }
+        
+        .trader-type-card {
+            background: var(--container-bg);
+            border: 3px solid transparent;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .trader-type-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px var(--shadow);
+        }
+        
+        .trader-type-option input[type="radio"]:checked + .trader-type-card {
+            border-color: #FF8C00;
+            box-shadow: 0 0 20px rgba(255, 140, 0, 0.3);
+        }
+        
+        .trader-type-icon {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+        
+        .trader-type-label {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: var(--text-primary);
+        }
+        
+        .trader-type-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        
+        .trader-type-card.day-trader {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.1));
+        }
+        
+        .trader-type-card.swing-trader {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.1));
+        }
+        
+        .trader-type-card.hodl {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.1));
+        }
+        
+        .profile-save-btn {
+            background: linear-gradient(135deg, #FF8C00, #FFD700);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .profile-save-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(255, 140, 0, 0.4);
+        }
+        
+        .profile-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+        }
+        
+        .stat-placeholder {
+            background: var(--container-bg);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-placeholder .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: var(--text-primary);
+        }
+        
+        .stat-placeholder .stat-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        
+        .chat-guidelines {
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.2), rgba(255, 152, 0, 0.2));
+            border-left: 4px solid #FFA500;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .chat-messages {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            height: 500px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px var(--shadow);
+        }
+        
+        .chat-message {
+            background: var(--container-bg);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .chat-message-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .chat-user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #FF8C00, #FFD700);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .chat-user-name {
+            font-weight: bold;
+            color: var(--text-primary);
+        }
+        
+        .chat-trader-badge {
+            font-size: 12px;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-weight: bold;
+        }
+        
+        .chat-trader-badge.day-trader {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+        
+        .chat-trader-badge.swing-trader {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+        }
+        
+        .chat-trader-badge.hodl {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+        
+        .chat-timestamp {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-left: auto;
+        }
+        
+        .chat-message-text {
+            color: var(--text-primary);
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+        
+        .chat-input-container {
+            display: flex;
+            gap: 10px;
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px var(--shadow);
+        }
+        
+        .chat-input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: inherit;
+            background: var(--container-bg);
+            color: var(--text-primary);
+            resize: none;
+        }
+        
+        .chat-input:focus {
+            outline: none;
+            border-color: #FF8C00;
+        }
+        
+        .chat-send-btn {
+            background: linear-gradient(135deg, #FF8C00, #FFD700);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            white-space: nowrap;
+        }
+        
+        .chat-send-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(255, 140, 0, 0.4);
+        }
+        
+        .chat-send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .chat-loading, .chat-empty {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+        
+        .chat-empty-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        
+        @media (max-width: 768px) {
+            .profile-avatar-section {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .trader-type-options {
+                grid-template-columns: 1fr;
+            }
+            
+            .chat-input-container {
+                flex-direction: column;
+            }
+        }
+
+    
+        
+        /* Hide protected tabs by default */
+        .protected-tab {
+            display: none !important;
+        }
+        
+        /* Show protected tabs when logged in */
+        body.logged-in .protected-tab {
+            display: inline-flex !important;
+        }
+        
+        /* Header Profile Button */
+        .header-profile-btn {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+        }
+        
+        .header-profile-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        
+        body.logged-in .header-profile-btn {
+            display: flex;
+        }
+        
+        /* Update auth button for logout state */
+        body.logged-in .auth-button {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+        
+        body.logged-in .auth-button:hover {
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+
     </style>
 </head>
 <body>
@@ -941,6 +1647,49 @@
                 <span id="darkModeIcon">🌙</span>
                 <span id="darkModeText">Dark</span>
             </button>
+            
+            <!-- Auth Container -->
+            <div class="auth-container">
+                <button class="header-profile-btn" id="headerProfileBtn" onclick="switchTab('profile')">
+                    <span>👤</span>
+                    <span>Profile</span>
+                </button>
+                <button class="auth-button" id="authButton" onclick="handleAuthButtonClick()">
+                    <span>👤</span>
+                    <span id="authButtonText">Sign In</span>
+                </button>
+                <button class="profile-button" id="profileButton" onclick="toggleProfileDropdown()" style="display: none;">
+                    <div class="profile-avatar" id="profileAvatar">U</div>
+                    <span id="profileName">User</span>
+                    <span>▼</span>
+                </button>
+                
+                <!-- Profile Dropdown -->
+                <div class="profile-dropdown" id="profileDropdown">
+                    <div class="profile-header">
+                        <div class="profile-name" id="dropdownName">User Name</div>
+                        <div class="profile-email" id="dropdownEmail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="f88d8b9d8ab89d95999194d69b9795">[email&#160;protected]</a></div>
+                    </div>
+                    <div class="profile-menu">
+                        <div class="profile-menu-item" onclick="viewProfile()">
+                            <span>👤</span>
+                            <span>My Profile</span>
+                        </div>
+                        <div class="profile-menu-item" onclick="viewSettings()">
+                            <span>⚙️</span>
+                            <span>Settings</span>
+                        </div>
+                        <div class="profile-menu-item" onclick="viewHistory()">
+                            <span>📊</span>
+                            <span>Trading History</span>
+                        </div>
+                        <div class="profile-menu-item danger" onclick="signOut()">
+                            <span>🚪</span>
+                            <span>Sign Out</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
         
         <!-- Tab Navigation -->
@@ -960,11 +1709,20 @@
             <button class="tab-button" onclick="switchTab('crypto')">
                 ₿ Crypto
             </button>
-            <button class="tab-button" onclick="switchTab('volemon')">
+            <button class="tab-button protected-tab" onclick="switchTab('volemon')" data-requires-auth="true">
                 🔊 Volemon
             </button>
-            <button class="tab-button" onclick="switchTab('usuals')">
+            <button class="tab-button protected-tab" onclick="switchTab('usuals')" data-requires-auth="true">
                 ⭐ Usuals
+            </button>
+            <button class="tab-button protected-tab" onclick="switchTab('chat')" data-requires-auth="true">
+                💬 Chat
+            </button>
+            <button class="tab-button protected-tab" onclick="switchTab('profile')" data-requires-auth="true">
+                👤 Profile
+            </button>
+            <button class="tab-button protected-tab" onclick="switchTab('howto')" data-requires-auth="true">
+                📚 How to Use
             </button>
         </div>
         
@@ -1277,10 +2035,464 @@
                 </div>
             </div>
         </div>
+        
+        <!-- How to Use Tab -->
+        <div id="howtoTab" class="tab-content">
+            <div class="content">
+                <div class="settings-panel">
+                    <h2>📚 Welcome to Lemon Squeeze!</h2>
+                    <div style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); padding: 25px; border-radius: 15px; color: #333; margin-bottom: 30px;">
+                        <p style="font-size: 1.3em; font-weight: bold; margin-bottom: 15px;">
+                            🍋 Your All-in-One Stock & Crypto Pattern Scanner
+                        </p>
+                        <p style="font-size: 1.1em; line-height: 1.6;">
+                            Lemon Squeeze scans the market for high-probability trading setups using the proven <strong>3-1 Strat pattern</strong>. 
+                            Whether you're hunting short squeezes, tracking your favorite stocks, or monitoring crypto, we've got you covered!
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Quick Start Guide -->
+                <div class="settings-panel">
+                    <h2>🚀 Quick Start Guide</h2>
+                    <div style="background: #FFE97F; padding: 20px; border-radius: 10px;">
+                        <div style="display: grid; gap: 20px;">
+                            <div style="background: white; padding: 15px; border-radius: 10px; border-left: 5px solid #10b981;">
+                                <h3 style="color: #10b981; margin-bottom: 10px;">1️⃣ Choose Your Scanner</h3>
+                                <p style="color: #333; line-height: 1.6;">
+                                    Pick from <strong>7 different scanners</strong> at the top:
+                                </p>
+                                <ul style="margin: 10px 0 0 20px; color: #333; line-height: 1.8;">
+                                    <li><strong>🍋 Short Squeeze:</strong> Find stocks with high short interest gaining momentum</li>
+                                    <li><strong>⏰ Hourly Plays:</strong> Intraday patterns for day traders</li>
+                                    <li><strong>📈 Daily Plays:</strong> Swing trade setups on daily charts</li>
+                                    <li><strong>📊 Weekly Plays:</strong> Position trade setups for larger moves</li>
+                                    <li><strong>₿ Crypto:</strong> Bitcoin, Ethereum, and major altcoin patterns</li>
+                                    <li><strong>🔊 Volemon:</strong> Auto-scans every 20 min for volume spikes</li>
+                                    <li><strong>⭐ Usuals:</strong> Your watchlist, auto-updated every 15 min</li>
+                                </ul>
+                            </div>
+
+                            <div style="background: white; padding: 15px; border-radius: 10px; border-left: 5px solid #8b5cf6;">
+                                <h3 style="color: #8b5cf6; margin-bottom: 10px;">2️⃣ Click Scan & Wait</h3>
+                                <p style="color: #333; line-height: 1.6;">
+                                    Hit the big scan button and let Lemon Squeeze do the heavy lifting! Scans take 30-90 seconds depending on the tab.
+                                </p>
+                            </div>
+
+                            <div style="background: white; padding: 15px; border-radius: 10px; border-left: 5px solid #f59e0b;">
+                                <h3 style="color: #f59e0b; margin-bottom: 10px;">3️⃣ Review Results</h3>
+                                <p style="color: #333; line-height: 1.6;">
+                                    Stocks appear ranked by quality. Each card shows:
+                                </p>
+                                <ul style="margin: 10px 0 0 20px; color: #333; line-height: 1.8;">
+                                    <li>Pattern type and direction (bullish/bearish)</li>
+                                    <li>Current price and change percentage</li>
+                                    <li>Volume analysis</li>
+                                    <li>Interactive TradingView chart</li>
+                                    <li>⭐ Favorite button to save stocks you like</li>
+                                </ul>
+                            </div>
+
+                            <div style="background: white; padding: 15px; border-radius: 10px; border-left: 5px solid #ef4444;">
+                                <h3 style="color: #ef4444; margin-bottom: 10px;">4️⃣ Do Your Own Research!</h3>
+                                <p style="color: #333; line-height: 1.6; font-weight: bold;">
+                                    ⚠️ CRITICAL: Lemon Squeeze finds setups, but YOU must verify them. Check fundamentals, news, and risk management before trading!
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- The 3-1 Strat Explained -->
+                <div class="settings-panel">
+                    <h2>🎯 The 3-1 Strat Pattern - Master Class</h2>
+                    <div style="background: #FFE97F; padding: 20px; border-radius: 10px;">
+                        <p style="font-size: 1.2em; color: #333; margin-bottom: 20px; line-height: 1.6;">
+                            The <strong>3-1 Strat</strong> is a powerful price action pattern that identifies consolidation after expansion - 
+                            a classic setup that traders have used for decades to catch breakouts.
+                        </p>
+
+                        <!-- Pattern Components -->
+                        <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                            <h3 style="color: #FFA500; margin-bottom: 15px;">📊 Pattern Components</h3>
+                            
+                            <div style="margin-bottom: 25px;">
+                                <h4 style="color: #10b981; margin-bottom: 10px;">3️⃣ The "3" - Outside Bar (Expansion)</h4>
+                                <p style="color: #333; line-height: 1.6; margin-bottom: 10px;">
+                                    An <strong>outside bar</strong> breaks BOTH the high AND low of the previous candle. This shows increased volatility and expansion.
+                                </p>
+                                <div style="background: #f0f0f0; padding: 12px; border-radius: 8px; font-family: monospace;">
+                                    Previous Candle: High $100 | Low $95<br>
+                                    Outside Bar "3": <strong style="color: #10b981;">High $102</strong> | <strong style="color: #ef4444;">Low $93</strong><br>
+                                    ✅ Breaks both levels = Outside bar!
+                                </div>
+                            </div>
+
+                            <div style="margin-bottom: 25px;">
+                                <h4 style="color: #8b5cf6; margin-bottom: 10px;">1️⃣ The "1" - Inside Bar (Consolidation)</h4>
+                                <p style="color: #333; line-height: 1.6; margin-bottom: 10px;">
+                                    An <strong>inside bar</strong> has a lower high AND higher low than the previous candle. This shows consolidation and compression.
+                                </p>
+                                <div style="background: #f0f0f0; padding: 12px; border-radius: 8px; font-family: monospace;">
+                                    Previous Candle: High $102 | Low $93<br>
+                                    Inside Bar "1": <strong style="color: #8b5cf6;">High $100</strong> | <strong style="color: #8b5cf6;">Low $96</strong><br>
+                                    ✅ Stays within range = Inside bar!
+                                </div>
+                            </div>
+
+                            <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 15px; border-radius: 10px; color: white;">
+                                <h4 style="margin-bottom: 10px;">🎯 The 3-1 Setup</h4>
+                                <p style="line-height: 1.6;">
+                                    When a "1" (inside bar) follows a "3" (outside bar), you have the <strong>3-1 Strat pattern</strong>! 
+                                    This signals that after a period of expansion, the price is now consolidating - like a coiled spring ready to release energy.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- How to Trade It -->
+                        <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                            <h3 style="color: #FFA500; margin-bottom: 15px;">💡 How to Trade the 3-1 Pattern</h3>
+                            
+                            <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 20px; border-radius: 10px; color: white;">
+                                <ul style="margin-left: 20px; line-height: 2;">
+                                    <li><strong>Entry:</strong> Buy when price breaks above or below the inside bar's high or low with confirmation on the 15 min</li>
+                                    <li><strong>Stop Loss:</strong> Place below the inside bar's low (or outside bar's low for wider stop)</li>
+                                    <li><strong>Target:</strong> 1.5-2x the inside bar's range, or previous resistance levels</li>
+                                    <li><strong>Confirmation:</strong> Higher volume on breakout adds conviction</li>
+                                </ul>
+                            </div>
+
+                            <div style="background: #FFF3CD; padding: 15px; border-radius: 8px; border-left: 5px solid #f59e0b; margin-top: 20px;">
+                                <p style="color: #856404; line-height: 1.6; margin: 0;">
+                                    <strong>⚡ Pro Tip:</strong> The 3-1 pattern works on ALL timeframes! 
+                                    Hourly for day trades, daily for swing trades, weekly for position trades. 
+                                    Higher timeframes = bigger potential moves but requires more patience.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Visual Example -->
+                        <div style="background: white; padding: 20px; border-radius: 10px;">
+                            <h3 style="color: #FFA500; margin-bottom: 15px;">📸 Visual Example</h3>
+                            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 4em; margin-bottom: 10px;">📊</div>
+                                <p style="color: #333; font-size: 1.1em; line-height: 1.6;">
+                                    <strong>Day 1:</strong> Outside Bar "3" - High $105, Low $90 (Big expansion)<br>
+                                    <strong>Day 2:</strong> Inside Bar "1" - High $100, Low $95 (Consolidation)<br>
+                                    <strong>Day 3:</strong> Breakout above $100 or breakdown below $95 🚀
+                                </p>
+                            </div>
+                            <p style="color: #666; font-style: italic; margin-top: 15px; line-height: 1.6;">
+                                💡 When you see a 3-1 pattern in Lemon Squeeze, the chart will highlight these exact levels so you can plan your trade!
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Feature Guide -->
+                <div class="settings-panel">
+                    <h2>⭐ Key Features</h2>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 20px; border-radius: 15px; color: white;">
+                            <h3 style="margin-bottom: 10px;">🌙 Dark Mode</h3>
+                            <p style="line-height: 1.6; opacity: 0.95;">
+                                Toggle dark/light mode with the button in the toolbar. Your preference is saved automatically!
+                            </p>
+                        </div>
+
+                        <div style="background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%); padding: 20px; border-radius: 15px; color: white;">
+                            <h3 style="margin-bottom: 10px;">⭐ Favorites System</h3>
+                            <p style="line-height: 1.6; opacity: 0.95;">
+                                Click the ⭐ on any stock to save it to favorites. Access them anytime from the Favorites button!
+                            </p>
+                        </div>
+
+                        <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 20px; border-radius: 15px; color: white;">
+                            <h3 style="margin-bottom: 10px;">📊 Live Charts</h3>
+                            <p style="line-height: 1.6; opacity: 0.95;">
+                                Every stock gets a TradingView chart so you can see the pattern in real-time and plan your entry!
+                            </p>
+                        </div>
+
+                        <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 20px; border-radius: 15px; color: white;">
+                            <h3 style="margin-bottom: 10px;">🔄 Auto-Scanners</h3>
+                            <p style="line-height: 1.6; opacity: 0.95;">
+                                Volemon (every 20 min) and Usuals (every 15 min) run automatically - just open the tab and watch results appear!
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tips & Best Practices -->
+                <div class="settings-panel">
+                    <h2>💎 Tips & Best Practices</h2>
+                    <div style="background: #FFE97F; padding: 20px; border-radius: 10px;">
+                        <div style="display: grid; gap: 15px;">
+                            <div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981;">
+                                <h4 style="color: #10b981; margin-bottom: 8px;">✅ DO: Confirm with Volume</h4>
+                                <p style="color: #333; line-height: 1.6;">
+                                    Patterns with higher-than-average volume have better follow-through. Look for that 1.5x+ volume ratio!
+                                </p>
+                            </div>
+
+                            <div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981;">
+                                <h4 style="color: #10b981; margin-bottom: 8px;">✅ DO: Wait for the Breakout</h4>
+                                <p style="color: #333; line-height: 1.6;">
+                                    Don't trade inside the consolidation! Wait for price to break the inside bar's range with conviction.
+                                </p>
+                            </div>
+
+                            <div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981;">
+                                <h4 style="color: #10b981; margin-bottom: 8px;">✅ DO: Use Stop Losses</h4>
+                                <p style="color: #333; line-height: 1.6;">
+                                    ALWAYS use stops! Place them just outside the pattern's range. If it breaks, you're wrong - get out!
+                                </p>
+                            </div>
+
+                            <div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #ef4444;">
+                                <h4 style="color: #ef4444; margin-bottom: 8px;">❌ DON'T: Trade Every Setup</h4>
+                                <p style="color: #333; line-height: 1.6;">
+                                    Quality > Quantity. Not every 3-1 pattern works. Look for additional confluence: trend, volume, news, sector strength.
+                                </p>
+                            </div>
+
+                            <div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #ef4444;">
+                                <h4 style="color: #ef4444; margin-bottom: 8px;">❌ DON'T: Ignore the Timeframe</h4>
+                                <p style="color: #333; line-height: 1.6;">
+                                    Hourly patterns = quick moves (hours/days). Weekly patterns = larger moves (weeks/months). Match your trade duration to the timeframe!
+                                </p>
+                            </div>
+
+                            <div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #ef4444;">
+                                <h4 style="color: #ef4444; margin-bottom: 8px;">❌ DON'T: Forget Risk Management</h4>
+                                <p style="color: #333; line-height: 1.6;">
+                                    Never risk more than 1-2% of your account on a single trade. Size your position so your stop loss keeps you safe!
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ -->
+                <div class="settings-panel">
+                    <h2>❓ Frequently Asked Questions</h2>
+                    <div style="background: #FFE97F; padding: 20px; border-radius: 10px;">
+                        <div style="display: grid; gap: 15px;">
+                            <div style="background: white; padding: 15px; border-radius: 8px;">
+                                <h4 style="color: #FFA500; margin-bottom: 8px;">Q: How often should I scan?</h4>
+                                <p style="color: #333; line-height: 1.6;">
+                                    <strong>A:</strong> Daily and Weekly scans: Once per day after market close. Hourly: Every 1-2 hours during market hours. 
+                                    Volemon and Usuals run automatically!
+                                </p>
+                            </div>
+
+                            <div style="background: white; padding: 15px; border-radius: 8px;">
+                                <h4 style="color: #FFA500; margin-bottom: 8px;">Q: What's the best timeframe for beginners?</h4>
+                                <p style="color: #333; line-height: 1.6;">
+                                    <strong>A:</strong> Start with Daily Plays! They give you time to think, and you don't need to watch the screen all day. 
+                                    Hourly is for experienced day traders only.
+                                </p>
+                            </div>
+
+                            <div style="background: white; padding: 15px; border-radius: 8px;">
+                                <h4 style="color: #FFA500; margin-bottom: 8px;">Q: Do these patterns guarantee profits?</h4>
+                                <p style="color: #333; line-height: 1.6;">
+                                    <strong>A:</strong> NO! Nothing guarantees profits in trading. The 3-1 Strat has good odds, but patterns fail sometimes. 
+                                    That's why risk management is CRUCIAL!
+                                </p>
+                            </div>
+
+                            <div style="background: white; padding: 15px; border-radius: 8px;">
+                                <h4 style="color: #FFA500; margin-bottom: 8px;">Q: Can I use this for crypto?</h4>
+                                <p style="color: #333; line-height: 1.6;">
+                                    <strong>A:</strong> Absolutely! The Crypto tab scans BTC, ETH, XRP, SOL, DOGE, and HYPE. 
+                                    Crypto patterns can be very powerful due to high volatility!
+                                </p>
+                            </div>
+
+                            <div style="background: white; padding: 15px; border-radius: 8px;">
+                                <h4 style="color: #FFA500; margin-bottom: 8px;">Q: What's the Risk Score in Short Squeeze?</h4>
+                                <p style="color: #333; line-height: 1.6;">
+                                    <strong>A:</strong> It's a 0-100 score combining short interest, volume, price action, and float. 
+                                    Higher = better squeeze setup. But remember: high score = high potential AND high risk!
+                                </p>
+                            </div>
+
+                            <div style="background: white; padding: 15px; border-radius: 8px;">
+                                <h4 style="color: #FFA500; margin-bottom: 8px;">Q: Why isn't my favorite stock showing up?</h4>
+                                <p style="color: #333; line-height: 1.6;">
+                                    <strong>A:</strong> Either it doesn't have a 3-1 pattern right now, or it's not in the stock list. 
+                                    Add it to "The Usuals" by customizing the ticker list (coming soon)!
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Final Disclaimer -->
+                <div class="disclaimer">
+                    <strong>⚠️ FINAL REMINDER - READ THIS!</strong><br><br>
+                    Lemon Squeeze is a TOOL, not a crystal ball. Trading and investing carry substantial risk of loss. 
+                    The 3-1 Strat pattern is an educational concept - past performance doesn't guarantee future results. 
+                    Markets can be irrational, manipulated, or just plain unpredictable.<br><br>
+                    <strong>YOU are responsible for your trades. Always:</strong><br>
+                    ✅ Do your own research (DYOR)<br>
+                    ✅ Never invest money you can't afford to lose<br>
+                    ✅ Use stop losses religiously<br>
+                    ✅ Start small and learn before going big<br>
+                    ✅ Consider consulting a licensed financial advisor<br><br>
+                    This is NOT financial advice. This is NOT investment advice. 
+                    This is a pattern scanning tool for educational purposes. Trade at your own risk! 🍋
+                </div>
+            </div>
+        </div>
+        
+        <!-- Profile Tab -->
+        <div id="profileTab" class="tab-content">
+            <div class="content">
+                <div class="profile-container">
+                    <h2 style="text-align: center; margin-bottom: 30px; color: var(--text-primary);">🍋 YOUR PROFILE</h2>
+                    
+                    <div class="profile-header-card">
+                        <div class="profile-avatar-section">
+                            <div class="profile-avatar-large" id="profileAvatar">J</div>
+                            <div class="profile-info-main">
+                                <h3 id="profileName" style="margin: 0 0 8px 0; color: var(--text-primary);">John Doe</h3>
+                                <p style="color: var(--text-secondary); margin: 0;">📧 <span id="profileEmail">john@example.com</span></p>
+                                <p style="color: var(--text-secondary); margin: 8px 0 0 0;">📅 Member since <span id="profileJoined">Jan 2025</span></p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-section">
+                        <h4>📝 Bio</h4>
+                        <textarea 
+                            id="profileBio" 
+                            class="profile-bio-input" 
+                            maxlength="500" 
+                            placeholder="Tell the community about your trading style, experience, or what you're focusing on..."
+                        ></textarea>
+                        <div style="text-align: right; margin-top: 8px; color: var(--text-secondary); font-size: 14px;">
+                            <span id="bioCharCount">0</span>/500
+                        </div>
+                    </div>
+                    
+                    <div class="profile-section">
+                        <h4>📊 Trader Type</h4>
+                        <div class="trader-type-options">
+                            <label class="trader-type-option">
+                                <input type="radio" name="traderType" value="day_trader">
+                                <div class="trader-type-card day-trader">
+                                    <div class="trader-type-icon">⚡</div>
+                                    <div class="trader-type-label">Day Trader</div>
+                                    <div class="trader-type-desc">Short-term intraday trades</div>
+                                </div>
+                            </label>
+                            
+                            <label class="trader-type-option">
+                                <input type="radio" name="traderType" value="swing_trader" checked>
+                                <div class="trader-type-card swing-trader">
+                                    <div class="trader-type-icon">📊</div>
+                                    <div class="trader-type-label">Swing Trader</div>
+                                    <div class="trader-type-desc">Multi-day position trades</div>
+                                </div>
+                            </label>
+                            
+                            <label class="trader-type-option">
+                                <input type="radio" name="traderType" value="hodl">
+                                <div class="trader-type-card hodl">
+                                    <div class="trader-type-icon">💎</div>
+                                    <div class="trader-type-label">HODL</div>
+                                    <div class="trader-type-desc">Long-term buy & hold</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: 30px;">
+                        <button class="profile-save-btn" onclick="saveProfile()">
+                            💾 Save Changes
+                        </button>
+                    </div>
+                    
+                    <div class="profile-section" style="margin-top: 40px; opacity: 0.6;">
+                        <h4>📈 Your Stats (Coming Soon)</h4>
+                        <div class="profile-stats-grid">
+                            <div class="stat-placeholder">
+                                <div class="stat-value">0</div>
+                                <div class="stat-label">Patterns Tracked</div>
+                            </div>
+                            <div class="stat-placeholder">
+                                <div class="stat-value">N/A</div>
+                                <div class="stat-label">Win Rate</div>
+                            </div>
+                            <div class="stat-placeholder">
+                                <div class="stat-value">0</div>
+                                <div class="stat-label">Favorite Stocks</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Chat Tab -->
+        <div id="chatTab" class="tab-content">
+            <div class="content">
+                <div class="chat-container">
+                    <h2 style="text-align: center; margin-bottom: 10px; color: var(--text-primary);">🍋 LEMON CHAT 💬</h2>
+                    <p style="text-align: center; color: var(--text-secondary); margin-bottom: 20px;">
+                        Community Discussion (Live)
+                    </p>
+                    
+                    <div class="chat-guidelines">
+                        ⚠️ Be respectful! No spam, pump & dumps, or financial advice. Share setups, not recommendations!
+                    </div>
+                    
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="chat-loading" id="chatLoading">
+                            <div class="spinner"></div>
+                            <p style="color: var(--text-secondary);">Loading messages...</p>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-input-container">
+                        <textarea 
+                            id="chatInput" 
+                            class="chat-input" 
+                            maxlength="500" 
+                            placeholder="Type your message..." 
+                            rows="2"
+                        ></textarea>
+                        <button class="chat-send-btn" onclick="sendChatMessage()">
+                            Send ➤
+                        </button>
+                    </div>
+                    <div style="text-align: right; margin-top: 5px; color: var(--text-secondary); font-size: 14px;">
+                        <span id="chatCharCount">0</span>/500 characters
+                    </div>
+                    <div style="text-align: center; margin-top: 15px; color: var(--text-secondary); font-size: 14px;">
+                        🔄 Auto-refresh every 10 seconds
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
     
     <!-- Floating Actions (Mobile Only) -->
     <div class="floating-actions">
+        <!-- Auth Button for Mobile -->
+        <button class="auth-button" id="authButtonMobile" onclick="openAuthModal()" style="display: flex; border-radius: 50%; width: 56px; height: 56px; padding: 0; font-size: 1.4em; box-shadow: 0 4px 20px rgba(16, 185, 129, 0.5);">
+            <span style="margin: 0;">👤</span>
+        </button>
+        
+        <!-- Profile Button for Mobile -->
+        <button class="profile-button" id="profileButtonMobile" onclick="toggleProfileDropdown()" style="display: none; border-radius: 50%; width: 56px; height: 56px; padding: 0; position: relative;">
+            <div class="profile-avatar" id="profileAvatarMobile" style="width: 100%; height: 100%; font-size: 1.5em;">U</div>
+        </button>
+        
         <button class="favorites-toggle" onclick="toggleFavoritesModal()">
             <span>⭐</span>
             <span>Favorites</span>
@@ -1307,9 +2519,296 @@
         </div>
     </div>
     
-    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <!-- Authentication Modal -->
+    <div id="authModal" class="auth-modal">
+        <div class="auth-modal-content">
+            <button class="auth-close" onclick="closeAuthModal()">×</button>
+            
+            <h2 style="text-align: center; color: #FFA500; margin-bottom: 20px;">🍋 Welcome to Lemon Squeeze</h2>
+            
+            <div class="auth-tabs">
+                <button class="auth-tab active" onclick="switchAuthTab('signin')">Sign In</button>
+                <button class="auth-tab" onclick="switchAuthTab('signup')">Sign Up</button>
+            </div>
+            
+            <!-- Sign In Form -->
+            <form id="signinForm" class="auth-form active" onsubmit="handleSignIn(event)">
+                <div class="form-group">
+                    <label for="signinEmail">Email</label>
+                    <input type="email" id="signinEmail" placeholder="your@email.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="signinPassword">Password</label>
+                    <input type="password" id="signinPassword" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="auth-submit">Sign In</button>
+                <p style="text-align: center; margin-top: 15px; color: var(--text-secondary); font-size: 0.9em;">
+                    Don't have an account? <a href="#" onclick="switchAuthTab('signup'); return false;" style="color: #10b981; font-weight: bold;">Sign Up</a>
+                </p>
+            </form>
+            
+            <!-- Sign Up Form -->
+            <form id="signupForm" class="auth-form" onsubmit="handleSignUp(event)">
+                <div class="form-group">
+                    <label for="signupName">Full Name</label>
+                    <input type="text" id="signupName" placeholder="John Doe" required>
+                </div>
+                <div class="form-group">
+                    <label for="signupEmail">Email</label>
+                    <input type="email" id="signupEmail" placeholder="your@email.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="signupPassword">Password</label>
+                    <input type="password" id="signupPassword" placeholder="••••••••" minlength="6" required>
+                </div>
+                <div class="form-group">
+                    <label for="signupPasswordConfirm">Confirm Password</label>
+                    <input type="password" id="signupPasswordConfirm" placeholder="••••••••" minlength="6" required>
+                </div>
+                <button type="submit" class="auth-submit">Create Account</button>
+                <p style="text-align: center; margin-top: 15px; color: var(--text-secondary); font-size: 0.9em;">
+                    Already have an account? <a href="#" onclick="switchAuthTab('signin'); return false;" style="color: #10b981; font-weight: bold;">Sign In</a>
+                </p>
+            </form>
+        </div>
+    </div>
+    
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
     <script>
         let isScanning = false;
+        
+        // ===== AUTHENTICATION SYSTEM =====
+        let currentUser = null;
+        
+        // Load user session on page load
+        async function loadUserSession() {
+            try {
+                const response = await fetch('/api/auth/me');
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentUser = data.user;
+                    updateAuthUI();
+                    // Load user's favorites from server
+                    loadFavoritesFromServer();
+                }
+            } catch (error) {
+                console.log('No active session');
+            }
+        }
+        
+        function openAuthModal() {
+            document.getElementById('authModal').classList.add('active');
+        }
+        
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.remove('active');
+        }
+        
+        function switchAuthTab(tab) {
+            // Update tab buttons
+            document.querySelectorAll('.auth-tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Update forms
+            document.querySelectorAll('.auth-form').forEach(form => {
+                form.classList.remove('active');
+            });
+            
+            if (tab === 'signin') {
+                document.getElementById('signinForm').classList.add('active');
+            } else {
+                document.getElementById('signupForm').classList.add('active');
+            }
+        }
+        
+        async function handleSignIn(event) {
+            event.preventDefault();
+            
+            const email = document.getElementById('signinEmail').value;
+            const password = document.getElementById('signinPassword').value;
+            
+            try {
+                const response = await fetch('/api/auth/signin', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentUser = data.user;
+                    updateAuthUI();
+                    closeAuthModal();
+                    
+                    // Clear form
+                    document.getElementById('signinForm').reset();
+                    
+                    // Load favorites from server
+                    loadFavoritesFromServer();
+                    
+                    // Welcome message
+                    alert(`🍋 Welcome back, ${currentUser.name}!`);
+                } else {
+                    alert(`❌ ${data.error}`);
+                }
+            } catch (error) {
+                alert('❌ Error signing in. Please try again.');
+                console.error('Sign in error:', error);
+            }
+        }
+        
+        async function handleSignUp(event) {
+            event.preventDefault();
+            
+            const name = document.getElementById('signupName').value;
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+            const confirmPassword = document.getElementById('signupPasswordConfirm').value;
+            
+            // Validate
+            if (password !== confirmPassword) {
+                alert('❌ Passwords do not match!');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/auth/signup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name, email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentUser = data.user;
+                    updateAuthUI();
+                    closeAuthModal();
+                    
+                    // Clear form
+                    document.getElementById('signupForm').reset();
+                    
+                    // Welcome message
+                    alert(`🎉 Welcome to Lemon Squeeze, ${currentUser.name}! Your account has been created.`);
+                } else {
+                    alert(`❌ ${data.error}`);
+                }
+            } catch (error) {
+                alert('❌ Error creating account. Please try again.');
+                console.error('Sign up error:', error);
+            }
+        }
+        
+        function updateAuthUI() {
+            const authButton = document.getElementById('authButton');
+            const profileButton = document.getElementById('profileButton');
+            const authButtonMobile = document.getElementById('authButtonMobile');
+            const profileButtonMobile = document.getElementById('profileButtonMobile');
+            
+            if (currentUser) {
+                // Show profile button, hide auth button (both desktop and mobile)
+                authButton.style.display = 'none';
+                profileButton.style.display = 'flex';
+                authButtonMobile.style.display = 'none';
+                profileButtonMobile.style.display = 'flex';
+                
+                // Update profile info (both desktop and mobile)
+                document.getElementById('profileAvatar').textContent = currentUser.avatar;
+                document.getElementById('profileAvatarMobile').textContent = currentUser.avatar;
+                document.getElementById('profileName').textContent = currentUser.name.split(' ')[0]; // First name only
+                document.getElementById('dropdownName').textContent = currentUser.name;
+                document.getElementById('dropdownEmail').textContent = currentUser.email;
+            } else {
+                // Show auth button, hide profile button (both desktop and mobile)
+                authButton.style.display = 'flex';
+                profileButton.style.display = 'none';
+                authButtonMobile.style.display = 'flex';
+                profileButtonMobile.style.display = 'none';
+            }
+        }
+        
+        function toggleProfileDropdown() {
+            const dropdown = document.getElementById('profileDropdown');
+            dropdown.classList.toggle('active');
+        }
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const authContainer = document.querySelector('.auth-container');
+            const dropdown = document.getElementById('profileDropdown');
+            
+            if (authContainer && !authContainer.contains(event.target)) {
+                dropdown.classList.remove('active');
+            }
+        });
+        
+        function viewProfile() {
+            toggleProfileDropdown();
+            const memberSince = new Date(currentUser.joinedDate).toLocaleDateString();
+            alert(`👤 Profile for ${currentUser.name}\n\n📧 Email: ${currentUser.email}\n📅 Member since: ${memberSince}\n\n💡 Full profile management coming soon!`);
+        }
+        
+        function viewSettings() {
+            toggleProfileDropdown();
+            alert('⚙️ Settings page coming soon! You can already use Dark Mode and save favorites to your account.');
+        }
+        
+        function viewHistory() {
+            toggleProfileDropdown();
+            alert('📊 Trading history tracking coming soon! This will show your win rate with 3-1 patterns across all timeframes.');
+        }
+        
+        async function signOut() {
+            if (confirm('Are you sure you want to sign out?')) {
+                try {
+                    await fetch('/api/auth/signout', { method: 'POST' });
+                    
+                    currentUser = null;
+                    updateAuthUI();
+                    toggleProfileDropdown();
+                    
+                    // Clear any local data
+                    localStorage.removeItem('lemonFavorites');
+                    
+                    alert('👋 You have been signed out successfully!');
+                } catch (error) {
+                    console.error('Sign out error:', error);
+                }
+            }
+        }
+        
+        // Load favorites from server
+        async function loadFavoritesFromServer() {
+            if (!currentUser) return;
+            
+            try {
+                const response = await fetch('/api/favorites');
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Sync with localStorage format for existing code compatibility
+                    const favorites = data.favorites.map(fav => ({
+                        ticker: fav.ticker,
+                        company: fav.company,
+                        timeframe: fav.timeframe,
+                        addedAt: fav.added_at
+                    }));
+                    
+                    localStorage.setItem('lemonFavorites', JSON.stringify(favorites));
+                    updateFavoritesCount();
+                }
+            } catch (error) {
+                console.error('Error loading favorites:', error);
+            }
+        }
         
         // ===== DARK MODE =====
         function toggleDarkMode() {
@@ -1339,6 +2838,9 @@
         
         // Load saved theme on page load
         document.addEventListener('DOMContentLoaded', function() {
+            // Load authentication
+            loadUserSession();
+            
             const savedTheme = localStorage.getItem('theme') || 'light';
             document.documentElement.setAttribute('data-theme', savedTheme);
             
@@ -1370,11 +2872,12 @@
             updateFavoritesCount();
         }
         
-        function addToFavorites(ticker, company, timeframe = 'daily') {
+        async function addToFavorites(ticker, company, timeframe = 'daily') {
             const favorites = getFavorites();
             const exists = favorites.find(f => f.ticker === ticker && f.timeframe === timeframe);
             
             if (!exists) {
+                // Add to local storage first
                 favorites.push({
                     ticker,
                     company,
@@ -1382,17 +2885,44 @@
                     addedAt: new Date().toISOString()
                 });
                 saveFavorites(favorites);
+                
+                // If user is logged in, save to server
+                if (currentUser) {
+                    try {
+                        await fetch('/api/favorites', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ ticker, company, timeframe })
+                        });
+                    } catch (error) {
+                        console.error('Error saving favorite to server:', error);
+                    }
+                }
+                
                 alert(`✅ ${ticker} added to favorites!`);
             } else {
                 alert(`ℹ️ ${ticker} is already in favorites`);
             }
         }
         
-        function removeFromFavorites(ticker, timeframe) {
+        async function removeFromFavorites(ticker, timeframe) {
             let favorites = getFavorites();
             favorites = favorites.filter(f => !(f.ticker === ticker && f.timeframe === timeframe));
             saveFavorites(favorites);
             displayFavorites();
+            
+            // If user is logged in, remove from server
+            if (currentUser) {
+                try {
+                    await fetch(`/api/favorites/${ticker}/${timeframe}`, {
+                        method: 'DELETE'
+                    });
+                } catch (error) {
+                    console.error('Error removing favorite from server:', error);
+                }
+            }
         }
         
         function updateFavoritesCount() {
@@ -1642,6 +3172,8 @@
                 document.getElementById('volemonTab').classList.add('active');
             } else if (tab === 'usuals') {
                 document.getElementById('usualsTab').classList.add('active');
+            } else if (tab === 'howto') {
+                document.getElementById('howtoTab').classList.add('active');
             }
         }
         
@@ -3131,10 +4663,286 @@
         });
         
         // Cleanup on unload
-        window.addEventListener('beforeunload', () => {
+         window.addEventListener('beforeunload', () => {
             if (usualsInterval) clearInterval(usualsInterval);
             if (usualsCountdown) clearInterval(usualsCountdown);
         });
     </script>
+
+    
+    <script>
+        // ===== PROFILE TAB FUNCTIONS =====
+        let currentProfile = null;
+        
+        // Initialize profile and chat
+        document.addEventListener('DOMContentLoaded', () => {
+            // Character count for bio
+            const bioInput = document.getElementById('profileBio');
+            const charCount = document.getElementById('bioCharCount');
+            if (bioInput && charCount) {
+                bioInput.addEventListener('input', () => {
+                    charCount.textContent = bioInput.value.length;
+                });
+            }
+            
+            // Character count for chat
+            const chatInput = document.getElementById('chatInput');
+            const chatCharCount = document.getElementById('chatCharCount');
+            if (chatInput && chatCharCount) {
+                chatInput.addEventListener('input', () => {
+                    chatCharCount.textContent = chatInput.value.length;
+                });
+            }
+        });
+        
+        async function loadProfile() {
+            try {
+                const response = await fetch('/api/auth/me');
+                const data = await response.json();
+                
+                if (data.success && data.user) {
+                    currentProfile = data.user;
+                    document.getElementById('profileName').textContent = data.user.name;
+                    document.getElementById('profileEmail').textContent = data.user.email;
+                    document.getElementById('profileAvatar').textContent = data.user.avatar;
+                    document.getElementById('profileBio').value = data.user.bio || '';
+                    document.getElementById('bioCharCount').textContent = (data.user.bio || '').length;
+                    
+                    const joinedDate = new Date(data.user.joinedDate);
+                    document.getElementById('profileJoined').textContent = joinedDate.toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        year: 'numeric' 
+                    });
+                    
+                    const traderType = data.user.trader_type || 'swing_trader';
+                    const radio = document.querySelector(`input[name="traderType"][value="${traderType}"]`);
+                    if (radio) radio.checked = true;
+                }
+            } catch (error) {
+                console.error('Error loading profile:', error);
+            }
+        }
+        
+        async function saveProfile() {
+            try {
+                const bio = document.getElementById('profileBio').value.trim();
+                const traderType = document.querySelector('input[name="traderType"]:checked').value;
+                
+                const response = await fetch('/api/profile', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ bio, trader_type: traderType })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (currentProfile) {
+                        currentProfile.bio = bio;
+                        currentProfile.trader_type = traderType;
+                    }
+                    alert('✅ Profile updated successfully!');
+                } else {
+                    alert('❌ Error: ' + (data.error || 'Failed to update profile'));
+                }
+            } catch (error) {
+                console.error('Error saving profile:', error);
+                alert('❌ Error saving profile');
+            }
+        }
+        
+        // ===== CHAT TAB FUNCTIONS =====
+        let chatRefreshInterval = null;
+        
+        async function loadChatMessages() {
+            try {
+                const response = await fetch('/api/chat/messages?limit=50');
+                const data = await response.json();
+                
+                const chatMessages = document.getElementById('chatMessages');
+                
+                if (data.success && data.messages) {
+                    if (data.messages.length === 0) {
+                        chatMessages.innerHTML = `
+                            <div class="chat-empty">
+                                <div class="chat-empty-icon">💬</div>
+                                <p>No messages yet. Be the first!</p>
+                            </div>
+                        `;
+                    } else {
+                        chatMessages.innerHTML = data.messages.map(msg => {
+                            const badges = {
+                                'day_trader': '<span class="chat-trader-badge day-trader">⚡ Day Trader</span>',
+                                'swing_trader': '<span class="chat-trader-badge swing-trader">📊 Swing Trader</span>',
+                                'hodl': '<span class="chat-trader-badge hodl">💎 HODL</span>'
+                            };
+                            const badge = badges[msg.user_trader_type || 'swing_trader'];
+                            
+                            const timestamp = new Date(msg.created_at).toLocaleTimeString('en-US', { 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                            });
+                            
+                            const initial = msg.user_name ? msg.user_name[0].toUpperCase() : 'U';
+                            const escapedMsg = escapeHtml(msg.message);
+                            
+                            return `
+                                <div class="chat-message">
+                                    <div class="chat-message-header">
+                                        <div class="chat-user-avatar">${initial}</div>
+                                        <span class="chat-user-name">${msg.user_name}</span>
+                                        ${badge}
+                                        <span class="chat-timestamp">${timestamp}</span>
+                                    </div>
+                                    <div class="chat-message-text">${escapedMsg}</div>
+                                </div>
+                            `;
+                        }).join('');
+                        
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading chat:', error);
+            }
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        async function sendChatMessage() {
+            try {
+                const chatInput = document.getElementById('chatInput');
+                const message = chatInput.value.trim();
+                
+                if (!message) {
+                    alert('Please enter a message');
+                    return;
+                }
+                
+                const response = await fetch('/api/chat/messages', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    chatInput.value = '';
+                    document.getElementById('chatCharCount').textContent = '0';
+                    await loadChatMessages();
+                } else {
+                    alert('❌ Error: ' + (data.error || 'Failed to send message'));
+                }
+            } catch (error) {
+                console.error('Error sending message:', error);
+                alert('❌ Error sending message');
+            }
+        }
+        
+        function startChatRefresh() {
+            if (chatRefreshInterval) return;
+            loadChatMessages();
+            chatRefreshInterval = setInterval(loadChatMessages, 10000);
+        }
+        
+        function stopChatRefresh() {
+            if (chatRefreshInterval) {
+                clearInterval(chatRefreshInterval);
+                chatRefreshInterval = null;
+            }
+        }
+        
+        
+        
+        // Update auth button based on login state
+        function updateAuthUI() {
+            const authButton = document.getElementById('authButton');
+            const authButtonText = document.getElementById('authButtonText');
+            const headerProfileBtn = document.getElementById('headerProfileBtn');
+            
+            if (isLoggedIn()) {
+                // User is logged in
+                document.body.classList.add('logged-in');
+                authButtonText.textContent = 'Logout';
+                if (headerProfileBtn) {
+                    headerProfileBtn.style.display = 'flex';
+                }
+            } else {
+                // User is logged out
+                document.body.classList.remove('logged-in');
+                authButtonText.textContent = 'Sign In';
+                if (headerProfileBtn) {
+                    headerProfileBtn.style.display = 'none';
+                }
+            }
+        }
+        
+        // Handle auth button click (Sign In or Logout)
+        function handleAuthButtonClick() {
+            if (isLoggedIn()) {
+                // User is logged in, so logout
+                signOut();
+            } else {
+                // User is logged out, so show sign in modal
+                openAuthModal();
+            }
+        }
+        
+        // Override the original signOut function to update UI
+        const originalSignOut = signOut;
+        signOut = async function() {
+            if (originalSignOut) {
+                await originalSignOut();
+            }
+            updateAuthUI();
+            // Switch to squeeze tab after logout
+            switchTab('squeeze');
+        };
+        
+        // Call updateAuthUI on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateAuthUI();
+        });
+        
+        // Update UI after successful login
+        function onLoginSuccess() {
+            updateAuthUI();
+            loadProfile();
+        }
+
+        // Enhanced switchTab function
+        const originalSwitchTab = window.switchTab;
+        window.switchTab = function(tab) {
+            // Check authentication for protected tabs
+            const protectedTabs = ['volemon', 'usuals', 'chat', 'profile', 'howto'];
+            if (protectedTabs.includes(tab) && !isLoggedIn()) {
+                showSignInModal();
+                return;
+            }
+            
+            // Call original function
+            if (originalSwitchTab) {
+                originalSwitchTab(tab);
+            }
+            
+            // Handle chat refresh
+            if (tab === 'chat') {
+                startChatRefresh();
+            } else {
+                stopChatRefresh();
+            }
+            
+            // Load profile when switching to profile tab
+            if (tab === 'profile' && isLoggedIn()) {
+                loadProfile();
+            }
+        };
+    </script>
+
 </body>
 </html>
