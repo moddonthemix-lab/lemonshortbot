@@ -686,12 +686,20 @@ def usuals_scan():
                     
                     # Check patterns
                     patterns = {}
-                    has_pattern, pattern_data = check_strat_31(hist)
                     
-                    # Validate pattern_data exists and is valid
-                    if has_pattern and pattern_data and isinstance(pattern_data, dict):
-                        # Return the FULL pattern data so frontend has all info including dates
-                        patterns['daily'] = pattern_data
+                    try:
+                        has_pattern, pattern_data = check_strat_31(hist)
+                    except Exception:
+                        has_pattern = False
+                        pattern_data = None
+                    
+                    # Use simplified pattern format for Usuals tab (matching optimized version)
+                    # Extra safety: ensure pattern_data is not None and is a dict before accessing
+                    if has_pattern and pattern_data is not None and isinstance(pattern_data, dict) and 'direction' in pattern_data:
+                        patterns['daily'] = {
+                            'type': '3-1 Strat',
+                            'direction': str(pattern_data.get('direction', 'neutral'))
+                        }
                     else:
                         # Check inside bar as fallback
                         try:
@@ -700,40 +708,24 @@ def usuals_scan():
                             is_inside = (current['High'] < previous['High'] and 
                                        current['Low'] > previous['Low'])
                             if is_inside:
-                                # Create a minimal but complete pattern object
                                 patterns['daily'] = {
-                                    'type': 'Inside',
-                                    'has_pattern': True,
-                                    'direction': 'neutral',
-                                    'description': 'Inside Bar - Consolidation pattern',
-                                    'one_candle': {
-                                        'high': round(float(current['High']), 2),
-                                        'low': round(float(current['Low']), 2),
-                                        'close': round(float(current['Close']), 2),
-                                        'open': round(float(current['Open']), 2),
-                                        'date': 'N/A'
-                                    },
-                                    'previous_candle': {
-                                        'high': round(float(previous['High']), 2),
-                                        'low': round(float(previous['Low']), 2),
-                                        'date': 'N/A'
-                                    }
+                                    'type': 'Inside Bar (1)',
+                                    'direction': 'neutral'
                                 }
                         except Exception:
                             # If inside bar check fails, leave patterns empty
                             pass
                     
                     # Always return the stock, even if no patterns found
-                    # patterns will be an empty dict {} if no patterns detected
                     results.append({
                         'ticker': ticker,
-                        'company': info.get('longName', ticker),
+                        'company': info.get('longName', ticker) or ticker,
                         'price': round(float(current_price), 2),
                         'change': round(float(change), 2),
                         'volume': int(current_volume),
                         'avg_volume': int(avg_volume),
                         'volume_ratio': round(float(volume_ratio), 2),
-                        'patterns': patterns if patterns else {}  # Ensure it's always at least an empty dict
+                        'patterns': patterns if patterns else {}
                     })
                     
                     print(f"✅ {ticker}")
