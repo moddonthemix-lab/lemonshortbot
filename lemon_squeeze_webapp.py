@@ -197,9 +197,9 @@ def check_strat_31(hist):
                 # Inside bar should be notably smaller (at least 20% smaller)
                 if curr_range < prev_range * 0.8:
                     pattern_data = {
-                        'type': '3-1',
                         'has_pattern': True,
                         'direction': direction,
+                        'type': '3-1',
                         'three_candle': {
                             'high': float(prev_high),
                             'low': float(prev_low),
@@ -220,11 +220,17 @@ def check_strat_31(hist):
     # STANDALONE INSIDE BAR
     # ========================================
     if is_inside_bar:
+        # Return in same format as 3-1 to avoid JavaScript errors
         pattern_data = {
-            'type': 'Inside',
             'has_pattern': True,
             'direction': direction,
-            'description': 'Inside Bar - Consolidation pattern',
+            'type': 'Inside',
+            'three_candle': {
+                'high': float(prev_high),
+                'low': float(prev_low),
+                'close': float(prev_close),
+                'date': get_date_string(previous)
+            },
             'one_candle': {
                 'high': float(curr_high),
                 'low': float(curr_low),
