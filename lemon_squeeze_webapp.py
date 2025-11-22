@@ -143,6 +143,16 @@ def check_strat_31(hist):
     # Determine direction
     direction = "bullish" if curr_close > curr_open else "bearish"
     
+    # Helper function to safely get date string
+    def get_date_string(candle):
+        try:
+            if hasattr(candle.name, 'strftime'):
+                return candle.name.strftime('%Y-%m-%d')
+            else:
+                return str(candle.name)[:10]  # Get first 10 chars (YYYY-MM-DD)
+        except:
+            return "N/A"
+    
     # ========================================
     # 3-1 PATTERN DETECTION (Strict)
     # ========================================
@@ -194,14 +204,14 @@ def check_strat_31(hist):
                             'high': float(prev_high),
                             'low': float(prev_low),
                             'close': float(prev_close),
-                            'date': previous.name.strftime('%Y-%m-%d')
+                            'date': get_date_string(previous)
                         },
                         'one_candle': {
                             'high': float(curr_high),
                             'low': float(curr_low),
                             'close': float(curr_close),
                             'open': float(curr_open),
-                            'date': current.name.strftime('%Y-%m-%d')
+                            'date': get_date_string(current)
                         }
                     }
                     return True, pattern_data
@@ -220,12 +230,12 @@ def check_strat_31(hist):
                 'low': float(curr_low),
                 'close': float(curr_close),
                 'open': float(curr_open),
-                'date': current.name.strftime('%Y-%m-%d')
+                'date': get_date_string(current)
             },
             'previous_candle': {
                 'high': float(prev_high),
                 'low': float(prev_low),
-                'date': previous.name.strftime('%Y-%m-%d')
+                'date': get_date_string(previous)
             }
         }
         return True, pattern_data
