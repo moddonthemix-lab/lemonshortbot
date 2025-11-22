@@ -373,23 +373,6 @@ def check_strat_31(hist):
     # No pattern detected
     return False, None
 
-@app.route('/')
-def index():
-    """Serve the main page"""
-    html_files = [
-        'lemon_squeeze_with_howto.html',
-        'lemon_squeeze_with_volemon__4___2_.html',
-        'lemon_squeeze_webapp.html',
-        'lemon_squeeze.html',
-        'index.html'
-    ]
-    
-    for html_file in html_files:
-        if os.path.exists(html_file):
-            return send_from_directory('.', html_file)
-    
-    return "<h1>🍋 Lemon Squeeze - Backend Ready!</h1>"
-
 # ===== AUTHENTICATION ROUTES =====
 
 @app.route('/api/auth/signup', methods=['POST'])
