@@ -2359,7 +2359,7 @@
                             <div class="profile-avatar-large" id="profileAvatar">J</div>
                             <div class="profile-info-main">
                                 <h3 id="profileName" style="margin: 0 0 8px 0; color: var(--text-primary);">John Doe</h3>
-                                <p style="color: var(--text-secondary); margin: 0;">📧 <span id="profileEmail">john@example.com</span></p>
+                                <p style="color: var(--text-secondary); margin: 0;">📧 <span id="profileEmail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="543e3b3c3a14312c35392438317a373b39">[email&#160;protected]</a></span></p>
                                 <p style="color: var(--text-secondary); margin: 8px 0 0 0;">📅 Member since <span id="profileJoined">Jan 2025</span></p>
                             </div>
                         </div>
@@ -2573,12 +2573,17 @@
         </div>
     </div>
     
-    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
     <script>
         let isScanning = false;
         
         // ===== AUTHENTICATION SYSTEM =====
         let currentUser = null;
+        
+        // Check if user is logged in
+        function isLoggedIn() {
+            return currentUser !== null;
+        }
         
         // Load user session on page load
         async function loadUserSession() {
@@ -2591,9 +2596,14 @@
                     updateAuthUI();
                     // Load user's favorites from server
                     loadFavoritesFromServer();
+                } else {
+                    currentUser = null;
+                    updateAuthUI();
                 }
             } catch (error) {
                 console.log('No active session');
+                currentUser = null;
+                updateAuthUI();
             }
         }
         
@@ -2707,7 +2717,7 @@
             }
         }
         
-        function updateAuthUI() {
+        function updateProfileUI() {
             const authButton = document.getElementById('authButton');
             const profileButton = document.getElementById('profileButton');
             const authButtonMobile = document.getElementById('authButtonMobile');
@@ -2717,12 +2727,14 @@
                 // Show profile button, hide auth button (both desktop and mobile)
                 authButton.style.display = 'none';
                 profileButton.style.display = 'flex';
-                authButtonMobile.style.display = 'none';
-                profileButtonMobile.style.display = 'flex';
+                if (authButtonMobile) authButtonMobile.style.display = 'none';
+                if (profileButtonMobile) profileButtonMobile.style.display = 'flex';
                 
                 // Update profile info (both desktop and mobile)
                 document.getElementById('profileAvatar').textContent = currentUser.avatar;
-                document.getElementById('profileAvatarMobile').textContent = currentUser.avatar;
+                if (document.getElementById('profileAvatarMobile')) {
+                    document.getElementById('profileAvatarMobile').textContent = currentUser.avatar;
+                }
                 document.getElementById('profileName').textContent = currentUser.name.split(' ')[0]; // First name only
                 document.getElementById('dropdownName').textContent = currentUser.name;
                 document.getElementById('dropdownEmail').textContent = currentUser.email;
@@ -2730,8 +2742,8 @@
                 // Show auth button, hide profile button (both desktop and mobile)
                 authButton.style.display = 'flex';
                 profileButton.style.display = 'none';
-                authButtonMobile.style.display = 'flex';
-                profileButtonMobile.style.display = 'none';
+                if (authButtonMobile) authButtonMobile.style.display = 'flex';
+                if (profileButtonMobile) profileButtonMobile.style.display = 'none';
             }
         }
         
@@ -4864,21 +4876,44 @@
             const authButton = document.getElementById('authButton');
             const authButtonText = document.getElementById('authButtonText');
             const headerProfileBtn = document.getElementById('headerProfileBtn');
+            const profileButton = document.getElementById('profileButton');
             
             if (isLoggedIn()) {
                 // User is logged in
                 document.body.classList.add('logged-in');
-                authButtonText.textContent = 'Logout';
-                if (headerProfileBtn) {
-                    headerProfileBtn.style.display = 'flex';
+                if (authButtonText) authButtonText.textContent = 'Logout';
+                if (headerProfileBtn) headerProfileBtn.style.display = 'flex';
+                
+                // Hide old auth button, show profile dropdown
+                if (authButton && !authButtonText) {
+                    authButton.style.display = 'none';
+                }
+                if (profileButton) profileButton.style.display = 'flex';
+                
+                // Update profile info if currentUser exists
+                if (currentUser) {
+                    if (document.getElementById('profileAvatar')) {
+                        document.getElementById('profileAvatar').textContent = currentUser.avatar;
+                    }
+                    if (document.getElementById('profileName')) {
+                        document.getElementById('profileName').textContent = currentUser.name.split(' ')[0];
+                    }
+                    if (document.getElementById('dropdownName')) {
+                        document.getElementById('dropdownName').textContent = currentUser.name;
+                    }
+                    if (document.getElementById('dropdownEmail')) {
+                        document.getElementById('dropdownEmail').textContent = currentUser.email;
+                    }
                 }
             } else {
                 // User is logged out
                 document.body.classList.remove('logged-in');
-                authButtonText.textContent = 'Sign In';
-                if (headerProfileBtn) {
-                    headerProfileBtn.style.display = 'none';
-                }
+                if (authButtonText) authButtonText.textContent = 'Sign In';
+                if (headerProfileBtn) headerProfileBtn.style.display = 'none';
+                
+                // Show auth button, hide profile dropdown
+                if (authButton) authButton.style.display = 'flex';
+                if (profileButton) profileButton.style.display = 'none';
             }
         }
         
@@ -4921,7 +4956,7 @@
             // Check authentication for protected tabs
             const protectedTabs = ['volemon', 'usuals', 'chat', 'profile', 'howto'];
             if (protectedTabs.includes(tab) && !isLoggedIn()) {
-                showSignInModal();
+                openAuthModal();
                 return;
             }
             
@@ -4934,15 +4969,4 @@
             if (tab === 'chat') {
                 startChatRefresh();
             } else {
-                stopChatRefresh();
-            }
-            
-            // Load profile when switching to profile tab
-            if (tab === 'profile' && isLoggedIn()) {
-                loadProfile();
-            }
-        };
-    </script>
-
-</body>
-</html>
+                stopChatRefresh()
