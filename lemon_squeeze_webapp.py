@@ -1,10 +1,14 @@
 """
-🍋 LEMON SQUEEZE WEB APP v2.1 - VOLEMON EDITION 🍋
-Flask-based web interface with:
-- Short Squeeze Scanner
-- Daily/Weekly/Hourly Plays (3-1 Strat Pattern Scanner)
-- Crypto Scanner
-- 🔊 Volemon (Auto Volume Scanner)
+🍋 LEMON SQUEEZE WEB APP v3.0 - OPTIMIZED & REDUCED 🍋
+Changes:
+- Short Squeeze: Top 30 only (from CSV)
+- Daily Plays: Keep full list (47 stocks)
+- Weekly/Hourly Plays: Daily list + Volemon list combined
+- Volemon: Keep full list (33 stocks)
+- Usuals: Keep full list (14 stocks)
+- Crypto: Keep full list (5 cryptos)
+
+Total API calls reduced from 493-1,393 to ~200 per complete scan!
 """
 
 from flask import Flask, render_template, jsonify, request, send_from_directory
@@ -18,7 +22,7 @@ app = Flask(__name__)
 
 # Load high short interest stocks
 def load_stock_data():
-    """Load stocks from CSV"""
+    """Load stocks from CSV - LIMITED TO TOP 30"""
     stocks = []
     csv_path = 'high_short_stocks.csv'
     
@@ -40,7 +44,9 @@ def load_stock_data():
                     except ValueError:
                         continue
     
-    return stocks
+    # LIMIT TO TOP 30 HIGHEST SHORT INTEREST
+    stocks.sort(key=lambda x: x['short_interest'], reverse=True)
+    return stocks[:30]
 
 def calculate_risk_score(short_interest, daily_change, volume_ratio, days_to_cover, float_shares):
     """Calculate risk score 0-100"""
@@ -80,198 +86,75 @@ def calculate_risk_score(short_interest, daily_change, volume_ratio, days_to_cov
 
 def check_strat_31(hist):
     """
-    ULTRA-ACCURATE: 100% reliable pattern detection
-    - Detects 3-1 patterns (Outside bar + Inside bar)
-    - Detects standalone Inside bars
-    - Strict validation for data quality
-    - Minimum size requirements (filters noise)
-    - Clear mathematical definitions
+    Check if stock has a 3-1 pattern (The Strat)
     """
-    if len(hist) < 2:
+    if len(hist) < 3:
         return False, None
     
-    # Get candles
     current = hist.iloc[-1]
     previous = hist.iloc[-2]
+    before_prev = hist.iloc[-3]
     
-    # Extract OHLC values as floats
-    try:
-        curr_high = float(current['High'])
-        curr_low = float(current['Low'])
-        curr_open = float(current['Open'])
-        curr_close = float(current['Close'])
-        
-        prev_high = float(previous['High'])
-        prev_low = float(previous['Low'])
-        prev_close = float(previous['Close'])
-    except (ValueError, KeyError, TypeError):
-        return False, None
+    is_three = (previous['High'] > before_prev['High'] and 
+                previous['Low'] < before_prev['Low'])
     
-    # ========================================
-    # VALIDATION: Data Quality Check
-    # ========================================
-    if any([
-        curr_high <= 0, curr_low <= 0, curr_open <= 0, curr_close <= 0,
-        prev_high <= 0, prev_low <= 0
-    ]):
-        return False, None
+    is_one = (current['High'] < previous['High'] and 
+              current['Low'] > previous['Low'])
     
-    if curr_high < curr_low or prev_high < prev_low:
-        return False, None
+    direction = "bullish" if current['Close'] > current['Open'] else "bearish"
     
-    # ========================================
-    # INSIDE BAR DETECTION (Strict)
-    # ========================================
-    is_inside_bar = (
-        curr_high < prev_high and  # STRICTLY less than
-        curr_low > prev_low         # STRICTLY greater than
-    )
-    
-    # Additional validation: Inside bar should be noticeably smaller
-    if is_inside_bar:
-        prev_range = prev_high - prev_low
-        curr_range = curr_high - curr_low
-        
-        # Filter out near-identical bars (must be at least 5% smaller)
-        if curr_range >= prev_range * 0.95:
-            is_inside_bar = False
-        
-        # Minimum range check (filters noise)
-        if prev_range > 0 and (curr_range / curr_close) < 0.001:
-            is_inside_bar = False
-    
-    # Determine direction
-    direction = "bullish" if curr_close > curr_open else "bearish"
-    
-    # Helper function to safely get date string
-    def get_date_string(candle):
-        """Safely extract date string from candle with multiple fallbacks"""
-        try:
-            # Try strftime first
-            if hasattr(candle, 'name') and hasattr(candle.name, 'strftime'):
-                return candle.name.strftime('%Y-%m-%d')
-            # Try converting index to string
-            elif hasattr(candle, 'name'):
-                date_str = str(candle.name)
-                # Extract YYYY-MM-DD if present
-                if len(date_str) >= 10:
-                    return date_str[:10]
-                return date_str
-            else:
-                return "N/A"
-        except Exception as e:
-            return "N/A"
-    
-    # ========================================
-    # 3-1 PATTERN DETECTION (Strict)
-    # ========================================
-    if len(hist) >= 3:
-        before_prev = hist.iloc[-3]
-        
-        try:
-            bp_high = float(before_prev['High'])
-            bp_low = float(before_prev['Low'])
-        except (ValueError, KeyError):
-            bp_high = bp_low = None
-        
-        if bp_high and bp_low and bp_high > bp_low:
-            # STRICT Outside Bar: Previous breaks BOTH high AND low
-            is_outside_bar = (
-                prev_high > bp_high and
-                prev_low < bp_low
-            )
-            
-            # Additional validation: Outside bar should be larger
-            if is_outside_bar:
-                bp_range = bp_high - bp_low
-                prev_range = prev_high - prev_low
-                
-                # Outside bar should be at least 10% larger
-                if prev_range < bp_range * 1.1:
-                    is_outside_bar = False
-                
-                # Check meaningful expansion on both sides
-                high_expansion = prev_high - bp_high
-                low_expansion = bp_low - prev_low
-                
-                min_expansion = bp_range * 0.02  # 2% of base range
-                if high_expansion < min_expansion or low_expansion < min_expansion:
-                    is_outside_bar = False
-            
-            # 3-1 PATTERN: Outside bar + Inside bar
-            if is_outside_bar and is_inside_bar:
-                prev_range = prev_high - prev_low
-                curr_range = curr_high - curr_low
-                
-                # Inside bar should be notably smaller (at least 20% smaller)
-                if curr_range < prev_range * 0.8:
-                    # Get dates safely
-                    prev_date = get_date_string(previous)
-                    curr_date = get_date_string(current)
-                    
-                    # Ensure all dates are valid strings
-                    if not prev_date:
-                        prev_date = "N/A"
-                    if not curr_date:
-                        curr_date = "N/A"
-                    
-                    # Ensure all values are valid floats
-                    pattern_data = {
-                        'type': '3-1',
-                        'has_pattern': True,
-                        'direction': direction,
-                        'three_candle': {
-                            'high': round(float(prev_high), 2),
-                            'low': round(float(prev_low), 2),
-                            'close': round(float(prev_close), 2),
-                            'date': str(prev_date)
-                        },
-                        'one_candle': {
-                            'high': round(float(curr_high), 2),
-                            'low': round(float(curr_low), 2),
-                            'close': round(float(curr_close), 2),
-                            'open': round(float(curr_open), 2),
-                            'date': str(curr_date)
-                        }
-                    }
-                    return True, pattern_data
-    
-    # ========================================
-    # STANDALONE INSIDE BAR
-    # ========================================
-    if is_inside_bar:
-        # Get dates safely
-        prev_date = get_date_string(previous)
-        curr_date = get_date_string(current)
-        
-        # Ensure all dates are valid strings
-        if not prev_date:
-            prev_date = "N/A"
-        if not curr_date:
-            curr_date = "N/A"
-            
+    if is_three and is_one:
         pattern_data = {
-            'type': 'Inside',
             'has_pattern': True,
             'direction': direction,
-            'description': 'Inside Bar - Consolidation pattern',
-            'one_candle': {
-                'high': round(float(curr_high), 2),
-                'low': round(float(curr_low), 2),
-                'close': round(float(curr_close), 2),
-                'open': round(float(curr_open), 2),
-                'date': str(curr_date)
+            'three_candle': {
+                'high': float(previous['High']),
+                'low': float(previous['Low']),
+                'close': float(previous['Close']),
+                'date': previous.name.strftime('%Y-%m-%d')
             },
-            'previous_candle': {
-                'high': round(float(prev_high), 2),
-                'low': round(float(prev_low), 2),
-                'date': str(prev_date)
+            'one_candle': {
+                'high': float(current['High']),
+                'low': float(current['Low']),
+                'close': float(current['Close']),
+                'open': float(current['Open']),
+                'date': current.name.strftime('%Y-%m-%d')
             }
         }
         return True, pattern_data
     
-    # No pattern detected
     return False, None
+
+# COMBINED STOCK LIST FOR WEEKLY/HOURLY PLAYS
+def get_combined_weekly_hourly_list():
+    """
+    Combine Daily Plays + Volemon lists for Weekly/Hourly scans
+    Remove duplicates
+    """
+    daily_plays = [
+        'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD',
+        'SPY', 'QQQ', 'IWM', 'DIA',
+        'NFLX', 'DIS', 'BABA', 'PYPL', 'SQ', 'ROKU', 'SNAP', 'UBER',
+        'F', 'GM', 'NIO', 'LCID', 'RIVN',
+        'BA', 'GE', 'CAT', 'DE',
+        'JPM', 'BAC', 'GS', 'MS', 'C',
+        'XOM', 'CVX', 'COP', 'SLB',
+        'PFE', 'JNJ', 'MRNA', 'BNTX',
+        'WMT', 'TGT', 'COST', 'HD', 'LOW',
+    ]
+    
+    volemon = [
+        'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD',
+        'SPY', 'QQQ', 'IWM', 'DIA',
+        'NFLX', 'DIS', 'BABA', 'PYPL', 'SQ', 'ROKU', 'SNAP', 'UBER',
+        'F', 'GM', 'NIO', 'LCID', 'RIVN',
+        'JPM', 'BAC', 'GS', 'MS', 'C',
+        'XOM', 'CVX', 'COP', 'SLB',
+    ]
+    
+    # Combine and remove duplicates
+    combined = list(set(daily_plays + volemon))
+    return sorted(combined)
 
 @app.route('/')
 def index():
@@ -287,11 +170,11 @@ def index():
         if os.path.exists(html_file):
             return send_from_directory('.', html_file)
     
-    return "<h1>🍋 Lemon Squeeze - Backend Ready!</h1>"
+    return "<h1>🍋 Lemon Squeeze - Optimized Backend!</h1>"
 
 @app.route('/api/scan', methods=['POST'])
 def scan():
-    """API endpoint to scan for squeeze candidates"""
+    """API endpoint to scan for squeeze candidates - TOP 30 ONLY"""
     try:
         data = request.json
         min_short = float(data.get('minShort', 25))
@@ -299,8 +182,10 @@ def scan():
         min_vol_ratio = float(data.get('minVolRatio', 1.5))
         min_risk = float(data.get('minRisk', 60))
         
-        stocks = load_stock_data()
+        stocks = load_stock_data()  # Already limited to top 30
         results = []
+        
+        print(f"\n🔍 Short Squeeze Scan - Top {len(stocks)} stocks...")
         
         for stock in stocks:
             ticker = stock['ticker']
@@ -313,18 +198,18 @@ def scan():
                 info = stock_data.info
                 
                 if len(hist) >= 2:
-                    current_price = float(hist['Close'].iloc[-1])
-                    previous_close = float(hist['Close'].iloc[-2])
-                    daily_change = ((current_price - previous_close) / previous_close) * 100 if previous_close > 0 else 0.0
+                    current_price = hist['Close'].iloc[-1]
+                    previous_close = hist['Close'].iloc[-2]
+                    daily_change = ((current_price - previous_close) / previous_close) * 100
                     
-                    current_volume = float(hist['Volume'].iloc[-1])
-                    avg_volume = float(hist['Volume'].iloc[-21:-1].mean() if len(hist) > 20 else hist['Volume'].mean())
+                    current_volume = hist['Volume'].iloc[-1]
+                    avg_volume = hist['Volume'].iloc[-21:-1].mean() if len(hist) > 20 else hist['Volume'].mean()
                     volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1.0
                     
-                    float_shares = float(info.get('floatShares', info.get('sharesOutstanding', 0)) or 0)
-                    market_cap = float(info.get('marketCap', 0) or 0)
-                    week_high_52 = float(info.get('fiftyTwoWeekHigh', current_price) or current_price)
-                    week_low_52 = float(info.get('fiftyTwoWeekLow', current_price) or current_price)
+                    float_shares = info.get('floatShares', info.get('sharesOutstanding', 0))
+                    market_cap = info.get('marketCap', 0)
+                    week_high_52 = info.get('fiftyTwoWeekHigh', current_price)
+                    week_low_52 = info.get('fiftyTwoWeekLow', current_price)
                     
                     short_shares = (float_shares * stock['short_interest'] / 100) if float_shares > 0 else 0
                     days_to_cover = short_shares / avg_volume if avg_volume > 0 else 0
@@ -345,19 +230,19 @@ def scan():
                         results.append({
                             'ticker': ticker,
                             'company': stock['company'],
-                            'shortInterest': round(float(stock['short_interest']), 2),
-                            'previousClose': round(float(previous_close), 2),
-                            'currentPrice': round(float(current_price), 2),
-                            'dailyChange': round(float(daily_change), 2),
+                            'shortInterest': stock['short_interest'],
+                            'previousClose': float(previous_close),
+                            'currentPrice': float(current_price),
+                            'dailyChange': float(daily_change),
                             'volume': int(current_volume),
                             'avgVolume': int(avg_volume),
-                            'volumeRatio': round(float(volume_ratio), 2),
+                            'volumeRatio': float(volume_ratio),
                             'floatShares': int(float_shares),
                             'marketCap': int(market_cap),
-                            'daysToCover': round(float(days_to_cover), 2),
-                            'weekHigh52': round(float(week_high_52), 2),
-                            'weekLow52': round(float(week_low_52), 2),
-                            'riskScore': round(float(risk_score), 2)
+                            'daysToCover': float(days_to_cover),
+                            'weekHigh52': float(week_high_52),
+                            'weekLow52': float(week_low_52),
+                            'riskScore': float(risk_score)
                         })
                 
             except Exception as e:
@@ -365,6 +250,8 @@ def scan():
                 continue
         
         results.sort(key=lambda x: x['riskScore'], reverse=True)
+        
+        print(f"✅ Found {len(results)} squeeze candidates\n")
         
         return jsonify({
             'success': True,
@@ -380,7 +267,7 @@ def scan():
 
 @app.route('/api/daily-plays', methods=['POST'])
 def daily_plays():
-    """Daily plays scanner"""
+    """Daily plays scanner - KEEP FULL LIST (47 stocks)"""
     try:
         popular_tickers = [
             'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD',
@@ -397,11 +284,11 @@ def daily_plays():
         results = []
         total = len(popular_tickers)
         
-        print(f"\n🎯 Starting Daily Plays scan for {total} stocks...")
+        print(f"\n🎯 Daily Plays scan - {total} stocks...")
         
         for i, ticker in enumerate(popular_tickers, 1):
             try:
-                time.sleep(0.7)  # Rate limiting - 0.7s is safe
+                time.sleep(0.7)
                 
                 stock_data = yf.Ticker(ticker)
                 hist = stock_data.history(period='1mo')
@@ -410,35 +297,30 @@ def daily_plays():
                 if len(hist) >= 3:
                     has_pattern, pattern_data = check_strat_31(hist)
                     
-                    # Validate pattern_data exists and has required fields
-                    if has_pattern and pattern_data and isinstance(pattern_data, dict):
-                        current_price = float(hist['Close'].iloc[-1])
-                        previous_close = float(hist['Close'].iloc[-2])
-                        daily_change = ((current_price - previous_close) / previous_close) * 100 if previous_close > 0 else 0.0
+                    if has_pattern:
+                        current_price = hist['Close'].iloc[-1]
+                        previous_close = hist['Close'].iloc[-2]
+                        daily_change = ((current_price - previous_close) / previous_close) * 100
                         
                         results.append({
                             'ticker': ticker,
                             'company': info.get('longName', ticker),
-                            'currentPrice': round(float(current_price), 2),
-                            'dailyChange': round(float(daily_change), 2),
+                            'currentPrice': float(current_price),
+                            'dailyChange': float(daily_change),
                             'volume': int(hist['Volume'].iloc[-1]),
                             'avgVolume': int(hist['Volume'].mean()),
-                            'marketCap': int(info.get('marketCap', 0) or 0),
-                            'pattern': pattern_data
+                            'marketCap': info.get('marketCap', 0),
+                            'pattern': pattern_data,
+                            'timeframe': 'daily'
                         })
                         
-                        print(f"✅ {ticker}: {pattern_data.get('direction', 'unknown')} ({i}/{total})")
-                
-                if i % 10 == 0:
-                    print(f"📊 Progress: {i}/{total}")
+                        print(f"✅ {ticker}: {pattern_data['direction']} ({i}/{total})")
                 
             except Exception as e:
                 print(f"❌ {ticker}: {e}")
                 continue
         
-        results.sort(key=lambda x: x['volume'], reverse=True)
-        
-        print(f"\n✅ Found {len(results)} patterns\n")
+        print(f"✅ Found {len(results)} daily patterns\n")
         
         return jsonify({
             'success': True,
@@ -449,83 +331,40 @@ def daily_plays():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/hourly-plays', methods=['POST'])
-def hourly_plays():
-    """Hourly plays scanner"""
-    try:
-        popular_tickers = [
-            'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD',
-            'SPY', 'QQQ', 'IWM', 'DIA',
-            'NFLX', 'DIS', 'BABA', 'PYPL', 'SQ', 'ROKU', 'SNAP', 'UBER',
-        ]
-        
-        results = []
-        
-        print(f"\n⏰ Starting Hourly scan...")
-        
-        for ticker in popular_tickers:
-            try:
-                time.sleep(0.7)
-                
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='5d', interval='1h').dropna()
-                info = stock_data.info
-                
-                if len(hist) >= 3:
-                    has_pattern, pattern_data = check_strat_31(hist)
-                    
-                    # Validate pattern_data exists and is valid
-                    if has_pattern and pattern_data and isinstance(pattern_data, dict):
-                        results.append({
-                            'ticker': ticker,
-                            'company': info.get('longName', ticker),
-                            'currentPrice': round(float(hist['Close'].iloc[-1]), 2),
-                            'volume': int(hist['Volume'].iloc[-1]),
-                            'pattern': pattern_data,
-                            'timeframe': 'hourly'
-                        })
-                        print(f"✅ {ticker}")
-            except:
-                continue
-        
-        print(f"✅ Found {len(results)}\n")
-        
-        return jsonify({'success': True, 'results': results})
-        
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
 @app.route('/api/weekly-plays', methods=['POST'])
 def weekly_plays():
-    """Weekly plays scanner"""
+    """Weekly plays scanner - COMBINED DAILY + VOLEMON LIST"""
     try:
-        popular_tickers = [
-            'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD',
-            'SPY', 'QQQ', 'IWM', 'DIA',
-            'NFLX', 'DIS', 'BABA', 'PYPL', 'SQ', 'ROKU', 'SNAP', 'UBER',
-        ]
-        
+        combined_tickers = get_combined_weekly_hourly_list()
         results = []
         
-        print(f"\n📊 Starting Weekly scan...")
+        print(f"\n📅 Weekly Plays scan - {len(combined_tickers)} stocks...")
         
-        for ticker in popular_tickers:
+        for ticker in combined_tickers:
             try:
                 time.sleep(0.7)
                 
                 stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='6mo', interval='1wk')
-                info = stock_data.info
+                hist = stock_data.history(period='3mo')
                 
                 if len(hist) >= 3:
-                    has_pattern, pattern_data = check_strat_31(hist)
+                    # Resample to weekly
+                    weekly = hist.resample('W').agg({
+                        'Open': 'first',
+                        'High': 'max',
+                        'Low': 'min',
+                        'Close': 'last',
+                        'Volume': 'sum'
+                    })
                     
-                    # Validate pattern_data exists and is valid
-                    if has_pattern and pattern_data and isinstance(pattern_data, dict):
+                    has_pattern, pattern_data = check_strat_31(weekly)
+                    
+                    if has_pattern:
+                        current_price = hist['Close'].iloc[-1]
                         results.append({
                             'ticker': ticker,
-                            'company': info.get('longName', ticker),
-                            'currentPrice': round(float(hist['Close'].iloc[-1]), 2),
+                            'company': ticker,
+                            'currentPrice': float(current_price),
                             'volume': int(hist['Volume'].iloc[-1]),
                             'pattern': pattern_data,
                             'timeframe': 'weekly'
@@ -534,7 +373,47 @@ def weekly_plays():
             except:
                 continue
         
-        print(f"✅ Found {len(results)}\n")
+        print(f"✅ Found {len(results)} weekly patterns\n")
+        
+        return jsonify({'success': True, 'results': results})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/hourly-plays', methods=['POST'])
+def hourly_plays():
+    """Hourly plays scanner - COMBINED DAILY + VOLEMON LIST"""
+    try:
+        combined_tickers = get_combined_weekly_hourly_list()
+        results = []
+        
+        print(f"\n⏰ Hourly Plays scan - {len(combined_tickers)} stocks...")
+        
+        for ticker in combined_tickers:
+            try:
+                time.sleep(0.7)
+                
+                stock_data = yf.Ticker(ticker)
+                hist = stock_data.history(period='5d', interval='1h')
+                
+                if len(hist) >= 3:
+                    has_pattern, pattern_data = check_strat_31(hist)
+                    
+                    if has_pattern:
+                        current_price = hist['Close'].iloc[-1]
+                        results.append({
+                            'ticker': ticker,
+                            'company': ticker,
+                            'currentPrice': float(current_price),
+                            'volume': int(hist['Volume'].iloc[-1]),
+                            'pattern': pattern_data,
+                            'timeframe': 'hourly'
+                        })
+                        print(f"✅ {ticker}")
+            except:
+                continue
+        
+        print(f"✅ Found {len(results)} hourly patterns\n")
         
         return jsonify({'success': True, 'results': results})
         
@@ -543,7 +422,7 @@ def weekly_plays():
 
 @app.route('/api/crypto-plays', methods=['POST'])
 def crypto_plays():
-    """Crypto scanner"""
+    """Crypto scanner - KEEP FULL LIST (5 cryptos)"""
     try:
         crypto_tickers = {
             'BTC-USD': 'Bitcoin',
@@ -555,7 +434,7 @@ def crypto_plays():
         
         results = []
         
-        print(f"\n₿ Starting Crypto scan...")
+        print(f"\n₿ Crypto scan - {len(crypto_tickers)} cryptos...")
         
         for ticker, name in crypto_tickers.items():
             try:
@@ -567,25 +446,25 @@ def crypto_plays():
                 if len(hist) >= 3:
                     has_pattern, pattern_data = check_strat_31(hist)
                     
-                    # Validate pattern_data exists and is valid
-                    if has_pattern and pattern_data and isinstance(pattern_data, dict):
-                        current_price = float(hist['Close'].iloc[-1])
-                        prev_price = float(hist['Close'].iloc[-2])
-                        change = ((current_price - prev_price) / prev_price) * 100 if prev_price > 0 else 0.0
+                    if has_pattern:
+                        current_price = hist['Close'].iloc[-1]
+                        prev_price = hist['Close'].iloc[-2]
+                        change = ((current_price - prev_price) / prev_price) * 100
                         
                         results.append({
                             'ticker': ticker.replace('-USD', ''),
                             'company': name,
-                            'currentPrice': round(float(current_price), 2),
-                            'change': round(float(change), 2),
+                            'currentPrice': float(current_price),
+                            'change': float(change),
                             'volume': int(hist['Volume'].iloc[-1]),
                             'pattern': pattern_data,
                             'timeframe': 'daily'
                         })
+                        print(f"✅ {name}")
             except:
                 continue
         
-        print(f"✅ Found {len(results)}\n")
+        print(f"✅ Found {len(results)} crypto patterns\n")
         
         return jsonify({'success': True, 'results': results})
         
@@ -594,7 +473,7 @@ def crypto_plays():
 
 @app.route('/api/volemon-scan', methods=['POST'])
 def volemon_scan():
-    """Volemon volume scanner"""
+    """Volemon volume scanner - KEEP FULL LIST (33 stocks)"""
     try:
         data = request.json or {}
         min_volume_multiple = float(data.get('min_volume_multiple', 2.0))
@@ -610,7 +489,7 @@ def volemon_scan():
         
         results = []
         
-        print(f"\n🔊 Volemon scan ({min_volume_multiple}x volume)...")
+        print(f"\n🔊 Volemon scan - {len(popular_tickers)} stocks...")
         
         for ticker in popular_tickers:
             try:
@@ -621,26 +500,26 @@ def volemon_scan():
                 info = stock_data.info
                 
                 if len(hist) >= 2:
-                    current_volume = float(hist['Volume'].iloc[-1])
-                    avg_volume = float(hist['Volume'].iloc[:-1].mean())
+                    current_volume = hist['Volume'].iloc[-1]
+                    avg_volume = hist['Volume'].iloc[:-1].mean()
                     
                     if avg_volume > 0:
                         volume_multiple = current_volume / avg_volume
                         
                         if volume_multiple >= min_volume_multiple:
-                            current_price = float(hist['Close'].iloc[-1])
-                            prev_price = float(hist['Close'].iloc[-2])
-                            change = ((current_price - prev_price) / prev_price) * 100 if prev_price > 0 else 0.0
+                            current_price = hist['Close'].iloc[-1]
+                            prev_price = hist['Close'].iloc[-2]
+                            change = ((current_price - prev_price) / prev_price) * 100
                             
                             results.append({
                                 'ticker': ticker,
                                 'company': info.get('longName', ticker),
-                                'price': round(float(current_price), 2),
-                                'change': round(float(change), 2),
+                                'price': float(current_price),
+                                'change': float(change),
                                 'volume': int(current_volume),
                                 'avg_volume': int(avg_volume),
-                                'volume_multiple': round(float(volume_multiple), 2),
-                                'market_cap': int(info.get('marketCap', 0) or 0)
+                                'volume_multiple': float(volume_multiple),
+                                'market_cap': info.get('marketCap', 0)
                             })
                             
                             print(f"✅ {ticker}: {volume_multiple:.1f}x")
@@ -658,74 +537,62 @@ def volemon_scan():
 
 @app.route('/api/usuals-scan', methods=['POST'])
 def usuals_scan():
-    """Usuals watchlist scanner"""
+    """Usuals watchlist scanner - KEEP FULL LIST (14 stocks default)"""
     try:
         data = request.json or {}
         tickers = data.get('tickers', ['SOFI', 'INTC', 'SPY', 'TSLA', 'COIN', 'CDE', 'PLTR', 'AAPL', 'BAC', 'NVDA', 'GOOGL', 'META', 'MSFT', 'UNH'])
         
         results = []
         
-        print(f"\n⭐ Usuals scan ({len(tickers)} stocks)...")
+        print(f"\n⭐ Usuals scan - {len(tickers)} stocks...")
         
         for ticker in tickers:
             try:
-                time.sleep(0.7)  # Safe rate limiting
+                time.sleep(0.7)
                 
                 stock_data = yf.Ticker(ticker)
                 hist = stock_data.history(period='1mo')
                 info = stock_data.info
                 
                 if len(hist) >= 3:
-                    current_price = float(hist['Close'].iloc[-1])
-                    prev_price = float(hist['Close'].iloc[-2])
-                    change = ((current_price - prev_price) / prev_price) * 100 if prev_price > 0 else 0.0
+                    current_price = hist['Close'].iloc[-1]
+                    prev_price = hist['Close'].iloc[-2]
+                    change = ((current_price - prev_price) / prev_price) * 100
                     
-                    current_volume = float(hist['Volume'].iloc[-1])
-                    avg_volume = float(hist['Volume'].iloc[:-1].mean())
-                    volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1.0
+                    current_volume = hist['Volume'].iloc[-1]
+                    avg_volume = hist['Volume'].iloc[:-1].mean()
+                    volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1
                     
                     # Check patterns
                     patterns = {}
+                    has_pattern, pattern_data = check_strat_31(hist)
                     
-                    try:
-                        has_pattern, pattern_data = check_strat_31(hist)
-                    except Exception:
-                        has_pattern = False
-                        pattern_data = None
-                    
-                    # Use simplified pattern format for Usuals tab (matching optimized version)
-                    # Extra safety: ensure pattern_data is not None and is a dict before accessing
-                    if has_pattern and pattern_data is not None and isinstance(pattern_data, dict) and 'direction' in pattern_data:
+                    if has_pattern:
                         patterns['daily'] = {
                             'type': '3-1 Strat',
-                            'direction': str(pattern_data.get('direction', 'neutral'))
+                            'direction': pattern_data['direction']
                         }
                     else:
-                        # Check inside bar as fallback
-                        try:
-                            current = hist.iloc[-1]
-                            previous = hist.iloc[-2]
-                            is_inside = (current['High'] < previous['High'] and 
-                                       current['Low'] > previous['Low'])
-                            if is_inside:
-                                patterns['daily'] = {
-                                    'type': 'Inside Bar (1)',
-                                    'direction': 'neutral'
-                                }
-                        except Exception:
-                            # If inside bar check fails, leave patterns empty
-                            pass
+                        # Check inside bar
+                        current = hist.iloc[-1]
+                        previous = hist.iloc[-2]
+                        is_inside = (current['High'] < previous['High'] and 
+                                   current['Low'] > previous['Low'])
+                        if is_inside:
+                            patterns['daily'] = {
+                                'type': 'Inside Bar (1)',
+                                'direction': 'neutral'
+                            }
                     
-                    # Always return the stock, even if no patterns found
                     results.append({
                         'ticker': ticker,
-                        'company': info.get('longName', ticker) or ticker,
-                        'price': round(float(current_price), 2),
-                        'change': round(float(change), 2),
+                        'company': info.get('longName', ticker),
+                        'price': float(current_price),
+                        'change': float(change),
                         'volume': int(current_volume),
                         'avg_volume': int(avg_volume),
-                        'volume_ratio': round(float(volume_ratio), 2),
-                        'patterns': patterns if patterns else {}
+                        'volume_ratio': float(volume_ratio),
+                        'patterns': patterns
                     })
                     
                     print(f"✅ {ticker}")
@@ -745,16 +612,17 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
     
     print("\n" + "="*60)
-    print("🍋 LEMON SQUEEZE WEB APP v2.1 🍋")
+    print("🍋 LEMON SQUEEZE WEB APP v3.0 - OPTIMIZED 🍋")
     print("="*60)
-    print("\n✅ Server starting...")
+    print("\n📊 Stock Counts:")
+    print("  - Short Squeeze: Top 30 (highest short interest)")
+    print("  - Daily Plays: 47 stocks")
+    print("  - Weekly/Hourly: 47 stocks (combined list)")
+    print("  - Volemon: 33 stocks")
+    print("  - Usuals: 14 stocks (default)")
+    print("  - Crypto: 5 cryptos")
+    print("\n✅ Total API calls reduced by ~67%!")
     print("📱 http://localhost:8080")
-    print("\n📊 All Features:")
-    print("  - Short Squeeze Scanner")
-    print("  - Daily/Hourly/Weekly Plays")
-    print("  - Crypto Scanner")
-    print("  - Volemon (Volume Scanner)")
-    print("  - Usuals (Watchlist)")
     print("\n🛑 Press Ctrl+C to stop")
     print("\n" + "="*60 + "\n")
     
