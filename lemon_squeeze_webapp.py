@@ -81,10 +81,11 @@ def calculate_risk_score(short_interest, daily_change, volume_ratio, days_to_cov
 def check_strat_31(hist):
     """
     ULTRA-ACCURATE: 100% reliable pattern detection
+    - Detects 3-1 patterns (Outside bar + Inside bar)
+    - Detects standalone Inside bars
     - Strict validation for data quality
     - Minimum size requirements (filters noise)
     - Clear mathematical definitions
-    - No ambiguous edge cases
     """
     if len(hist) < 2:
         return False, None
@@ -109,24 +110,21 @@ def check_strat_31(hist):
     # ========================================
     # VALIDATION: Data Quality Check
     # ========================================
-    # Ensure valid OHLC data (no zeros, no invalid values)
     if any([
         curr_high <= 0, curr_low <= 0, curr_open <= 0, curr_close <= 0,
         prev_high <= 0, prev_low <= 0
     ]):
         return False, None
     
-    # Ensure High >= Low (sanity check)
     if curr_high < curr_low or prev_high < prev_low:
         return False, None
     
     # ========================================
     # INSIDE BAR DETECTION (Strict)
     # ========================================
-    # Current bar must be STRICTLY inside previous bar (not equal)
     is_inside_bar = (
-        curr_high < prev_high and  # STRICTLY less than (not <=)
-        curr_low > prev_low         # STRICTLY greater than (not >=)
+        curr_high < prev_high and  # STRICTLY less than
+        curr_low > prev_low         # STRICTLY greater than
     )
     
     # Additional validation: Inside bar should be noticeably smaller
@@ -138,8 +136,7 @@ def check_strat_31(hist):
         if curr_range >= prev_range * 0.95:
             is_inside_bar = False
         
-        # Minimum range check (filters noise on low volatility)
-        # Bar should have at least 0.1% range relative to price
+        # Minimum range check (filters noise)
         if prev_range > 0 and (curr_range / curr_close) < 0.001:
             is_inside_bar = False
     
@@ -161,8 +158,8 @@ def check_strat_31(hist):
         if bp_high and bp_low and bp_high > bp_low:
             # STRICT Outside Bar: Previous breaks BOTH high AND low
             is_outside_bar = (
-                prev_high > bp_high and  # Break above
-                prev_low < bp_low        # Break below
+                prev_high > bp_high and
+                prev_low < bp_low
             )
             
             # Additional validation: Outside bar should be larger
@@ -178,7 +175,6 @@ def check_strat_31(hist):
                 high_expansion = prev_high - bp_high
                 low_expansion = bp_low - prev_low
                 
-                # Both sides should expand (not just wick)
                 min_expansion = bp_range * 0.02  # 2% of base range
                 if high_expansion < min_expansion or low_expansion < min_expansion:
                     is_outside_bar = False
@@ -192,9 +188,8 @@ def check_strat_31(hist):
                 if curr_range < prev_range * 0.8:
                     pattern_data = {
                         'type': '3-1',
-                        'direction': direction,
                         'has_pattern': True,
-                        'strength': 'High',
+                        'direction': direction,
                         'three_candle': {
                             'high': float(prev_high),
                             'low': float(prev_low),
@@ -217,9 +212,8 @@ def check_strat_31(hist):
     if is_inside_bar:
         pattern_data = {
             'type': 'Inside',
-            'direction': direction,
             'has_pattern': True,
-            'strength': 'Moderate',
+            'direction': direction,
             'description': 'Inside Bar - Consolidation pattern',
             'one_candle': {
                 'high': float(curr_high),
@@ -504,130 +498,6 @@ def weekly_plays():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/find-a-play', methods=['POST'])
-def find_a_play():
-    """
-    🎯 FIND A PLAY - Multi-Timeframe Scanner
-    Scans 47 stocks across Daily, Weekly, and Hourly timeframes
-    Shows pattern alignment strength (1-3 stars)
-    """
-    try:
-        tickers = get_find_a_play_tickers()
-        results = []
-        total = len(tickers)
-        
-        print(f"\n🎯 Find A Play - Multi-Timeframe scan ({total} stocks)...")
-        
-        for i, ticker in enumerate(tickers, 1):
-            try:
-                time.sleep(0.7)
-                
-                stock_data = yf.Ticker(ticker)
-                info = stock_data.info
-                
-                # Get daily data (1 month)
-                daily_hist = stock_data.history(period='1mo')
-                
-                if len(daily_hist) < 3:
-                    continue
-                
-                # Current price and volume info
-                current_price = daily_hist['Close'].iloc[-1]
-                previous_close = daily_hist['Close'].iloc[-2]
-                daily_change = ((current_price - previous_close) / previous_close) * 100
-                current_volume = daily_hist['Volume'].iloc[-1]
-                avg_volume = daily_hist['Volume'].mean()
-                
-                # Check Daily timeframe
-                has_daily, daily_pattern = check_strat_31(daily_hist)
-                
-                # Check Weekly timeframe (resample daily to weekly)
-                weekly_hist = daily_hist.resample('W').agg({
-                    'Open': 'first',
-                    'High': 'max',
-                    'Low': 'min',
-                    'Close': 'last',
-                    'Volume': 'sum'
-                })
-                has_weekly, weekly_pattern = check_strat_31(weekly_hist)
-                
-                # Check Hourly timeframe (last 5 days)
-                hourly_hist = stock_data.history(period='5d', interval='1h')
-                has_hourly, hourly_pattern = False, None
-                if len(hourly_hist) >= 3:
-                    has_hourly, hourly_pattern = check_strat_31(hourly_hist)
-                
-                # Calculate strength score (0-3)
-                strength = sum([has_daily, has_weekly, has_hourly])
-                
-                # Only include if at least one pattern found
-                if strength > 0:
-                    result = {
-                        'ticker': ticker,
-                        'company': info.get('longName', ticker),
-                        'currentPrice': float(current_price),
-                        'dailyChange': float(daily_change),
-                        'volume': int(current_volume),
-                        'avgVolume': int(avg_volume),
-                        'marketCap': info.get('marketCap', 0),
-                        'strength': strength,
-                        'patterns': {
-                            'daily': daily_pattern if has_daily else None,
-                            'weekly': weekly_pattern if has_weekly else None,
-                            'hourly': hourly_pattern if has_hourly else None
-                        }
-                    }
-                    results.append(result)
-                    
-                    # Print progress
-                    stars = '⭐' * strength
-                    print(f"{stars} {ticker} ({i}/{total})")
-                
-            except Exception as e:
-                print(f"❌ {ticker}: {e}")
-                continue
-        
-        # Sort by strength first, then by daily change
-        results.sort(key=lambda x: (x['strength'], x['dailyChange']), reverse=True)
-        
-        print(f"\n✅ Found {len(results)} plays with patterns!")
-        print(f"   3-Star plays: {sum(1 for r in results if r['strength'] == 3)}")
-        print(f"   2-Star plays: {sum(1 for r in results if r['strength'] == 2)}")
-        print(f"   1-Star plays: {sum(1 for r in results if r['strength'] == 1)}\n")
-        
-        return jsonify({
-            'success': True,
-            'results': results,
-            'timestamp': datetime.now().isoformat(),
-            'stats': {
-                'total_scanned': total,
-                'patterns_found': len(results),
-                'three_star': sum(1 for r in results if r['strength'] == 3),
-                'two_star': sum(1 for r in results if r['strength'] == 2),
-                'one_star': sum(1 for r in results if r['strength'] == 1)
-            }
-        })
-        
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-def get_find_a_play_tickers():
-    """
-    Stock list for Find A Play scanner
-    Combined Daily + Volemon lists (47 stocks total)
-    """
-    return [
-        'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD',
-        'SPY', 'QQQ', 'IWM', 'DIA',
-        'NFLX', 'DIS', 'BABA', 'PYPL', 'SQ', 'ROKU', 'SNAP', 'UBER',
-        'F', 'GM', 'NIO', 'LCID', 'RIVN',
-        'BA', 'GE', 'CAT', 'DE',
-        'JPM', 'BAC', 'GS', 'MS', 'C',
-        'XOM', 'CVX', 'COP', 'SLB',
-        'PFE', 'JNJ', 'MRNA', 'BNTX',
-        'WMT', 'TGT', 'COST', 'HD', 'LOW',
-    ]
-
 @app.route('/api/crypto-plays', methods=['POST'])
 def crypto_plays():
     """Crypto scanner"""
@@ -770,16 +640,26 @@ def usuals_scan():
                     avg_volume = hist['Volume'].iloc[:-1].mean()
                     volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1
                     
-                    # Check patterns using improved detection
+                    # Check patterns
+                    patterns = {}
                     has_pattern, pattern_data = check_strat_31(hist)
                     
-                    patterns = {}
-                    if has_pattern and pattern_data:
-                        # Pattern detected (3-1 or Inside bar)
+                    if has_pattern:
                         patterns['daily'] = {
-                            'type': pattern_data.get('type', 'Unknown'),
-                            'direction': pattern_data.get('direction', 'neutral')
+                            'type': '3-1 Strat',
+                            'direction': pattern_data['direction']
                         }
+                    else:
+                        # Check inside bar
+                        current = hist.iloc[-1]
+                        previous = hist.iloc[-2]
+                        is_inside = (current['High'] < previous['High'] and 
+                                   current['Low'] > previous['Low'])
+                        if is_inside:
+                            patterns['daily'] = {
+                                'type': 'Inside Bar (1)',
+                                'direction': 'neutral'
+                            }
                     
                     results.append({
                         'ticker': ticker,
