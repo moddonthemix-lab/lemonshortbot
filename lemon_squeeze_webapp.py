@@ -104,7 +104,7 @@ def check_strat_31(hist):
         prev_high = float(previous['High'])
         prev_low = float(previous['Low'])
         prev_close = float(previous['Close'])
-    except (ValueError, KeyError):
+    except (ValueError, KeyError, TypeError):
         return False, None
     
     # ========================================
@@ -145,12 +145,21 @@ def check_strat_31(hist):
     
     # Helper function to safely get date string
     def get_date_string(candle):
+        """Safely extract date string from candle with multiple fallbacks"""
         try:
-            if hasattr(candle.name, 'strftime'):
+            # Try strftime first
+            if hasattr(candle, 'name') and hasattr(candle.name, 'strftime'):
                 return candle.name.strftime('%Y-%m-%d')
+            # Try converting index to string
+            elif hasattr(candle, 'name'):
+                date_str = str(candle.name)
+                # Extract YYYY-MM-DD if present
+                if len(date_str) >= 10:
+                    return date_str[:10]
+                return date_str
             else:
-                return str(candle.name)[:10]  # Get first 10 chars (YYYY-MM-DD)
-        except:
+                return "N/A"
+        except Exception as e:
             return "N/A"
     
     # ========================================
@@ -196,6 +205,16 @@ def check_strat_31(hist):
                 
                 # Inside bar should be notably smaller (at least 20% smaller)
                 if curr_range < prev_range * 0.8:
+                    # Get dates safely
+                    prev_date = get_date_string(previous)
+                    curr_date = get_date_string(current)
+                    
+                    # Ensure all dates are valid strings
+                    if not prev_date:
+                        prev_date = "N/A"
+                    if not curr_date:
+                        curr_date = "N/A"
+                    
                     # Ensure all values are valid floats
                     pattern_data = {
                         'type': '3-1',
@@ -205,14 +224,14 @@ def check_strat_31(hist):
                             'high': round(float(prev_high), 2),
                             'low': round(float(prev_low), 2),
                             'close': round(float(prev_close), 2),
-                            'date': get_date_string(previous)
+                            'date': str(prev_date)
                         },
                         'one_candle': {
                             'high': round(float(curr_high), 2),
                             'low': round(float(curr_low), 2),
                             'close': round(float(curr_close), 2),
                             'open': round(float(curr_open), 2),
-                            'date': get_date_string(current)
+                            'date': str(curr_date)
                         }
                     }
                     return True, pattern_data
@@ -221,6 +240,16 @@ def check_strat_31(hist):
     # STANDALONE INSIDE BAR
     # ========================================
     if is_inside_bar:
+        # Get dates safely
+        prev_date = get_date_string(previous)
+        curr_date = get_date_string(current)
+        
+        # Ensure all dates are valid strings
+        if not prev_date:
+            prev_date = "N/A"
+        if not curr_date:
+            curr_date = "N/A"
+            
         pattern_data = {
             'type': 'Inside',
             'has_pattern': True,
@@ -231,12 +260,12 @@ def check_strat_31(hist):
                 'low': round(float(curr_low), 2),
                 'close': round(float(curr_close), 2),
                 'open': round(float(curr_open), 2),
-                'date': get_date_string(current)
+                'date': str(curr_date)
             },
             'previous_candle': {
                 'high': round(float(prev_high), 2),
                 'low': round(float(prev_low), 2),
-                'date': get_date_string(previous)
+                'date': str(prev_date)
             }
         }
         return True, pattern_data
@@ -381,7 +410,8 @@ def daily_plays():
                 if len(hist) >= 3:
                     has_pattern, pattern_data = check_strat_31(hist)
                     
-                    if has_pattern:
+                    # Validate pattern_data exists and has required fields
+                    if has_pattern and pattern_data and isinstance(pattern_data, dict):
                         current_price = float(hist['Close'].iloc[-1])
                         previous_close = float(hist['Close'].iloc[-2])
                         daily_change = ((current_price - previous_close) / previous_close) * 100 if previous_close > 0 else 0.0
@@ -397,7 +427,7 @@ def daily_plays():
                             'pattern': pattern_data
                         })
                         
-                        print(f"✅ {ticker}: {pattern_data['direction']} ({i}/{total})")
+                        print(f"✅ {ticker}: {pattern_data.get('direction', 'unknown')} ({i}/{total})")
                 
                 if i % 10 == 0:
                     print(f"📊 Progress: {i}/{total}")
@@ -444,7 +474,8 @@ def hourly_plays():
                 if len(hist) >= 3:
                     has_pattern, pattern_data = check_strat_31(hist)
                     
-                    if has_pattern:
+                    # Validate pattern_data exists and is valid
+                    if has_pattern and pattern_data and isinstance(pattern_data, dict):
                         results.append({
                             'ticker': ticker,
                             'company': info.get('longName', ticker),
@@ -489,7 +520,8 @@ def weekly_plays():
                 if len(hist) >= 3:
                     has_pattern, pattern_data = check_strat_31(hist)
                     
-                    if has_pattern:
+                    # Validate pattern_data exists and is valid
+                    if has_pattern and pattern_data and isinstance(pattern_data, dict):
                         results.append({
                             'ticker': ticker,
                             'company': info.get('longName', ticker),
@@ -535,7 +567,8 @@ def crypto_plays():
                 if len(hist) >= 3:
                     has_pattern, pattern_data = check_strat_31(hist)
                     
-                    if has_pattern:
+                    # Validate pattern_data exists and is valid
+                    if has_pattern and pattern_data and isinstance(pattern_data, dict):
                         current_price = float(hist['Close'].iloc[-1])
                         prev_price = float(hist['Close'].iloc[-2])
                         change = ((current_price - prev_price) / prev_price) * 100 if prev_price > 0 else 0.0
@@ -655,10 +688,11 @@ def usuals_scan():
                     patterns = {}
                     has_pattern, pattern_data = check_strat_31(hist)
                     
-                    if has_pattern:
+                    # Validate pattern_data exists and is valid
+                    if has_pattern and pattern_data and isinstance(pattern_data, dict):
                         patterns['daily'] = {
                             'type': '3-1 Strat',
-                            'direction': pattern_data['direction']
+                            'direction': pattern_data.get('direction', 'neutral')
                         }
                     else:
                         # Check inside bar
