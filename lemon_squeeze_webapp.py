@@ -1,17 +1,14 @@
 """
-🍋 LEMON SQUEEZE WEB APP v3.0 - OPTIMIZED & REDUCED 🍋
-Changes:
-- Short Squeeze: Top 30 only (from CSV)
-- Daily Plays: Keep full list (47 stocks)
-- Weekly/Hourly Plays: Daily list + Volemon list combined
-- Volemon: Keep full list (33 stocks)
-- Usuals: Keep full list (14 stocks)
-- Crypto: Keep full list (5 cryptos)
-
-Total API calls reduced from 493-1,393 to ~200 per complete scan!
+🍋 LEMON SQUEEZE WEB APP v3.0 - WITH COMMUNITY CHAT 🍋
+Added Features:
+- Community chat for authenticated users
+- User profile management
+- Trader badges based on activity
+- Online presence tracking
 """
 
 from flask import Flask, render_template, jsonify, request, send_from_directory
+from flask_cors import CORS
 import yfinance as yf
 from datetime import datetime
 import time
@@ -19,6 +16,12 @@ import os
 import json
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
+
+# Chat storage (in production, use a real database)
+chat_messages = []
+online_users = {}
+user_profiles = {}
 
 # Load high short interest stocks
 def load_stock_data():
@@ -98,164 +101,237 @@ def check_strat_31(hist):
     is_three = (previous['High'] > before_prev['High'] and 
                 previous['Low'] < before_prev['Low'])
     
-    is_one = (current['High'] < previous['High'] and 
+    if not is_three:
+        return False, None
+    
+    is_one = (current['High'] > previous['High'] and 
               current['Low'] > previous['Low'])
     
-    direction = "bullish" if current['Close'] > current['Open'] else "bearish"
+    if is_one:
+        pattern_type = "3-1 Bullish"
+        direction = "bullish"
+        return True, {"type": pattern_type, "direction": direction}
     
-    if is_three and is_one:
-        pattern_data = {
-            'has_pattern': True,
-            'direction': direction,
-            'three_candle': {
-                'high': float(previous['High']),
-                'low': float(previous['Low']),
-                'close': float(previous['Close']),
-                'date': previous.name.strftime('%Y-%m-%d')
-            },
-            'one_candle': {
-                'high': float(current['High']),
-                'low': float(current['Low']),
-                'close': float(current['Close']),
-                'open': float(current['Open']),
-                'date': current.name.strftime('%Y-%m-%d')
-            }
-        }
-        return True, pattern_data
+    is_one_down = (current['High'] < previous['High'] and 
+                   current['Low'] < previous['Low'])
+    
+    if is_one_down:
+        pattern_type = "3-1 Bearish"
+        direction = "bearish"
+        return True, {"type": pattern_type, "direction": direction}
     
     return False, None
 
-# COMBINED STOCK LIST FOR WEEKLY/HOURLY PLAYS
-def get_combined_weekly_hourly_list():
-    """
-    Combine Daily Plays + Volemon lists for Weekly/Hourly scans
-    Remove duplicates
-    """
-    daily_plays = [
-        'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD',
-        'SPY', 'QQQ', 'IWM', 'DIA',
-        'NFLX', 'DIS', 'BABA', 'PYPL', 'SQ', 'ROKU', 'SNAP', 'UBER',
-        'F', 'GM', 'NIO', 'LCID', 'RIVN',
-        'BA', 'GE', 'CAT', 'DE',
-        'JPM', 'BAC', 'GS', 'MS', 'C',
-        'XOM', 'CVX', 'COP', 'SLB',
-        'PFE', 'JNJ', 'MRNA', 'BNTX',
-        'WMT', 'TGT', 'COST', 'HD', 'LOW',
-    ]
+# ============================================
+# CHAT API ENDPOINTS
+# ============================================
+
+@app.route('/api/chat/messages', methods=['GET'])
+def get_chat_messages():
+    """Get recent chat messages"""
+    limit = int(request.args.get('limit', 50))
+    return jsonify({
+        'success': True,
+        'messages': chat_messages[-limit:] if len(chat_messages) > limit else chat_messages
+    })
+
+@app.route('/api/chat/send', methods=['POST'])
+def send_chat_message():
+    """Send a chat message"""
+    data = request.json
     
-    volemon = [
-        'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD',
-        'SPY', 'QQQ', 'IWM', 'DIA',
-        'NFLX', 'DIS', 'BABA', 'PYPL', 'SQ', 'ROKU', 'SNAP', 'UBER',
-        'F', 'GM', 'NIO', 'LCID', 'RIVN',
-        'JPM', 'BAC', 'GS', 'MS', 'C',
-        'XOM', 'CVX', 'COP', 'SLB',
-    ]
+    # Validate required fields
+    if not all(k in data for k in ['userId', 'displayName', 'text']):
+        return jsonify({'success': False, 'error': 'Missing required fields'}), 400
     
-    # Combine and remove duplicates
-    combined = list(set(daily_plays + volemon))
-    return sorted(combined)
+    # Get or create user profile
+    user_id = data['userId']
+    if user_id not in user_profiles:
+        user_profiles[user_id] = {
+            'userId': user_id,
+            'displayName': data['displayName'],
+            'messageCount': 0,
+            'joinedAt': int(time.time() * 1000)
+        }
+    
+    # Increment message count
+    user_profiles[user_id]['messageCount'] += 1
+    user_profiles[user_id]['lastSeen'] = int(time.time() * 1000)
+    
+    # Create message
+    message = {
+        'id': f"msg_{int(time.time() * 1000)}_{len(chat_messages)}",
+        'userId': user_id,
+        'displayName': data['displayName'],
+        'text': data['text'][:500],  # Limit message length
+        'timestamp': int(time.time() * 1000),
+        'messageCount': user_profiles[user_id]['messageCount']
+    }
+    
+    chat_messages.append(message)
+    
+    # Keep only last 200 messages in memory
+    if len(chat_messages) > 200:
+        chat_messages.pop(0)
+    
+    return jsonify({
+        'success': True,
+        'message': message
+    })
+
+@app.route('/api/chat/online', methods=['GET'])
+def get_online_users():
+    """Get count of online users"""
+    # Clean up stale users (offline for > 5 minutes)
+    current_time = int(time.time() * 1000)
+    stale_users = [uid for uid, data in online_users.items() 
+                   if current_time - data['lastSeen'] > 300000]
+    
+    for uid in stale_users:
+        del online_users[uid]
+    
+    return jsonify({
+        'success': True,
+        'count': len(online_users),
+        'users': list(online_users.values())
+    })
+
+@app.route('/api/chat/presence', methods=['POST'])
+def update_presence():
+    """Update user online presence"""
+    data = request.json
+    
+    if 'userId' not in data or 'displayName' not in data:
+        return jsonify({'success': False, 'error': 'Missing required fields'}), 400
+    
+    user_id = data['userId']
+    online_users[user_id] = {
+        'userId': user_id,
+        'displayName': data['displayName'],
+        'online': True,
+        'lastSeen': int(time.time() * 1000)
+    }
+    
+    return jsonify({'success': True})
+
+@app.route('/api/chat/presence/<user_id>', methods=['DELETE'])
+def remove_presence(user_id):
+    """Remove user from online list"""
+    if user_id in online_users:
+        del online_users[user_id]
+    return jsonify({'success': True})
+
+@app.route('/api/user/profile/<user_id>', methods=['GET'])
+def get_user_profile(user_id):
+    """Get user profile"""
+    if user_id in user_profiles:
+        return jsonify({
+            'success': True,
+            'profile': user_profiles[user_id]
+        })
+    else:
+        return jsonify({
+            'success': False,
+            'error': 'User not found'
+        }), 404
+
+@app.route('/api/user/stats', methods=['GET'])
+def get_user_stats():
+    """Get overall user statistics"""
+    total_messages = len(chat_messages)
+    total_users = len(user_profiles)
+    online_count = len(online_users)
+    
+    # Get top contributors
+    top_users = sorted(user_profiles.values(), 
+                       key=lambda x: x.get('messageCount', 0), 
+                       reverse=True)[:10]
+    
+    return jsonify({
+        'success': True,
+        'stats': {
+            'totalMessages': total_messages,
+            'totalUsers': total_users,
+            'onlineUsers': online_count,
+            'topContributors': top_users
+        }
+    })
+
+# ============================================
+# EXISTING STOCK SCANNING ENDPOINTS
+# ============================================
 
 @app.route('/')
 def index():
-    """Serve the main page"""
-    html_files = [
-        'lemon_squeeze_with_volemon__4_.html',
-        'lemon_squeeze_webapp.html',
-        'lemon_squeeze.html',
-        'index.html'
-    ]
-    
-    for html_file in html_files:
-        if os.path.exists(html_file):
-            return send_from_directory('.', html_file)
-    
-    return "<h1>🍋 Lemon Squeeze - Optimized Backend!</h1>"
+    return send_from_directory('.', 'lemon_squeeze_with_chat.html')
 
-@app.route('/api/scan', methods=['POST'])
-def scan():
-    """API endpoint to scan for squeeze candidates - TOP 30 ONLY"""
+@app.route('/api/scan/squeeze', methods=['GET'])
+def scan_squeeze():
+    """Scan for short squeeze opportunities"""
     try:
-        data = request.json
-        min_short = float(data.get('minShort', 25))
-        min_gain = float(data.get('minGain', 15))
-        min_vol_ratio = float(data.get('minVolRatio', 1.5))
-        min_risk = float(data.get('minRisk', 60))
-        
-        stocks = load_stock_data()  # Already limited to top 30
+        stocks = load_stock_data()
         results = []
         
-        print(f"\n🔍 Short Squeeze Scan - Top {len(stocks)} stocks...")
-        
-        for stock in stocks:
-            ticker = stock['ticker']
-            
+        for stock in stocks[:30]:  # Top 30 only
             try:
-                time.sleep(0.7)  # Rate limiting
+                ticker_obj = yf.Ticker(stock['ticker'])
+                info = ticker_obj.info
+                hist = ticker_obj.history(period='1mo')
                 
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='3mo')
-                info = stock_data.info
+                if len(hist) < 2:
+                    continue
                 
-                if len(hist) >= 2:
-                    current_price = hist['Close'].iloc[-1]
-                    previous_close = hist['Close'].iloc[-2]
-                    daily_change = ((current_price - previous_close) / previous_close) * 100
-                    
-                    current_volume = hist['Volume'].iloc[-1]
-                    avg_volume = hist['Volume'].iloc[-21:-1].mean() if len(hist) > 20 else hist['Volume'].mean()
-                    volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1.0
-                    
-                    float_shares = info.get('floatShares', info.get('sharesOutstanding', 0))
-                    market_cap = info.get('marketCap', 0)
-                    week_high_52 = info.get('fiftyTwoWeekHigh', current_price)
-                    week_low_52 = info.get('fiftyTwoWeekLow', current_price)
-                    
-                    short_shares = (float_shares * stock['short_interest'] / 100) if float_shares > 0 else 0
-                    days_to_cover = short_shares / avg_volume if avg_volume > 0 else 0
-                    
-                    risk_score = calculate_risk_score(
-                        stock['short_interest'],
-                        daily_change,
-                        volume_ratio,
-                        days_to_cover,
-                        float_shares
-                    )
-                    
-                    if (stock['short_interest'] >= min_short and 
-                        daily_change >= min_gain and 
-                        volume_ratio >= min_vol_ratio and
-                        risk_score >= min_risk):
-                        
-                        results.append({
-                            'ticker': ticker,
-                            'company': stock['company'],
-                            'shortInterest': stock['short_interest'],
-                            'previousClose': float(previous_close),
-                            'currentPrice': float(current_price),
-                            'dailyChange': float(daily_change),
-                            'volume': int(current_volume),
-                            'avgVolume': int(avg_volume),
-                            'volumeRatio': float(volume_ratio),
-                            'floatShares': int(float_shares),
-                            'marketCap': int(market_cap),
-                            'daysToCover': float(days_to_cover),
-                            'weekHigh52': float(week_high_52),
-                            'weekLow52': float(week_low_52),
-                            'riskScore': float(risk_score)
-                        })
+                current_price = hist['Close'].iloc[-1]
+                prev_price = hist['Close'].iloc[-2]
+                daily_change = ((current_price - prev_price) / prev_price) * 100
+                
+                volume = hist['Volume'].iloc[-1]
+                avg_volume = hist['Volume'].mean()
+                volume_ratio = volume / avg_volume if avg_volume > 0 else 1
+                
+                float_shares = info.get('floatShares', 0)
+                days_to_cover = info.get('shortRatio', 0)
+                
+                risk_score = calculate_risk_score(
+                    stock['short_interest'],
+                    daily_change,
+                    volume_ratio,
+                    days_to_cover,
+                    float_shares
+                )
+                
+                # Check for patterns
+                has_pattern, pattern_data = check_strat_31(hist)
+                
+                results.append({
+                    'ticker': stock['ticker'],
+                    'company': stock['company'],
+                    'price': float(current_price),
+                    'change': float(daily_change),
+                    'volume': int(volume),
+                    'avg_volume': int(avg_volume),
+                    'volume_ratio': float(volume_ratio),
+                    'short_interest': stock['short_interest'],
+                    'days_to_cover': float(days_to_cover),
+                    'float_shares': int(float_shares),
+                    'risk_score': risk_score,
+                    'has_pattern': has_pattern,
+                    'pattern': pattern_data
+                })
+                
+                time.sleep(0.1)  # Rate limiting
                 
             except Exception as e:
-                print(f"Error on {ticker}: {e}")
+                print(f"Error processing {stock['ticker']}: {e}")
                 continue
         
-        results.sort(key=lambda x: x['riskScore'], reverse=True)
-        
-        print(f"✅ Found {len(results)} squeeze candidates\n")
+        # Sort by risk score
+        results.sort(key=lambda x: x['risk_score'], reverse=True)
         
         return jsonify({
             'success': True,
-            'results': results,
+            'count': len(results),
+            'stocks': results,
             'timestamp': datetime.now().isoformat()
         })
         
@@ -265,365 +341,183 @@ def scan():
             'error': str(e)
         }), 500
 
-@app.route('/api/daily-plays', methods=['POST'])
-def daily_plays():
-    """Daily plays scanner - KEEP FULL LIST (47 stocks)"""
+# Daily Plays List
+DAILY_PLAYS = [
+    "PLTR", "TSLA", "NVDA", "AMD", "AAPL", "MSFT", "GOOGL", "AMZN", "META", "NFLX",
+    "BABA", "NIO", "RIVN", "LCID", "F", "GM", "BA", "GE", "DIS", "PYPL",
+    "SQ", "COIN", "HOOD", "SOFI", "UPST", "RBLX", "U", "SNAP", "PINS", "TWTR",
+    "SHOP", "SE", "MELI", "ABNB", "UBER", "LYFT", "DOCU", "ZM", "DKNG", "PENN",
+    "MRNA", "PFE", "BNTX", "JNJ", "UNH", "CVS", "WMT"
+]
+
+@app.route('/api/scan/daily', methods=['GET'])
+def scan_daily():
+    """Scan daily plays for patterns"""
     try:
-        popular_tickers = [
-            'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD',
-            'SPY', 'QQQ', 'IWM', 'DIA',
-            'NFLX', 'DIS', 'BABA', 'PYPL', 'SQ', 'ROKU', 'SNAP', 'UBER',
-            'F', 'GM', 'NIO', 'LCID', 'RIVN',
-            'BA', 'GE', 'CAT', 'DE',
-            'JPM', 'BAC', 'GS', 'MS', 'C',
-            'XOM', 'CVX', 'COP', 'SLB',
-            'PFE', 'JNJ', 'MRNA', 'BNTX',
-            'WMT', 'TGT', 'COST', 'HD', 'LOW',
-        ]
-        
         results = []
-        total = len(popular_tickers)
         
-        print(f"\n🎯 Daily Plays scan - {total} stocks...")
-        
-        for i, ticker in enumerate(popular_tickers, 1):
+        for ticker in DAILY_PLAYS:
             try:
-                time.sleep(0.7)
+                ticker_obj = yf.Ticker(ticker)
+                hist = ticker_obj.history(period='1d', interval='1d')
                 
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='1mo')
-                info = stock_data.info
+                if len(hist) < 1:
+                    continue
                 
-                if len(hist) >= 3:
-                    has_pattern, pattern_data = check_strat_31(hist)
-                    
-                    if has_pattern:
-                        current_price = hist['Close'].iloc[-1]
-                        previous_close = hist['Close'].iloc[-2]
-                        daily_change = ((current_price - previous_close) / previous_close) * 100
-                        
-                        results.append({
-                            'ticker': ticker,
-                            'company': info.get('longName', ticker),
-                            'currentPrice': float(current_price),
-                            'dailyChange': float(daily_change),
-                            'volume': int(hist['Volume'].iloc[-1]),
-                            'avgVolume': int(hist['Volume'].mean()),
-                            'marketCap': info.get('marketCap', 0),
-                            'pattern': pattern_data,
-                            'timeframe': 'daily'
-                        })
-                        
-                        print(f"✅ {ticker}: {pattern_data['direction']} ({i}/{total})")
+                current_price = hist['Close'].iloc[-1]
+                daily_open = hist['Open'].iloc[-1]
+                daily_change = ((current_price - daily_open) / daily_open) * 100
+                
+                volume = hist['Volume'].iloc[-1]
+                
+                # Check for pattern
+                hist_month = ticker_obj.history(period='1mo')
+                has_pattern, pattern_data = check_strat_31(hist_month)
+                
+                results.append({
+                    'ticker': ticker,
+                    'price': float(current_price),
+                    'change': float(daily_change),
+                    'volume': int(volume),
+                    'has_pattern': has_pattern,
+                    'pattern': pattern_data
+                })
+                
+                time.sleep(0.05)
                 
             except Exception as e:
-                print(f"❌ {ticker}: {e}")
+                print(f"Error processing {ticker}: {e}")
                 continue
-        
-        print(f"✅ Found {len(results)} daily patterns\n")
         
         return jsonify({
             'success': True,
-            'results': results,
+            'count': len(results),
+            'stocks': results,
             'timestamp': datetime.now().isoformat()
         })
         
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
-@app.route('/api/weekly-plays', methods=['POST'])
-def weekly_plays():
-    """Weekly plays scanner - COMBINED DAILY + VOLEMON LIST"""
+# Volemon List
+VOLEMON_LIST = [
+    "SPY", "QQQ", "IWM", "DIA", "TQQQ", "SQQQ", "UPRO", "SPXU", "TNA", "TZA",
+    "UVXY", "VXX", "VIXY", "SVXY", "HYG", "LQD", "TLT", "GLD", "SLV", "USO",
+    "XLE", "XLF", "XLK", "XLV", "XLI", "XLP", "XLU", "XLY", "XLB", "XLRE",
+    "EEM", "EWZ", "FXI"
+]
+
+@app.route('/api/scan/volemon', methods=['GET'])
+def scan_volemon():
+    """Scan Volemon list for high volume"""
     try:
-        combined_tickers = get_combined_weekly_hourly_list()
         results = []
         
-        print(f"\n📅 Weekly Plays scan - {len(combined_tickers)} stocks...")
-        
-        for ticker in combined_tickers:
+        for ticker in VOLEMON_LIST:
             try:
-                time.sleep(0.7)
+                ticker_obj = yf.Ticker(ticker)
+                hist = ticker_obj.history(period='1mo')
                 
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='3mo')
+                if len(hist) < 2:
+                    continue
                 
-                if len(hist) >= 3:
-                    # Resample to weekly
-                    weekly = hist.resample('W').agg({
-                        'Open': 'first',
-                        'High': 'max',
-                        'Low': 'min',
-                        'Close': 'last',
-                        'Volume': 'sum'
-                    })
-                    
-                    has_pattern, pattern_data = check_strat_31(weekly)
-                    
-                    if has_pattern:
-                        current_price = hist['Close'].iloc[-1]
-                        results.append({
-                            'ticker': ticker,
-                            'company': ticker,
-                            'currentPrice': float(current_price),
-                            'volume': int(hist['Volume'].iloc[-1]),
-                            'pattern': pattern_data,
-                            'timeframe': 'weekly'
-                        })
-                        print(f"✅ {ticker}")
-            except:
+                current_price = hist['Close'].iloc[-1]
+                prev_price = hist['Close'].iloc[-2]
+                daily_change = ((current_price - prev_price) / prev_price) * 100
+                
+                volume = hist['Volume'].iloc[-1]
+                avg_volume = hist['Volume'].mean()
+                volume_ratio = volume / avg_volume if avg_volume > 0 else 1
+                
+                results.append({
+                    'ticker': ticker,
+                    'price': float(current_price),
+                    'change': float(daily_change),
+                    'volume': int(volume),
+                    'avg_volume': int(avg_volume),
+                    'volume_ratio': float(volume_ratio)
+                })
+                
+                time.sleep(0.05)
+                
+            except Exception as e:
+                print(f"Error processing {ticker}: {e}")
                 continue
         
-        print(f"✅ Found {len(results)} weekly patterns\n")
+        # Sort by volume ratio
+        results.sort(key=lambda x: x['volume_ratio'], reverse=True)
         
-        return jsonify({'success': True, 'results': results})
-        
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/hourly-plays', methods=['POST'])
-def hourly_plays():
-    """Hourly plays scanner - COMBINED DAILY + VOLEMON LIST"""
-    try:
-        combined_tickers = get_combined_weekly_hourly_list()
-        results = []
-        
-        print(f"\n⏰ Hourly Plays scan - {len(combined_tickers)} stocks...")
-        
-        for ticker in combined_tickers:
-            try:
-                time.sleep(0.7)
-                
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='5d', interval='1h')
-                
-                if len(hist) >= 3:
-                    has_pattern, pattern_data = check_strat_31(hist)
-                    
-                    if has_pattern:
-                        current_price = hist['Close'].iloc[-1]
-                        results.append({
-                            'ticker': ticker,
-                            'company': ticker,
-                            'currentPrice': float(current_price),
-                            'volume': int(hist['Volume'].iloc[-1]),
-                            'pattern': pattern_data,
-                            'timeframe': 'hourly'
-                        })
-                        print(f"✅ {ticker}")
-            except:
-                continue
-        
-        print(f"✅ Found {len(results)} hourly patterns\n")
-        
-        return jsonify({'success': True, 'results': results})
+        return jsonify({
+            'success': True,
+            'count': len(results),
+            'stocks': results,
+            'timestamp': datetime.now().isoformat()
+        })
         
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
-@app.route('/api/crypto-plays', methods=['POST'])
-def crypto_plays():
-    """Crypto scanner - KEEP FULL LIST (5 cryptos)"""
+@app.route('/api/chart/<ticker>/<timeframe>', methods=['GET'])
+def get_chart_data(ticker, timeframe):
+    """Get chart data for a specific ticker and timeframe"""
     try:
-        crypto_tickers = {
-            'BTC-USD': 'Bitcoin',
-            'ETH-USD': 'Ethereum',
-            'XRP-USD': 'Ripple',
-            'SOL-USD': 'Solana',
-            'DOGE-USD': 'Dogecoin'
+        ticker_obj = yf.Ticker(ticker)
+        
+        # Map timeframes to yfinance periods and intervals
+        timeframe_map = {
+            'daily': ('1mo', '1d'),
+            'weekly': ('3mo', '1wk'),
+            'hourly': ('5d', '1h'),
+            'four_hour': ('1mo', '1h')
         }
         
-        results = []
+        period, interval = timeframe_map.get(timeframe, ('1mo', '1d'))
+        hist = ticker_obj.history(period=period, interval=interval)
         
-        print(f"\n₿ Crypto scan - {len(crypto_tickers)} cryptos...")
+        if len(hist) == 0:
+            return jsonify({
+                'success': False,
+                'error': 'No data available'
+            }), 404
         
-        for ticker, name in crypto_tickers.items():
-            try:
-                time.sleep(0.7)
-                
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='1mo')
-                
-                if len(hist) >= 3:
-                    has_pattern, pattern_data = check_strat_31(hist)
-                    
-                    if has_pattern:
-                        current_price = hist['Close'].iloc[-1]
-                        prev_price = hist['Close'].iloc[-2]
-                        change = ((current_price - prev_price) / prev_price) * 100
-                        
-                        results.append({
-                            'ticker': ticker.replace('-USD', ''),
-                            'company': name,
-                            'currentPrice': float(current_price),
-                            'change': float(change),
-                            'volume': int(hist['Volume'].iloc[-1]),
-                            'pattern': pattern_data,
-                            'timeframe': 'daily'
-                        })
-                        print(f"✅ {name}")
-            except:
-                continue
+        # Format data for chart
+        chart_data = []
+        for index, row in hist.iterrows():
+            chart_data.append({
+                'time': index.isoformat(),
+                'open': float(row['Open']),
+                'high': float(row['High']),
+                'low': float(row['Low']),
+                'close': float(row['Close']),
+                'volume': int(row['Volume'])
+            })
         
-        print(f"✅ Found {len(results)} crypto patterns\n")
-        
-        return jsonify({'success': True, 'results': results})
+        return jsonify({
+            'success': True,
+            'ticker': ticker,
+            'timeframe': timeframe,
+            'data': chart_data
+        })
         
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/volemon-scan', methods=['POST'])
-def volemon_scan():
-    """Volemon volume scanner - KEEP FULL LIST (33 stocks)"""
-    try:
-        data = request.json or {}
-        min_volume_multiple = float(data.get('min_volume_multiple', 2.0))
-        
-        popular_tickers = [
-            'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD',
-            'SPY', 'QQQ', 'IWM', 'DIA',
-            'NFLX', 'DIS', 'BABA', 'PYPL', 'SQ', 'ROKU', 'SNAP', 'UBER',
-            'F', 'GM', 'NIO', 'LCID', 'RIVN',
-            'JPM', 'BAC', 'GS', 'MS', 'C',
-            'XOM', 'CVX', 'COP', 'SLB',
-        ]
-        
-        results = []
-        
-        print(f"\n🔊 Volemon scan - {len(popular_tickers)} stocks...")
-        
-        for ticker in popular_tickers:
-            try:
-                time.sleep(0.7)
-                
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='5d')
-                info = stock_data.info
-                
-                if len(hist) >= 2:
-                    current_volume = hist['Volume'].iloc[-1]
-                    avg_volume = hist['Volume'].iloc[:-1].mean()
-                    
-                    if avg_volume > 0:
-                        volume_multiple = current_volume / avg_volume
-                        
-                        if volume_multiple >= min_volume_multiple:
-                            current_price = hist['Close'].iloc[-1]
-                            prev_price = hist['Close'].iloc[-2]
-                            change = ((current_price - prev_price) / prev_price) * 100
-                            
-                            results.append({
-                                'ticker': ticker,
-                                'company': info.get('longName', ticker),
-                                'price': float(current_price),
-                                'change': float(change),
-                                'volume': int(current_volume),
-                                'avg_volume': int(avg_volume),
-                                'volume_multiple': float(volume_multiple),
-                                'market_cap': info.get('marketCap', 0)
-                            })
-                            
-                            print(f"✅ {ticker}: {volume_multiple:.1f}x")
-            except:
-                continue
-        
-        results.sort(key=lambda x: x['volume_multiple'], reverse=True)
-        
-        print(f"✅ Found {len(results)}\n")
-        
-        return jsonify({'success': True, 'results': results[:50]})
-        
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/usuals-scan', methods=['POST'])
-def usuals_scan():
-    """Usuals watchlist scanner - KEEP FULL LIST (14 stocks default)"""
-    try:
-        data = request.json or {}
-        tickers = data.get('tickers', ['SOFI', 'INTC', 'SPY', 'TSLA', 'COIN', 'CDE', 'PLTR', 'AAPL', 'BAC', 'NVDA', 'GOOGL', 'META', 'MSFT', 'UNH'])
-        
-        results = []
-        
-        print(f"\n⭐ Usuals scan - {len(tickers)} stocks...")
-        
-        for ticker in tickers:
-            try:
-                time.sleep(0.7)
-                
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='1mo')
-                info = stock_data.info
-                
-                if len(hist) >= 3:
-                    current_price = hist['Close'].iloc[-1]
-                    prev_price = hist['Close'].iloc[-2]
-                    change = ((current_price - prev_price) / prev_price) * 100
-                    
-                    current_volume = hist['Volume'].iloc[-1]
-                    avg_volume = hist['Volume'].iloc[:-1].mean()
-                    volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1
-                    
-                    # Check patterns
-                    patterns = {}
-                    has_pattern, pattern_data = check_strat_31(hist)
-                    
-                    if has_pattern:
-                        patterns['daily'] = {
-                            'type': '3-1 Strat',
-                            'direction': pattern_data['direction']
-                        }
-                    else:
-                        # Check inside bar
-                        current = hist.iloc[-1]
-                        previous = hist.iloc[-2]
-                        is_inside = (current['High'] < previous['High'] and 
-                                   current['Low'] > previous['Low'])
-                        if is_inside:
-                            patterns['daily'] = {
-                                'type': 'Inside Bar (1)',
-                                'direction': 'neutral'
-                            }
-                    
-                    results.append({
-                        'ticker': ticker,
-                        'company': info.get('longName', ticker),
-                        'price': float(current_price),
-                        'change': float(change),
-                        'volume': int(current_volume),
-                        'avg_volume': int(avg_volume),
-                        'volume_ratio': float(volume_ratio),
-                        'patterns': patterns
-                    })
-                    
-                    print(f"✅ {ticker}")
-                    
-            except Exception as e:
-                print(f"⚠️  {ticker}: {e}")
-                continue
-        
-        print(f"✅ Done! {len(results)} stocks\n")
-        
-        return jsonify({'success': True, 'results': results})
-        
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 8080))
-    
-    print("\n" + "="*60)
-    print("🍋 LEMON SQUEEZE WEB APP v3.0 - OPTIMIZED 🍋")
-    print("="*60)
-    print("\n📊 Stock Counts:")
-    print("  - Short Squeeze: Top 30 (highest short interest)")
-    print("  - Daily Plays: 47 stocks")
-    print("  - Weekly/Hourly: 47 stocks (combined list)")
-    print("  - Volemon: 33 stocks")
-    print("  - Usuals: 14 stocks (default)")
-    print("  - Crypto: 5 cryptos")
-    print("\n✅ Total API calls reduced by ~67%!")
-    print("📱 http://localhost:8080")
-    print("\n🛑 Press Ctrl+C to stop")
-    print("\n" + "="*60 + "\n")
-    
-    app.run(debug=True, host='0.0.0.0', port=port)
+    print("🍋 Starting Lemon Squeeze v3.0 with Community Chat 🍋")
+    print("Features:")
+    print("- Real-time community chat")
+    print("- User authentication")
+    print("- Trader badges")
+    print("- Online presence tracking")
+    print("- Pattern scanning across multiple timeframes")
+    print("\nServer starting on http://localhost:5000")
+    app.run(debug=True, host='0.0.0.0', port=5000)
