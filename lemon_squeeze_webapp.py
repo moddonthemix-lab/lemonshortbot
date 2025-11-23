@@ -1,19 +1,11 @@
 """
-🍋 LEMON SQUEEZE WEB APP v2.2 - COMPLETE EDITION 🍋
+🍋 LEMON SQUEEZE WEB APP v2.1 - VOLEMON EDITION 🍋
 Flask-based web interface with:
 - Short Squeeze Scanner
 - Daily/Weekly/Hourly Plays (3-1 Strat Pattern Scanner)
 - Crypto Scanner
 - 🔊 Volemon (Auto Volume Scanner)
-- ⭐ Usuals (Favorite Stocks Auto-Scanner)
-- 👤 Profile Management (Bio + Trader Type)
-- 💬 Community Chat (Real-time with trader badges)
 - 🔐 User Authentication System
-
-UPDATED v2.2:
-- Chat messages now include user trader_type for badge display
-- Profile tab integrated with header button
-- Enhanced authentication flow
 """
 
 from flask import Flask, render_template, jsonify, request, send_from_directory, session
@@ -49,9 +41,6 @@ def init_db():
             name TEXT NOT NULL,
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
-            bio TEXT DEFAULT '',
-            trader_type TEXT DEFAULT 'swing_trader',
-            profile_image TEXT DEFAULT '',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             last_login TIMESTAMP,
             is_active INTEGER DEFAULT 1
@@ -79,17 +68,6 @@ def init_db():
             email_notifications INTEGER DEFAULT 1,
             FOREIGN KEY (user_id) REFERENCES users (id),
             UNIQUE(user_id)
-        )
-    ''')
-    
-    db.execute('''
-        CREATE TABLE IF NOT EXISTS chat_messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            user_name TEXT NOT NULL,
-            message TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users (id)
         )
     ''')
     
@@ -373,6 +351,23 @@ def check_strat_31(hist):
     # No pattern detected
     return False, None
 
+@app.route('/')
+def index():
+    """Serve the main page"""
+    html_files = [
+        'lemon_squeeze_with_howto.html',
+        'lemon_squeeze_with_volemon__4___2_.html',
+        'lemon_squeeze_webapp.html',
+        'lemon_squeeze.html',
+        'index.html'
+    ]
+    
+    for html_file in html_files:
+        if os.path.exists(html_file):
+            return send_from_directory('.', html_file)
+    
+    return "<h1>🍋 Lemon Squeeze - Backend Ready!</h1>"
+
 # ===== AUTHENTICATION ROUTES =====
 
 @app.route('/api/auth/signup', methods=['POST'])
@@ -431,8 +426,6 @@ def signup():
                 'id': user['id'],
                 'name': user['name'],
                 'email': user['email'],
-                'bio': '',
-                'trader_type': 'swing_trader',
                 'avatar': user['name'][0].upper(),
                 'joinedDate': user['created_at']
             }
@@ -487,8 +480,6 @@ def signin():
                 'id': user['id'],
                 'name': user['name'],
                 'email': user['email'],
-                'bio': user['bio'] or '',
-                'trader_type': user['trader_type'] or 'swing_trader',
                 'avatar': user['name'][0].upper(),
                 'joinedDate': user['created_at']
             }
@@ -512,7 +503,7 @@ def get_current_user():
         user_id = session.get('user_id')
         
         db = get_db()
-        user = db.execute('SELECT id, name, email, bio, trader_type, created_at FROM users WHERE id = ?', (user_id,)).fetchone()
+        user = db.execute('SELECT id, name, email, created_at FROM users WHERE id = ?', (user_id,)).fetchone()
         db.close()
         
         if not user:
@@ -524,125 +515,9 @@ def get_current_user():
                 'id': user['id'],
                 'name': user['name'],
                 'email': user['email'],
-                'bio': user['bio'] or '',
-                'trader_type': user['trader_type'] or 'swing_trader',
                 'avatar': user['name'][0].upper(),
                 'joinedDate': user['created_at']
             }
-        })
-        
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/profile', methods=['PUT'])
-@login_required
-def update_profile():
-    """Update user profile"""
-    try:
-        user_id = session.get('user_id')
-        data = request.json
-        
-        bio = data.get('bio', '').strip()
-        trader_type = data.get('trader_type', 'swing_trader')
-        
-        # Validate trader type
-        valid_types = ['day_trader', 'swing_trader', 'hodl']
-        if trader_type not in valid_types:
-            return jsonify({'success': False, 'error': 'Invalid trader type'}), 400
-        
-        # Validate bio length
-        if len(bio) > 500:
-            return jsonify({'success': False, 'error': 'Bio must be 500 characters or less'}), 400
-        
-        db = get_db()
-        db.execute(
-            'UPDATE users SET bio = ?, trader_type = ? WHERE id = ?',
-            (bio, trader_type, user_id)
-        )
-        db.commit()
-        db.close()
-        
-        return jsonify({'success': True, 'message': 'Profile updated successfully'})
-        
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/chat/messages', methods=['GET'])
-@login_required
-def get_chat_messages():
-    """Get recent chat messages with trader type"""
-    try:
-        limit = int(request.args.get('limit', 50))
-        
-        db = get_db()
-        # JOIN with users table to get trader_type for badges
-        messages = db.execute('''
-            SELECT 
-                cm.id, 
-                cm.user_id, 
-                cm.user_name, 
-                cm.message, 
-                cm.created_at,
-                COALESCE(u.trader_type, 'swing_trader') as user_trader_type
-            FROM chat_messages cm
-            LEFT JOIN users u ON cm.user_id = u.id
-            ORDER BY cm.created_at DESC 
-            LIMIT ?
-        ''', (limit,)).fetchall()
-        db.close()
-        
-        return jsonify({
-            'success': True,
-            'messages': [dict(msg) for msg in reversed(messages)]
-        })
-        
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/chat/messages', methods=['POST'])
-@login_required
-def send_chat_message():
-    """Send a chat message"""
-    try:
-        user_id = session.get('user_id')
-        user_name = session.get('user_name')
-        data = request.json
-        
-        message = data.get('message', '').strip()
-        
-        if not message:
-            return jsonify({'success': False, 'error': 'Message cannot be empty'}), 400
-        
-        if len(message) > 500:
-            return jsonify({'success': False, 'error': 'Message must be 500 characters or less'}), 400
-        
-        db = get_db()
-        cursor = db.execute(
-            'INSERT INTO chat_messages (user_id, user_name, message) VALUES (?, ?, ?)',
-            (user_id, user_name, message)
-        )
-        message_id = cursor.lastrowid
-        
-        # Get the created message with trader_type for badge
-        new_message = db.execute('''
-            SELECT 
-                cm.id, 
-                cm.user_id, 
-                cm.user_name, 
-                cm.message, 
-                cm.created_at,
-                COALESCE(u.trader_type, 'swing_trader') as user_trader_type
-            FROM chat_messages cm
-            LEFT JOIN users u ON cm.user_id = u.id
-            WHERE cm.id = ?
-        ''', (message_id,)).fetchone()
-        
-        db.commit()
-        db.close()
-        
-        return jsonify({
-            'success': True,
-            'message': dict(new_message)
         })
         
     except Exception as e:
