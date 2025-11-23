@@ -2379,19 +2379,8 @@
         
         // Load user session on page load
         async function loadUserSession() {
-            try {
-                const response = await fetch('/api/auth/me');
-                const data = await response.json();
-                
-                if (data.success) {
-                    currentUser = data.user;
-                    updateAuthUI();
-                    // Load user's favorites from server
-                    loadFavoritesFromServer();
-                }
-            } catch (error) {
-                console.log('No active session');
-            }
+            // Using Firebase auth only - no backend auth needed
+            console.log('Using Firebase authentication');
         }
         
         function openAuthModal() {
@@ -2888,8 +2877,8 @@
         
         // Load saved theme on page load
         document.addEventListener('DOMContentLoaded', function() {
-            // Load authentication
-            loadUserSession();
+            // Load authentication - TEMPORARILY DISABLED for Railway deployment
+            // loadUserSession();  // Re-enable this when backend auth is ready
             
             const savedTheme = localStorage.getItem('theme') || 'light';
             document.documentElement.setAttribute('data-theme', savedTheme);
