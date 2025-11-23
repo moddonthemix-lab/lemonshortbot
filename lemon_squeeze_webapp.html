@@ -4,12 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🍋 Lemon Squeeze Web App v2.0</title>
-    
-    <!-- Firebase SDK for Chat -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-    
     <style>
         :root {
             /* Light mode colors */
@@ -23,9 +17,6 @@
             --settings-bg: #FFE97F;
             --shadow: rgba(0,0,0,0.1);
             --shadow-heavy: rgba(0,0,0,0.3);
-            /* Chat colors */
-            --chat-message-bg: #f0f0f0;
-            --chat-own-message-bg: #FFE97F;
         }
         
         [data-theme="dark"] {
@@ -40,9 +31,6 @@
             --settings-bg: #16213e;
             --shadow: rgba(0,0,0,0.3);
             --shadow-heavy: rgba(0,0,0,0.5);
-            /* Chat colors */
-            --chat-message-bg: #2d3748;
-            --chat-own-message-bg: #2d4a3e;
         }
         
         /* Fix text colors in dark mode for info boxes */
@@ -1098,207 +1086,6 @@
             position: relative;
         }
         
-        /* ==================== CHAT STYLES ==================== */
-        
-        /* Chat Toggle Button */
-        .chat-toggle {
-            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-            border: none;
-            border-radius: 50px;
-            padding: 10px 20px;
-            cursor: pointer;
-            font-size: 1em;
-            display: none; /* Hidden by default, shown when signed in */
-            align-items: center;
-            gap: 8px;
-            color: white;
-            font-weight: bold;
-            transition: all 0.3s;
-            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
-        }
-        
-        .chat-toggle.active {
-            display: flex;
-        }
-        
-        .chat-toggle:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5);
-        }
-        
-        .chat-toggle .badge {
-            background: #ef4444;
-            color: white;
-            border-radius: 50%;
-            padding: 2px 8px;
-            font-size: 0.85em;
-            min-width: 20px;
-            text-align: center;
-        }
-        
-        /* Chat Container */
-        .chat-container {
-            display: none;
-            background: var(--card-bg);
-            border-radius: 15px;
-            margin: 20px;
-            padding: 20px;
-            box-shadow: 0 10px 30px var(--shadow);
-            max-height: 600px;
-            flex-direction: column;
-        }
-        
-        .chat-container.active {
-            display: flex;
-        }
-        
-        .chat-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-bottom: 15px;
-            border-bottom: 2px solid var(--border-color);
-            margin-bottom: 15px;
-        }
-        
-        .chat-header h2 {
-            color: var(--text-primary);
-            font-size: 1.5em;
-        }
-        
-        .online-count {
-            background: #10b981;
-            color: white;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 0.9em;
-            font-weight: bold;
-        }
-        
-        .chat-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 15px;
-            background: var(--settings-bg);
-            border-radius: 10px;
-            margin-bottom: 15px;
-            max-height: 400px;
-        }
-        
-        .chat-message {
-            background: var(--chat-message-bg);
-            padding: 12px;
-            border-radius: 10px;
-            margin-bottom: 10px;
-            animation: slideIn 0.3s ease;
-        }
-        
-        .chat-message.own-message {
-            background: var(--chat-own-message-bg);
-            border-left: 4px solid var(--border-color);
-        }
-        
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .message-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-        
-        .message-author {
-            font-weight: bold;
-            color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .trader-badge {
-            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-            color: #333;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 0.75em;
-            font-weight: bold;
-        }
-        
-        .trader-badge.pro {
-            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-            color: white;
-        }
-        
-        .trader-badge.legend {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-            color: white;
-        }
-        
-        .message-time {
-            font-size: 0.8em;
-            color: var(--text-secondary);
-        }
-        
-        .message-text {
-            color: var(--text-primary);
-            line-height: 1.5;
-            word-wrap: break-word;
-        }
-        
-        .chat-input-area {
-            display: flex;
-            gap: 10px;
-        }
-        
-        .chat-input {
-            flex: 1;
-            padding: 12px 20px;
-            border: 2px solid var(--border-color);
-            border-radius: 25px;
-            background: var(--card-bg);
-            color: var(--text-primary);
-            font-size: 1em;
-            outline: none;
-        }
-        
-        .chat-input:focus {
-            border-color: #8b5cf6;
-            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
-        }
-        
-        .send-button {
-            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-            border: none;
-            border-radius: 25px;
-            padding: 12px 30px;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .send-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
-        }
-        
-        .send-button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        /* ==================== END CHAT STYLES ==================== */
-        
         @media (max-width: 768px) {
             .auth-modal-content {
                 padding: 30px 20px;
@@ -1428,55 +1215,6 @@
                 font-size: 0.7em;
             }
             
-            /* Chat button mobile styles */
-            .floating-actions .chat-toggle {
-                border-radius: 50%;
-                width: 56px;
-                height: 56px;
-                padding: 0;
-                font-size: 1.6em;
-                box-shadow: 0 4px 20px rgba(139, 92, 246, 0.5);
-            }
-            
-            .floating-actions .chat-toggle:hover {
-                transform: scale(1.1);
-            }
-            
-            .floating-actions .chat-toggle .badge {
-                position: absolute;
-                top: -5px;
-                right: -5px;
-                background: #ef4444;
-                border: 2px solid white;
-                width: 22px;
-                height: 22px;
-                font-size: 0.7em;
-                padding: 0;
-                min-width: 0;
-            }
-            
-            .floating-actions .chat-toggle::before {
-                content: '💬';
-            }
-            
-            .floating-actions .chat-toggle > span {
-                display: none;
-            }
-            
-            /* Chat container mobile adjustments */
-            .chat-container {
-                margin: 10px;
-                max-height: calc(100vh - 300px);
-            }
-            
-            .chat-input-area {
-                flex-direction: row;
-            }
-            
-            .send-button {
-                padding: 12px 20px;
-            }
-            
             .scan-button {
                 padding: 20px 40px;
                 font-size: 20px;
@@ -1535,7 +1273,7 @@
                 <div class="profile-dropdown" id="profileDropdown">
                     <div class="profile-header">
                         <div class="profile-name" id="dropdownName">User Name</div>
-                        <div class="profile-email" id="dropdownEmail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="a4d1d7c1d6e4c1c9c5cdc88ac7cbc9">[email&#160;protected]</a></div>
+                        <div class="profile-email" id="dropdownEmail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="3a4f495f487a5f575b535614595557">[email&#160;protected]</a></div>
                     </div>
                     <div class="profile-menu">
                         <div class="profile-menu-item" onclick="viewProfile()">
@@ -1556,45 +1294,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
-            
-            <!-- Chat Button (shows when signed in) -->
-            <button class="chat-toggle" id="chatToggle" onclick="toggleChat()">
-                <span>💬</span>
-                <span>Community Chat</span>
-                <span class="badge" id="unreadBadge" style="display: none;">0</span>
-            </button>
-        </div>
-        
-        <!-- Community Chat Container -->
-        <div class="chat-container" id="chatContainer">
-            <div class="chat-header">
-                <h2>💬 Community Chat</h2>
-                <div class="online-count" id="onlineCount">
-                    <span id="onlineUsersCount">0</span> traders online
-                </div>
-            </div>
-            
-            <div class="chat-messages" id="chatMessages">
-                <!-- Messages will appear here -->
-                <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
-                    <p>👋 Welcome to the community chat!</p>
-                    <p style="margin-top: 10px;">Share your insights and connect with other traders.</p>
-                </div>
-            </div>
-            
-            <div class="chat-input-area">
-                <input 
-                    type="text" 
-                    class="chat-input" 
-                    id="chatInput" 
-                    placeholder="Share your thoughts with the community..."
-                    maxlength="500"
-                    onkeypress="handleChatKeyPress(event)"
-                >
-                <button class="send-button" id="sendButton" onclick="sendMessage()">
-                    Send 🚀
-                </button>
             </div>
         </div>
         
@@ -2261,12 +1960,6 @@
             <div class="profile-avatar" id="profileAvatarMobile" style="width: 100%; height: 100%; font-size: 1.5em;">U</div>
         </button>
         
-        <!-- Chat Button for Mobile (shows when signed in) -->
-        <button class="chat-toggle" id="chatToggleMobile" onclick="toggleChat()" style="display: none;">
-            <span>💬</span>
-            <span class="badge" id="unreadBadgeMobile" style="display: none;">0</span>
-        </button>
-        
         <button class="favorites-toggle" onclick="toggleFavoritesModal()">
             <span>⭐</span>
             <span>Favorites</span>
@@ -2351,36 +2044,13 @@
     <script>
         let isScanning = false;
         
-        // ===== FIREBASE CONFIGURATION =====
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_PROJECT.firebaseapp.com",
-            databaseURL: "https://YOUR_PROJECT.firebaseio.com",
-            projectId: "YOUR_PROJECT",
-            storageBucket: "YOUR_PROJECT.appspot.com",
-            messagingSenderId: "YOUR_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
-        
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const database = firebase.database();
-        
         // ===== AUTHENTICATION SYSTEM =====
         let currentUser = null;
         
-        // ===== CHAT SYSTEM VARIABLES =====
-        let chatMessagesRef = null;
-        let onlineUsersRef = null;
-        let userStatsRef = null;
-        let chatOpen = false;
-        let unreadCount = 0;
-        
         // Load user session on page load
         async function loadUserSession() {
-            // Using Firebase auth only - no backend auth needed
-            console.log('Using Firebase authentication');
+            // Backend auth temporarily disabled - scanning works without it
+            console.log('App ready - auth disabled for now');
         }
         
         function openAuthModal() {
@@ -2596,259 +2266,6 @@
             }
         }
         
-        // ===== CHAT SYSTEM =====
-        
-        // Firebase Auth State Observer
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                currentUser = {
-                    uid: user.uid,
-                    email: user.email,
-                    displayName: user.displayName || user.email.split('@')[0]
-                };
-                initializeChat();
-                updateOnlineStatus(true);
-                showChatButton();
-            } else {
-                currentUser = null;
-                cleanupChat();
-                updateOnlineStatus(false);
-                hideChatButton();
-            }
-        });
-        
-        // Show/Hide Chat Button
-        function showChatButton() {
-            document.getElementById('chatToggle').classList.add('active');
-            document.getElementById('chatToggleMobile').style.display = 'flex';
-        }
-        
-        function hideChatButton() {
-            document.getElementById('chatToggle').classList.remove('active');
-            document.getElementById('chatToggleMobile').style.display = 'none';
-            if (chatOpen) {
-                toggleChat();
-            }
-        }
-        
-        // Toggle Chat
-        function toggleChat() {
-            if (!currentUser) {
-                openAuthModal();
-                return;
-            }
-            
-            chatOpen = !chatOpen;
-            const chatContainer = document.getElementById('chatContainer');
-            
-            if (chatOpen) {
-                chatContainer.classList.add('active');
-                document.getElementById('chatInput').focus();
-                
-                // Mark messages as read
-                unreadCount = 0;
-                document.getElementById('unreadBadge').style.display = 'none';
-                document.getElementById('unreadBadgeMobile').style.display = 'none';
-            } else {
-                chatContainer.classList.remove('active');
-            }
-        }
-        
-        // Initialize Chat
-        function initializeChat() {
-            chatMessagesRef = database.ref('chat/messages');
-            onlineUsersRef = database.ref('presence');
-            userStatsRef = database.ref(`users/${currentUser.uid}`);
-            
-            // Listen for new messages
-            chatMessagesRef.limitToLast(50).on('child_added', (snapshot) => {
-                displayMessage(snapshot.val(), snapshot.key);
-            });
-            
-            // Listen for online users count
-            onlineUsersRef.on('value', (snapshot) => {
-                const onlineCount = snapshot.numChildren();
-                document.getElementById('onlineUsersCount').textContent = onlineCount;
-            });
-            
-            // Load initial messages
-            loadChatMessages();
-        }
-        
-        // Cleanup Chat
-        function cleanupChat() {
-            if (chatMessagesRef) {
-                chatMessagesRef.off();
-            }
-            if (onlineUsersRef) {
-                onlineUsersRef.off();
-            }
-        }
-        
-        // Update Online Status
-        function updateOnlineStatus(online) {
-            if (!currentUser) return;
-            
-            const userStatusRef = database.ref(`presence/${currentUser.uid}`);
-            
-            if (online) {
-                userStatusRef.set({
-                    displayName: currentUser.displayName,
-                    online: true,
-                    lastSeen: Date.now()
-                });
-                
-                userStatusRef.onDisconnect().remove();
-            } else {
-                userStatusRef.remove();
-            }
-        }
-        
-        // Load Chat Messages
-        async function loadChatMessages() {
-            try {
-                const snapshot = await chatMessagesRef.limitToLast(50).once('value');
-                const messagesContainer = document.getElementById('chatMessages');
-                messagesContainer.innerHTML = '';
-                
-                snapshot.forEach((child) => {
-                    displayMessage(child.val(), child.key);
-                });
-                
-                // Scroll to bottom
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            } catch (error) {
-                console.error('Error loading messages:', error);
-            }
-        }
-        
-        // Display Message
-        function displayMessage(message, messageId) {
-            const messagesContainer = document.getElementById('chatMessages');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'chat-message';
-            messageDiv.id = `message-${messageId}`;
-            
-            // Check if message is from current user
-            if (currentUser && message.userId === currentUser.uid) {
-                messageDiv.classList.add('own-message');
-            }
-            
-            // Get trader badge
-            const badge = getTraderBadge(message.messageCount || 0);
-            
-            // Format timestamp
-            const time = new Date(message.timestamp).toLocaleTimeString([], { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-            });
-            
-            messageDiv.innerHTML = `
-                <div class="message-header">
-                    <div class="message-author">
-                        ${escapeHtml(message.displayName)}
-                        ${badge ? `<span class="trader-badge ${badge.class}">${badge.text}</span>` : ''}
-                    </div>
-                    <div class="message-time">${time}</div>
-                </div>
-                <div class="message-text">${escapeHtml(message.text)}</div>
-            `;
-            
-            messagesContainer.appendChild(messageDiv);
-            
-            // Auto-scroll if near bottom
-            const isNearBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 100;
-            if (isNearBottom) {
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }
-            
-            // Show unread badge if chat is closed and not own message
-            if (!chatOpen && currentUser && message.userId !== currentUser.uid) {
-                unreadCount++;
-                const badges = [document.getElementById('unreadBadge'), document.getElementById('unreadBadgeMobile')];
-                badges.forEach(badge => {
-                    if (badge) {
-                        badge.style.display = 'block';
-                        badge.textContent = unreadCount;
-                    }
-                });
-            }
-        }
-        
-        // Get Trader Badge
-        function getTraderBadge(messageCount) {
-            if (messageCount >= 100) {
-                return { text: '🏆 Legend', class: 'legend' };
-            } else if (messageCount >= 50) {
-                return { text: '💎 Pro', class: 'pro' };
-            } else if (messageCount >= 10) {
-                return { text: '⭐ Active', class: '' };
-            }
-            return null;
-        }
-        
-        // Send Message
-        async function sendMessage() {
-            if (!currentUser) {
-                openAuthModal();
-                return;
-            }
-            
-            const input = document.getElementById('chatInput');
-            const text = input.value.trim();
-            
-            if (!text) return;
-            
-            const sendButton = document.getElementById('sendButton');
-            sendButton.disabled = true;
-            
-            try {
-                // Get user stats
-                const userSnapshot = await userStatsRef.once('value');
-                const userData = userSnapshot.val() || {};
-                const messageCount = (userData.messageCount || 0) + 1;
-                
-                // Send message
-                await chatMessagesRef.push({
-                    userId: currentUser.uid,
-                    displayName: currentUser.displayName,
-                    text: text,
-                    timestamp: Date.now(),
-                    messageCount: messageCount
-                });
-                
-                // Update user stats
-                await userStatsRef.update({
-                    displayName: currentUser.displayName,
-                    messageCount: messageCount,
-                    lastSeen: Date.now()
-                });
-                
-                input.value = '';
-            } catch (error) {
-                console.error('Error sending message:', error);
-                alert('Failed to send message. Please try again.');
-            } finally {
-                sendButton.disabled = false;
-                input.focus();
-            }
-        }
-        
-        // Handle Enter Key in Chat
-        function handleChatKeyPress(event) {
-            if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                sendMessage();
-            }
-        }
-        
-        // Escape HTML
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-        
         // ===== DARK MODE =====
         function toggleDarkMode() {
             const html = document.documentElement;
@@ -2877,8 +2294,8 @@
         
         // Load saved theme on page load
         document.addEventListener('DOMContentLoaded', function() {
-            // Load authentication - TEMPORARILY DISABLED for Railway deployment
-            // loadUserSession();  // Re-enable this when backend auth is ready
+            // Load authentication
+            loadUserSession();
             
             const savedTheme = localStorage.getItem('theme') || 'light';
             document.documentElement.setAttribute('data-theme', savedTheme);
