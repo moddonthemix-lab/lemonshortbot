@@ -1273,7 +1273,7 @@
                 <div class="profile-dropdown" id="profileDropdown">
                     <div class="profile-header">
                         <div class="profile-name" id="dropdownName">User Name</div>
-                        <div class="profile-email" id="dropdownEmail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="3a4f495f487a5f575b535614595557">[email&#160;protected]</a></div>
+                        <div class="profile-email" id="dropdownEmail">user@email.com</div>
                     </div>
                     <div class="profile-menu">
                         <div class="profile-menu-item" onclick="viewProfile()">
@@ -2040,7 +2040,7 @@
         </div>
     </div>
     
-    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
     <script>
         let isScanning = false;
         
@@ -2049,8 +2049,19 @@
         
         // Load user session on page load
         async function loadUserSession() {
-            // Backend auth temporarily disabled - scanning works without it
-            console.log('App ready - auth disabled for now');
+            try {
+                const response = await fetch('/api/auth/me');
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentUser = data.user;
+                    updateAuthUI();
+                    // Load user's favorites from server
+                    loadFavoritesFromServer();
+                }
+            } catch (error) {
+                console.log('No active session');
+            }
         }
         
         function openAuthModal() {
@@ -4119,4 +4130,10 @@
         });
         
         // Cleanup on unload
- 
+        window.addEventListener('beforeunload', () => {
+            if (usualsInterval) clearInterval(usualsInterval);
+            if (usualsCountdown) clearInterval(usualsCountdown);
+        });
+    </script>
+</body>
+</html>
