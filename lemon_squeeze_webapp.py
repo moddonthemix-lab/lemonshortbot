@@ -25,7 +25,7 @@ app.secret_key = secrets.token_hex(32)  # Generate secret key for sessions
 
 # ===== CACHING CONFIGURATION =====
 scan_cache = {}
-CACHE_DURATION = timedelta(minutes=5)  # Cache results for 5 minutes
+CACHE_DURATION = timedelta(minutes=25)  # Cache results for 25 minutes
 
 def get_cached_results(scan_type, filters=None):
     """Get cached scan results if still valid"""
