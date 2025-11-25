@@ -733,7 +733,7 @@ def scan():
             ticker = stock['ticker']
             
             try:
-                time.sleep(0.7)  # Rate limiting
+                time.sleep(1.0)  # Rate limiting
                 
                 stock_data = yf.Ticker(ticker)
                 hist = stock_data.history(period='3mo')
