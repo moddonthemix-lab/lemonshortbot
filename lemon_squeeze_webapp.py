@@ -882,13 +882,20 @@ def volemon_scan():
 @app.route('/api/usuals-scan', methods=['POST'])
 def usuals_scan():
     """Usuals watchlist scanner - KEEP FULL LIST (14 stocks default)"""
+    print("=" * 60)
+    print("🔥 USUALS SCAN ENDPOINT HIT!")
+    print(f"Request method: {request.method}")
+    print(f"Request headers: {dict(request.headers)}")
+    print(f"Request data: {request.get_data()}")
+    print("=" * 60)
+    
     try:
         data = request.json or {}
         tickers = data.get('tickers', ['SOFI', 'INTC', 'SPY', 'TSLA', 'COIN', 'CDE', 'PLTR', 'AAPL', 'BAC', 'NVDA', 'GOOGL', 'META', 'MSFT', 'UNH'])
         
-        results = []
+        print(f"⭐ Starting Usuals scan for {len(tickers)} stocks...")
         
-        print(f"\n⭐ Usuals scan - {len(tickers)} stocks...")
+        results = []
         
         for ticker in tickers:
             try:
