@@ -419,7 +419,8 @@ def get_current_user():
         user_email = session.get('user_email')
         
         if not user_email or user_email not in users:
-            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+            # Return success with null user (allows guest usage)
+            return jsonify({'success': True, 'user': None})
         
         return jsonify({
             'success': True,
