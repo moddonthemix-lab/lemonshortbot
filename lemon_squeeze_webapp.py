@@ -13,17 +13,135 @@ Total API calls reduced from 493-1,393 to ~200 per complete scan!
 
 from flask import Flask, render_template, jsonify, request, send_from_directory, session
 import yfinance as yf
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 import os
 import json
 import hashlib
 import secrets
+import requests
+import random
 
 app = Flask(__name__)
-app.secret_key = secrets.token_hex(32)  # Generate secret key for sessions
+app.secret_key = secrets.token_hex(32)
 
-# Simple user storage (in-memory - for production use a database)
+# ===== TRADIER PRODUCTION API =====
+TRADIER_API_KEY = os.environ.get('TRADIER_API_KEY', 'Yuvcbpb7jfPIKyyUf8FDNATV48Hc')
+TRADIER_BASE_URL = 'https://api.tradier.com/v1'  # PRODUCTION (not sandbox)
+
+def get_tradier_quote(ticker):
+    """Get real-time quote from Tradier Production API"""
+    if not TRADIER_API_KEY:
+        return None
+    
+    try:
+        headers = {
+            'Authorization': f'Bearer {TRADIER_API_KEY}',
+            'Accept': 'application/json'
+        }
+        
+        response = requests.get(
+            f'{TRADIER_BASE_URL}/markets/quotes',
+            params={'symbols': ticker},
+            headers=headers,
+            timeout=5
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            if 'quotes' in data and 'quote' in data['quotes']:
+                quote = data['quotes']['quote']
+                if isinstance(quote, dict) and quote.get('last'):
+                    return quote
+        return None
+    except Exception as e:
+        return None
+
+def fetch_stock_data(ticker, max_retries=3):
+    """Fetch with Yahoo first, Tradier fallback, and retry logic"""
+    for attempt in range(max_retries):
+        try:
+            # Add delay with jitter
+            jitter = random.uniform(0, 0.3)
+            time.sleep(1.5 + jitter)
+            
+            # Try Yahoo Finance
+            stock_data, hist, info = fetch_stock_data(ticker)
+            
+            if stock_data and hist is not None and len(hist) >= 2:
+                print(f"✅ {ticker}: Yahoo (attempt {attempt + 1})")
+                return stock_data, hist, stock_data.info
+            
+        except Exception as e:
+            error_msg = str(e).lower()
+            
+            # If rate limited, try Tradier
+            if '429' in error_msg or 'too many' in error_msg:
+                print(f"⚠️  {ticker}: Yahoo rate limited, trying Tradier...")
+                
+                quote = get_tradier_quote(ticker)
+                if quote:
+                    print(f"🔄 {ticker}: Tradier Production")
+                    
+                    # Build minimal info dict from Tradier
+                    info = {
+                        'symbol': quote.get('symbol', ticker),
+                        'longName': quote.get('description', ticker),
+                        'floatShares': 0,
+                        'sharesOutstanding': 0,
+                        'marketCap': 0,
+                        'fiftyTwoWeekHigh': float(quote.get('week_52_high', 0) or 0),
+                        'fiftyTwoWeekLow': float(quote.get('week_52_low', 0) or 0)
+                    }
+                    
+                    # Create minimal DataFrame
+                    import pandas as pd
+                    current_price = float(quote.get('last', 0))
+                    prev_close = float(quote.get('prevclose', current_price))
+                    
+                    hist = pd.DataFrame({
+                        'Close': [prev_close, current_price],
+                        'Volume': [int(quote.get('average_volume', 0) or 0), int(quote.get('volume', 0) or 0)],
+                        'High': [current_price, current_price],
+                        'Low': [current_price * 0.99, current_price * 0.99]
+                    })
+                    
+                    class TradierWrapper:
+                        def __init__(self, info_dict):
+                            self.info = info_dict
+                    
+                    return TradierWrapper(info), hist, info
+                
+                # Tradier also failed, wait and retry
+                wait_time = 2 ** attempt + random.uniform(0, 1)
+                print(f"⏰ {ticker}: Both failed, waiting {wait_time:.1f}s...")
+                time.sleep(wait_time)
+            else:
+                # Non-rate-limit error, retry with delay
+                if attempt < max_retries - 1:
+                    time.sleep(1.5)
+    
+    print(f"❌ {ticker}: All attempts failed")
+    return None, None, None
+
+# ===== CACHING (10 minutes) =====
+scan_cache = {}
+CACHE_DURATION = timedelta(minutes=10)
+
+def get_cached_results(scan_type):
+    if scan_type in scan_cache:
+        data, timestamp = scan_cache[scan_type]
+        if datetime.now() - timestamp < CACHE_DURATION:
+            print(f"✅ CACHE HIT: {scan_type}")
+            return data
+        del scan_cache[scan_type]
+    return None
+
+def cache_results(scan_type, data):
+    scan_cache[scan_type] = (data, datetime.now())
+    print(f"💾 CACHED: {scan_type}")
+
+# Simple user storage
 users = {}
 user_favorites = {}
 
@@ -389,13 +507,11 @@ def scan():
             ticker = stock['ticker']
             
             try:
-                time.sleep(0.7)  # Rate limiting
+                time.sleep(1.5)  # Rate limiting
                 
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='3mo')
-                info = stock_data.info
+                stock_data, hist, info = fetch_stock_data(ticker)
                 
-                if len(hist) >= 2:
+                if stock_data and hist is not None and len(hist) >= 2:
                     current_price = hist['Close'].iloc[-1]
                     previous_close = hist['Close'].iloc[-2]
                     daily_change = ((current_price - previous_close) / previous_close) * 100
@@ -486,11 +602,9 @@ def daily_plays():
         
         for i, ticker in enumerate(popular_tickers, 1):
             try:
-                time.sleep(0.7)
+                time.sleep(1.5)
                 
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='1mo')
-                info = stock_data.info
+                stock_data, hist, info = fetch_stock_data(ticker)
                 
                 if len(hist) >= 3:
                     has_pattern, pattern_data = check_strat_31(hist)
@@ -540,10 +654,9 @@ def weekly_plays():
         
         for ticker in combined_tickers:
             try:
-                time.sleep(0.7)
+                time.sleep(1.5)
                 
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='3mo')
+                stock_data, hist, info = fetch_stock_data(ticker)
                 
                 if len(hist) >= 3:
                     # Resample to weekly
@@ -589,10 +702,9 @@ def hourly_plays():
         
         for ticker in combined_tickers:
             try:
-                time.sleep(0.7)
+                time.sleep(1.5)
                 
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='5d', interval='1h')
+                stock_data, hist, info = fetch_stock_data(ticker)
                 
                 if len(hist) >= 3:
                     has_pattern, pattern_data = check_strat_31(hist)
@@ -636,10 +748,9 @@ def crypto_plays():
         
         for ticker, name in crypto_tickers.items():
             try:
-                time.sleep(0.7)
+                time.sleep(1.5)
                 
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='1mo')
+                stock_data, hist, info = fetch_stock_data(ticker)
                 
                 if len(hist) >= 3:
                     has_pattern, pattern_data = check_strat_31(hist)
@@ -691,13 +802,11 @@ def volemon_scan():
         
         for ticker in popular_tickers:
             try:
-                time.sleep(0.7)
+                time.sleep(1.5)
                 
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='5d')
-                info = stock_data.info
+                stock_data, hist, info = fetch_stock_data(ticker)
                 
-                if len(hist) >= 2:
+                if stock_data and hist is not None and len(hist) >= 2:
                     current_volume = hist['Volume'].iloc[-1]
                     avg_volume = hist['Volume'].iloc[:-1].mean()
                     
@@ -746,11 +855,9 @@ def usuals_scan():
         
         for ticker in tickers:
             try:
-                time.sleep(0.7)
+                time.sleep(1.5)
                 
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='1mo')
-                info = stock_data.info
+                stock_data, hist, info = fetch_stock_data(ticker)
                 
                 if len(hist) >= 3:
                     current_price = hist['Close'].iloc[-1]
