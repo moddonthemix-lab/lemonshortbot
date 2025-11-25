@@ -1150,22 +1150,18 @@ def usuals_scan():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ===== FILE SERVING ROUTES =====
+
+@app.route('/')
+def index():
+    """Serve the main HTML file"""
+    return send_from_directory('.', 'lemon_squeeze_working_minimal.html')
+
+@app.route('/<path:path>')
+def serve_file(path):
+    """Serve any other files"""
+    return send_from_directory('.', path)
+
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 8080))
-    
-    print("\n" + "="*60)
-    print("🍋 LEMON SQUEEZE WEB APP v3.0 - OPTIMIZED 🍋")
-    print("="*60)
-    print("\n📊 Stock Counts:")
-    print("  - Short Squeeze: Top 30 (highest short interest)")
-    print("  - Daily Plays: 47 stocks")
-    print("  - Weekly/Hourly: 47 stocks (combined list)")
-    print("  - Volemon: 33 stocks")
-    print("  - Usuals: 14 stocks (default)")
-    print("  - Crypto: 5 cryptos")
-    print("\n✅ Total API calls reduced by ~67%!")
-    print("📱 http://localhost:8080")
-    print("\n🛑 Press Ctrl+C to stop")
-    print("\n" + "="*60 + "\n")
-    
-    app.run(debug=True, host='0.0.0.0', port=port)
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port, debug=False)
