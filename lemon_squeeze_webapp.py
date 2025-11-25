@@ -11,22 +11,18 @@ Changes:
 Total API calls reduced from 493-1,393 to ~200 per complete scan!
 """
 
-from flask import Flask, render_template, jsonify, request, send_from_directory, session
+from flask import Flask, render_template, jsonify, request, send_from_directory
 import yfinance as yf
 from datetime import datetime, timedelta
 import time
 import os
 import json
-import hashlib
-import secrets
-import requests
 
 app = Flask(__name__)
-app.secret_key = secrets.token_hex(32)  # Generate secret key for sessions
 
 # ===== CACHING CONFIGURATION =====
 scan_cache = {}
-CACHE_DURATION = timedelta(minutes=5)  # Cache results for 5 minutes
+CACHE_DURATION = timedelta(minutes=5)
 
 def get_cached_results(scan_type, filters=None):
     """Get cached scan results if still valid"""
@@ -35,12 +31,10 @@ def get_cached_results(scan_type, filters=None):
     if cache_key in scan_cache:
         cached_data, timestamp = scan_cache[cache_key]
         if datetime.now() - timestamp < CACHE_DURATION:
-            print(f"✅ Returning cached results for {scan_type} (age: {(datetime.now() - timestamp).seconds}s)")
+            print(f"✅ Cache hit for {scan_type} (age: {(datetime.now() - timestamp).seconds}s)")
             return cached_data
         else:
-            # Cache expired, remove it
             del scan_cache[cache_key]
-            print(f"⏰ Cache expired for {scan_type}")
     
     return None
 
@@ -48,148 +42,7 @@ def cache_results(scan_type, results, filters=None):
     """Cache scan results with timestamp"""
     cache_key = f"{scan_type}_{str(filters)}" if filters else scan_type
     scan_cache[cache_key] = (results, datetime.now())
-    print(f"💾 Cached {len(results)} results for {scan_type}")
-
-# ===== TRADIER BACKUP CONFIGURATION =====
-TRADIER_API_KEY = os.environ.get('TRADIER_API_KEY', '3WHzBJ2L0mRLW1hJKQgXJUFxToPU')
-TRADIER_BASE_URL = 'https://sandbox.tradier.com/v1'
-
-def get_tradier_quote(ticker):
-    """Get stock quote from Tradier Sandbox API"""
-    if not TRADIER_API_KEY:
-        return None
-    
-    try:
-        headers = {
-            'Authorization': f'Bearer {TRADIER_API_KEY}',
-            'Accept': 'application/json'
-        }
-        
-        response = requests.get(
-            f'{TRADIER_BASE_URL}/markets/quotes',
-            params={'symbols': ticker},
-            headers=headers,
-            timeout=5
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            if 'quotes' in data and 'quote' in data['quotes']:
-                quote = data['quotes']['quote']
-                if isinstance(quote, dict):  # Single quote
-                    return quote
-        return None
-    except Exception as e:
-        print(f"Tradier error for {ticker}: {e}")
-        return None
-
-def get_stock_data_with_fallback(ticker):
-    """
-    Try Yahoo Finance first, fall back to Tradier if it fails
-    Returns: (source, current_price, previous_close, volume, avg_volume, info_dict)
-    """
-    # Try Yahoo Finance first
-    try:
-        stock_data, hist = get_ticker_with_fallback(ticker)
-        # hist already fetched by fallback
-        info = stock_data.info
-        
-        if len(hist) >= 2:
-            current_price = hist['Close'].iloc[-1]
-            previous_close = hist['Close'].iloc[-2]
-            current_volume = hist['Volume'].iloc[-1]
-            avg_volume = hist['Volume'].iloc[-21:-1].mean() if len(hist) > 20 else hist['Volume'].mean()
-            
-            print(f"✅ {ticker}: Yahoo Finance")
-            return ('yahoo', current_price, previous_close, current_volume, avg_volume, info, hist)
-    except Exception as e:
-        print(f"⚠️  {ticker}: Yahoo failed ({str(e)[:50]}), trying Tradier...")
-    
-    # Fall back to Tradier
-    quote = get_tradier_quote(ticker)
-    
-    if quote and quote.get('last'):
-        current_price = float(quote.get('last', 0))
-        previous_close = float(quote.get('prevclose', quote.get('close', current_price)))
-        current_volume = int(quote.get('volume', 0))
-        avg_volume = int(quote.get('average_volume', current_volume))
-        
-        # Build info dict from Tradier data
-        info = {
-            'symbol': quote.get('symbol'),
-            'longName': quote.get('description', ticker),
-            'floatShares': 0,  # Not available in sandbox
-            'sharesOutstanding': 0,
-            'marketCap': 0,
-            'fiftyTwoWeekHigh': float(quote.get('week_52_high', current_price)),
-            'fiftyTwoWeekLow': float(quote.get('week_52_low', current_price))
-        }
-        
-        print(f"🔄 {ticker}: Tradier Sandbox (15min delayed)")
-        return ('tradier', current_price, previous_close, current_volume, avg_volume, info, None)
-    
-    print(f"❌ {ticker}: Both sources failed")
-    return (None, None, None, None, None, None, None)
-
-def get_ticker_with_fallback(ticker):
-    """
-    Simpler wrapper - returns Yahoo Ticker object, or creates fake one from Tradier
-    This makes it easier to integrate with existing code
-    """
-    try:
-        stock_data, hist = get_ticker_with_fallback(ticker)
-        # hist already fetched by fallback
-        
-        if len(hist) >= 2:
-            print(f"✅ {ticker}: Yahoo Finance")
-            return stock_data, hist
-    except Exception as e:
-        print(f"⚠️  {ticker}: Yahoo failed, trying Tradier...")
-    
-    # Fallback to Tradier
-    quote = get_tradier_quote(ticker)
-    
-    if quote and quote.get('last'):
-        print(f"🔄 {ticker}: Tradier Sandbox")
-        
-        # Create a fake object that mimics yfinance structure
-        class TradierWrapper:
-            def __init__(self, quote_data):
-                self.quote = quote_data
-                self.info = {
-                    'symbol': quote_data.get('symbol'),
-                    'longName': quote_data.get('description', ticker),
-                    'floatShares': 0,
-                    'sharesOutstanding': 0,
-                    'marketCap': 0,
-                    'fiftyTwoWeekHigh': float(quote_data.get('week_52_high', 0)),
-                    'fiftyTwoWeekLow': float(quote_data.get('week_52_low', 0))
-                }
-            
-            def history(self, period='1mo'):
-                # Return fake historical data for Tradier
-                import pandas as pd
-                current_price = float(self.quote.get('last', 0))
-                prev_close = float(self.quote.get('prevclose', current_price))
-                
-                # Create minimal dataframe
-                return pd.DataFrame({
-                    'Close': [prev_close, current_price],
-                    'Volume': [int(self.quote.get('average_volume', 0)), int(self.quote.get('volume', 0))],
-                    'High': [current_price * 1.02, current_price],
-                    'Low': [current_price * 0.98, current_price * 0.99]
-                })
-        
-        wrapper = TradierWrapper(quote)
-        hist = wrapper.history()
-        return wrapper, hist
-    
-    print(f"❌ {ticker}: Both sources failed")
-    raise Exception("Both Yahoo and Tradier failed")
-
-# Simple user storage (in-memory - for production use a database)
-users = {}
-user_favorites = {}
+    print(f"💾 Cached {scan_type}")
 
 # Load high short interest stocks
 def load_stock_data():
@@ -331,7 +184,6 @@ def get_combined_weekly_hourly_list():
 def index():
     """Serve the main page"""
     html_files = [
-        'lemon_squeeze_complete_with_chat.html',
         'lemon_squeeze_with_volemon__4_.html',
         'lemon_squeeze_webapp.html',
         'lemon_squeeze.html',
@@ -344,196 +196,6 @@ def index():
     
     return "<h1>🍋 Lemon Squeeze - Optimized Backend!</h1>"
 
-# ===== AUTHENTICATION ENDPOINTS =====
-
-def hash_password(password):
-    """Simple password hashing"""
-    return hashlib.sha256(password.encode()).hexdigest()
-
-@app.route('/api/auth/signup', methods=['POST'])
-def signup():
-    """User signup endpoint"""
-    try:
-        data = request.json
-        name = data.get('name', '').strip()
-        email = data.get('email', '').strip().lower()
-        password = data.get('password', '')
-        
-        if not name or not email or not password:
-            return jsonify({'success': False, 'error': 'All fields are required'}), 400
-        
-        if email in users:
-            return jsonify({'success': False, 'error': 'Email already registered'}), 400
-        
-        if len(password) < 6:
-            return jsonify({'success': False, 'error': 'Password must be at least 6 characters'}), 400
-        
-        # Create user
-        users[email] = {
-            'name': name,
-            'email': email,
-            'password': hash_password(password),
-            'created_at': datetime.now().isoformat()
-        }
-        
-        # Initialize favorites
-        user_favorites[email] = []
-        
-        # Create session
-        session['user_email'] = email
-        
-        return jsonify({
-            'success': True,
-            'user': {
-                'name': name,
-                'email': email
-            }
-        })
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/auth/signin', methods=['POST'])
-def signin():
-    """User signin endpoint"""
-    try:
-        data = request.json
-        email = data.get('email', '').strip().lower()
-        password = data.get('password', '')
-        
-        if not email or not password:
-            return jsonify({'success': False, 'error': 'Email and password required'}), 400
-        
-        if email not in users:
-            return jsonify({'success': False, 'error': 'Invalid email or password'}), 401
-        
-        if users[email]['password'] != hash_password(password):
-            return jsonify({'success': False, 'error': 'Invalid email or password'}), 401
-        
-        # Create session
-        session['user_email'] = email
-        
-        return jsonify({
-            'success': True,
-            'user': {
-                'name': users[email]['name'],
-                'email': email
-            }
-        })
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/auth/me', methods=['GET'])
-def get_current_user():
-    """Get current logged-in user"""
-    try:
-        user_email = session.get('user_email')
-        
-        if not user_email or user_email not in users:
-            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
-        
-        return jsonify({
-            'success': True,
-            'user': {
-                'name': users[user_email]['name'],
-                'email': user_email
-            }
-        })
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/auth/signout', methods=['POST'])
-def signout():
-    """User signout endpoint"""
-    try:
-        session.pop('user_email', None)
-        return jsonify({'success': True})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/favorites', methods=['GET'])
-def get_favorites():
-    """Get user's favorites"""
-    try:
-        user_email = session.get('user_email')
-        
-        if not user_email:
-            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
-        
-        favorites = user_favorites.get(user_email, [])
-        
-        return jsonify({
-            'success': True,
-            'favorites': favorites
-        })
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/favorites', methods=['POST'])
-def add_favorite():
-    """Add a favorite stock"""
-    try:
-        user_email = session.get('user_email')
-        
-        if not user_email:
-            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
-        
-        data = request.json
-        ticker = data.get('ticker', '').strip().upper()
-        company = data.get('company', '').strip()
-        timeframe = data.get('timeframe', '').strip()
-        
-        if not ticker:
-            return jsonify({'success': False, 'error': 'Ticker required'}), 400
-        
-        if user_email not in user_favorites:
-            user_favorites[user_email] = []
-        
-        # Check if already favorited
-        for fav in user_favorites[user_email]:
-            if fav['ticker'] == ticker and fav['timeframe'] == timeframe:
-                return jsonify({'success': False, 'error': 'Already in favorites'}), 400
-        
-        # Add favorite
-        favorite = {
-            'ticker': ticker,
-            'company': company,
-            'timeframe': timeframe,
-            'added_at': datetime.now().isoformat()
-        }
-        
-        user_favorites[user_email].append(favorite)
-        
-        return jsonify({
-            'success': True,
-            'favorite': favorite
-        })
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/favorites/<ticker>/<timeframe>', methods=['DELETE'])
-def remove_favorite(ticker, timeframe):
-    """Remove a favorite stock"""
-    try:
-        user_email = session.get('user_email')
-        
-        if not user_email:
-            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
-        
-        if user_email not in user_favorites:
-            return jsonify({'success': False, 'error': 'No favorites found'}), 404
-        
-        # Remove favorite
-        user_favorites[user_email] = [
-            fav for fav in user_favorites[user_email]
-            if not (fav['ticker'] == ticker.upper() and fav['timeframe'] == timeframe)
-        ]
-        
-        return jsonify({'success': True})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-# ===== END AUTHENTICATION ENDPOINTS =====
-
 @app.route('/api/scan', methods=['POST'])
 def scan():
     """API endpoint to scan for squeeze candidates - TOP 30 ONLY"""
@@ -545,12 +207,7 @@ def scan():
         min_risk = float(data.get('minRisk', 60))
         
         # Check cache first
-        filters = {
-            'minShort': min_short,
-            'minGain': min_gain,
-            'minVolRatio': min_vol_ratio,
-            'minRisk': min_risk
-        }
+        filters = {'minShort': min_short, 'minGain': min_gain, 'minVolRatio': min_vol_ratio, 'minRisk': min_risk}
         cached = get_cached_results('short_squeeze', filters)
         if cached:
             return jsonify(cached)
@@ -566,11 +223,17 @@ def scan():
             try:
                 time.sleep(0.7)  # Rate limiting
                 
-                # Try Yahoo, fallback to Tradier
-                source, current_price, previous_close, current_volume, avg_volume, info, hist = get_stock_data_with_fallback(ticker)
+                stock_data = yf.Ticker(ticker)
+                hist = stock_data.history(period='3mo')
+                info = stock_data.info
                 
-                if source and current_price and previous_close:
+                if len(hist) >= 2:
+                    current_price = hist['Close'].iloc[-1]
+                    previous_close = hist['Close'].iloc[-2]
                     daily_change = ((current_price - previous_close) / previous_close) * 100
+                    
+                    current_volume = hist['Volume'].iloc[-1]
+                    avg_volume = hist['Volume'].iloc[-21:-1].mean() if len(hist) > 20 else hist['Volume'].mean()
                     volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1.0
                     
                     float_shares = info.get('floatShares', info.get('sharesOutstanding', 0))
@@ -641,11 +304,6 @@ def scan():
 def daily_plays():
     """Daily plays scanner - KEEP FULL LIST (47 stocks)"""
     try:
-        # Check cache first (no filters for this scan)
-        cached = get_cached_results('daily_plays')
-        if cached:
-            return jsonify(cached)
-        
         popular_tickers = [
             'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD',
             'SPY', 'QQQ', 'IWM', 'DIA',
@@ -667,7 +325,8 @@ def daily_plays():
             try:
                 time.sleep(0.7)
                 
-                stock_data, hist = get_ticker_with_fallback(ticker)
+                stock_data = yf.Ticker(ticker)
+                hist = stock_data.history(period='1mo')
                 info = stock_data.info
                 
                 if len(hist) >= 3:
@@ -698,16 +357,11 @@ def daily_plays():
         
         print(f"✅ Found {len(results)} daily patterns\n")
         
-        response_data = {
+        return jsonify({
             'success': True,
             'results': results,
             'timestamp': datetime.now().isoformat()
-        }
-        
-        # Cache the results
-        cache_results('daily_plays', response_data)
-        
-        return jsonify(response_data)
+        })
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -716,11 +370,6 @@ def daily_plays():
 def weekly_plays():
     """Weekly plays scanner - COMBINED DAILY + VOLEMON LIST"""
     try:
-        # Check cache first
-        cached = get_cached_results('weekly_plays')
-        if cached:
-            return jsonify(cached)
-        
         combined_tickers = get_combined_weekly_hourly_list()
         results = []
         
@@ -730,8 +379,8 @@ def weekly_plays():
             try:
                 time.sleep(0.7)
                 
-                stock_data, hist = get_ticker_with_fallback(ticker)
-                # hist already fetched by fallback
+                stock_data = yf.Ticker(ticker)
+                hist = stock_data.history(period='3mo')
                 
                 if len(hist) >= 3:
                     # Resample to weekly
@@ -761,9 +410,7 @@ def weekly_plays():
         
         print(f"✅ Found {len(results)} weekly patterns\n")
         
-        response_data = {'success': True, 'results': results}
-        cache_results('weekly_plays', response_data)
-        return jsonify(response_data)
+        return jsonify({'success': True, 'results': results})
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -772,11 +419,6 @@ def weekly_plays():
 def hourly_plays():
     """Hourly plays scanner - COMBINED DAILY + VOLEMON LIST"""
     try:
-        # Check cache first
-        cached = get_cached_results('hourly_plays')
-        if cached:
-            return jsonify(cached)
-        
         combined_tickers = get_combined_weekly_hourly_list()
         results = []
         
@@ -786,8 +428,8 @@ def hourly_plays():
             try:
                 time.sleep(0.7)
                 
-                stock_data, hist = get_ticker_with_fallback(ticker)
-                # hist already fetched by fallback
+                stock_data = yf.Ticker(ticker)
+                hist = stock_data.history(period='5d', interval='1h')
                 
                 if len(hist) >= 3:
                     has_pattern, pattern_data = check_strat_31(hist)
@@ -808,9 +450,7 @@ def hourly_plays():
         
         print(f"✅ Found {len(results)} hourly patterns\n")
         
-        response_data = {'success': True, 'results': results}
-        cache_results('hourly_plays', response_data)
-        return jsonify(response_data)
+        return jsonify({'success': True, 'results': results})
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -819,11 +459,6 @@ def hourly_plays():
 def crypto_plays():
     """Crypto scanner - KEEP FULL LIST (5 cryptos)"""
     try:
-        # Check cache first
-        cached = get_cached_results('crypto_plays')
-        if cached:
-            return jsonify(cached)
-        
         crypto_tickers = {
             'BTC-USD': 'Bitcoin',
             'ETH-USD': 'Ethereum',
@@ -840,8 +475,8 @@ def crypto_plays():
             try:
                 time.sleep(0.7)
                 
-                stock_data, hist = get_ticker_with_fallback(ticker)
-                # hist already fetched by fallback
+                stock_data = yf.Ticker(ticker)
+                hist = stock_data.history(period='1mo')
                 
                 if len(hist) >= 3:
                     has_pattern, pattern_data = check_strat_31(hist)
@@ -866,9 +501,7 @@ def crypto_plays():
         
         print(f"✅ Found {len(results)} crypto patterns\n")
         
-        response_data = {'success': True, 'results': results}
-        cache_results('crypto_plays', response_data)
-        return jsonify(response_data)
+        return jsonify({'success': True, 'results': results})
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -879,12 +512,6 @@ def volemon_scan():
     try:
         data = request.json or {}
         min_volume_multiple = float(data.get('min_volume_multiple', 2.0))
-        
-        # Check cache first
-        filters = {'min_volume_multiple': min_volume_multiple}
-        cached = get_cached_results('volemon', filters)
-        if cached:
-            return jsonify(cached)
         
         popular_tickers = [
             'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD',
@@ -903,8 +530,8 @@ def volemon_scan():
             try:
                 time.sleep(0.7)
                 
-                stock_data, hist = get_ticker_with_fallback(ticker)
-                # hist already fetched by fallback
+                stock_data = yf.Ticker(ticker)
+                hist = stock_data.history(period='5d')
                 info = stock_data.info
                 
                 if len(hist) >= 2:
@@ -938,9 +565,7 @@ def volemon_scan():
         
         print(f"✅ Found {len(results)}\n")
         
-        response_data = {'success': True, 'results': results[:50]}
-        cache_results('volemon', response_data, filters)
-        return jsonify(response_data)
+        return jsonify({'success': True, 'results': results[:50]})
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -952,11 +577,6 @@ def usuals_scan():
         data = request.json or {}
         tickers = data.get('tickers', ['SOFI', 'INTC', 'SPY', 'TSLA', 'COIN', 'CDE', 'PLTR', 'AAPL', 'BAC', 'NVDA', 'GOOGL', 'META', 'MSFT', 'UNH'])
         
-        # Check cache first
-        cached = get_cached_results('usuals')
-        if cached:
-            return jsonify(cached)
-        
         results = []
         
         print(f"\n⭐ Usuals scan - {len(tickers)} stocks...")
@@ -965,8 +585,8 @@ def usuals_scan():
             try:
                 time.sleep(0.7)
                 
-                stock_data, hist = get_ticker_with_fallback(ticker)
-                # hist already fetched by fallback
+                stock_data = yf.Ticker(ticker)
+                hist = stock_data.history(period='1mo')
                 info = stock_data.info
                 
                 if len(hist) >= 3:
@@ -1018,9 +638,7 @@ def usuals_scan():
         
         print(f"✅ Done! {len(results)} stocks\n")
         
-        response_data = {'success': True, 'results': results}
-        cache_results('usuals', response_data)
-        return jsonify(response_data)
+        return jsonify({'success': True, 'results': results})
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
