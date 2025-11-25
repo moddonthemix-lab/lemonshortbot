@@ -666,6 +666,89 @@ def delete_journal_entry(entry_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
+# ===== STOCK SCANNING ENDPOINTS =====
+
+# Helper function for risk score calculation
+def calculate_risk_score(short_interest, daily_change, volume_ratio, days_to_cover, float_shares):
+    """Calculate risk score for short squeeze potential"""
+    score = 0
+    
+    # Short interest weight (0-40 points)
+    if short_interest >= 50:
+        score += 40
+    elif short_interest >= 40:
+        score += 35
+    elif short_interest >= 30:
+        score += 25
+    elif short_interest >= 20:
+        score += 15
+    else:
+        score += 5
+    
+    # Daily change weight (0-30 points)
+    if daily_change >= 20:
+        score += 30
+    elif daily_change >= 15:
+        score += 25
+    elif daily_change >= 10:
+        score += 20
+    elif daily_change >= 5:
+        score += 10
+    
+    # Volume ratio weight (0-20 points)
+    if volume_ratio >= 3:
+        score += 20
+    elif volume_ratio >= 2:
+        score += 15
+    elif volume_ratio >= 1.5:
+        score += 10
+    
+    # Days to cover weight (0-10 points)
+    if days_to_cover >= 5:
+        score += 10
+    elif days_to_cover >= 3:
+        score += 7
+    elif days_to_cover >= 1:
+        score += 5
+    
+    return min(100, score)
+
+@app.route('/api/scan', methods=['POST'])
+def scan():
+    """API endpoint to scan for squeeze candidates - TOP 30 ONLY"""
+    try:
+        data = request.json
+        min_short = float(data.get('minShort', 25))
+        min_gain = float(data.get('minGain', 15))
+        min_vol_ratio = float(data.get('minVolRatio', 1.5))
+        min_risk = float(data.get('minRisk', 60))
+        
+        stocks = load_stock_data()  # Already limited to top 30
+        results = []
+        
+        print(f"\n🔍 Short Squeeze Scan - Top {len(stocks)} stocks...")
+        
+        for stock in stocks:
+            ticker = stock['ticker']
+            
+            try:
+                time.sleep(0.7)  # Rate limiting
+                
+                stock_data = yf.Ticker(ticker)
+                hist = stock_data.history(period='3mo')
+                info = stock_data.info
+                
+                if len(hist) >= 2:
+                    current_price = hist['Close'].iloc[-1]
+                    previous_close = hist['Close'].iloc[-2]
+                    daily_change = ((current_price - previous_close) / previous_close) * 100
+                    
+                    current_volume = hist['Volume'].iloc[-1]
+                    avg_volume = hist['Volume'].iloc[-21:-1].mean() if len(hist) > 20 else hist['Volume'].mean()
+                    volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1.0
+                    
+                    float_shares = info.get('floatShares', info.get('sharesOutstanding', 0))
                     market_cap = info.get('marketCap', 0)
                     week_high_52 = info.get('fiftyTwoWeekHigh', current_price)
                     week_low_52 = info.get('fiftyTwoWeekLow', current_price)
