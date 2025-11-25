@@ -13,7 +13,7 @@ Total API calls reduced from 493-1,393 to ~200 per complete scan!
 
 from flask import Flask, render_template, jsonify, request, send_from_directory, session
 import yfinance as yf
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 import os
 import json
@@ -22,6 +22,32 @@ import secrets
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(32)  # Generate secret key for sessions
+
+# ===== CACHING CONFIGURATION =====
+scan_cache = {}
+CACHE_DURATION = timedelta(minutes=5)  # Cache results for 5 minutes
+
+def get_cached_results(scan_type, filters=None):
+    """Get cached scan results if still valid"""
+    cache_key = f"{scan_type}_{str(filters)}" if filters else scan_type
+    
+    if cache_key in scan_cache:
+        cached_data, timestamp = scan_cache[cache_key]
+        if datetime.now() - timestamp < CACHE_DURATION:
+            print(f"✅ Returning cached results for {scan_type} (age: {(datetime.now() - timestamp).seconds}s)")
+            return cached_data
+        else:
+            # Cache expired, remove it
+            del scan_cache[cache_key]
+            print(f"⏰ Cache expired for {scan_type}")
+    
+    return None
+
+def cache_results(scan_type, results, filters=None):
+    """Cache scan results with timestamp"""
+    cache_key = f"{scan_type}_{str(filters)}" if filters else scan_type
+    scan_cache[cache_key] = (results, datetime.now())
+    print(f"💾 Cached {len(results)} results for {scan_type}")
 
 # Simple user storage (in-memory - for production use a database)
 users = {}
@@ -380,6 +406,17 @@ def scan():
         min_vol_ratio = float(data.get('minVolRatio', 1.5))
         min_risk = float(data.get('minRisk', 60))
         
+        # Check cache first
+        filters = {
+            'minShort': min_short,
+            'minGain': min_gain,
+            'minVolRatio': min_vol_ratio,
+            'minRisk': min_risk
+        }
+        cached = get_cached_results('short_squeeze', filters)
+        if cached:
+            return jsonify(cached)
+        
         stocks = load_stock_data()  # Already limited to top 30
         results = []
         
@@ -451,11 +488,16 @@ def scan():
         
         print(f"✅ Found {len(results)} squeeze candidates\n")
         
-        return jsonify({
+        response_data = {
             'success': True,
             'results': results,
             'timestamp': datetime.now().isoformat()
-        })
+        }
+        
+        # Cache the results
+        cache_results('short_squeeze', response_data, filters)
+        
+        return jsonify(response_data)
         
     except Exception as e:
         return jsonify({
@@ -467,6 +509,11 @@ def scan():
 def daily_plays():
     """Daily plays scanner - KEEP FULL LIST (47 stocks)"""
     try:
+        # Check cache first (no filters for this scan)
+        cached = get_cached_results('daily_plays')
+        if cached:
+            return jsonify(cached)
+        
         popular_tickers = [
             'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD',
             'SPY', 'QQQ', 'IWM', 'DIA',
@@ -520,11 +567,16 @@ def daily_plays():
         
         print(f"✅ Found {len(results)} daily patterns\n")
         
-        return jsonify({
+        response_data = {
             'success': True,
             'results': results,
             'timestamp': datetime.now().isoformat()
-        })
+        }
+        
+        # Cache the results
+        cache_results('daily_plays', response_data)
+        
+        return jsonify(response_data)
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -533,6 +585,11 @@ def daily_plays():
 def weekly_plays():
     """Weekly plays scanner - COMBINED DAILY + VOLEMON LIST"""
     try:
+        # Check cache first
+        cached = get_cached_results('weekly_plays')
+        if cached:
+            return jsonify(cached)
+        
         combined_tickers = get_combined_weekly_hourly_list()
         results = []
         
@@ -573,7 +630,9 @@ def weekly_plays():
         
         print(f"✅ Found {len(results)} weekly patterns\n")
         
-        return jsonify({'success': True, 'results': results})
+        response_data = {'success': True, 'results': results}
+        cache_results('weekly_plays', response_data)
+        return jsonify(response_data)
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -582,6 +641,11 @@ def weekly_plays():
 def hourly_plays():
     """Hourly plays scanner - COMBINED DAILY + VOLEMON LIST"""
     try:
+        # Check cache first
+        cached = get_cached_results('hourly_plays')
+        if cached:
+            return jsonify(cached)
+        
         combined_tickers = get_combined_weekly_hourly_list()
         results = []
         
@@ -613,7 +677,9 @@ def hourly_plays():
         
         print(f"✅ Found {len(results)} hourly patterns\n")
         
-        return jsonify({'success': True, 'results': results})
+        response_data = {'success': True, 'results': results}
+        cache_results('hourly_plays', response_data)
+        return jsonify(response_data)
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -622,6 +688,11 @@ def hourly_plays():
 def crypto_plays():
     """Crypto scanner - KEEP FULL LIST (5 cryptos)"""
     try:
+        # Check cache first
+        cached = get_cached_results('crypto_plays')
+        if cached:
+            return jsonify(cached)
+        
         crypto_tickers = {
             'BTC-USD': 'Bitcoin',
             'ETH-USD': 'Ethereum',
@@ -664,7 +735,9 @@ def crypto_plays():
         
         print(f"✅ Found {len(results)} crypto patterns\n")
         
-        return jsonify({'success': True, 'results': results})
+        response_data = {'success': True, 'results': results}
+        cache_results('crypto_plays', response_data)
+        return jsonify(response_data)
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -675,6 +748,12 @@ def volemon_scan():
     try:
         data = request.json or {}
         min_volume_multiple = float(data.get('min_volume_multiple', 2.0))
+        
+        # Check cache first
+        filters = {'min_volume_multiple': min_volume_multiple}
+        cached = get_cached_results('volemon', filters)
+        if cached:
+            return jsonify(cached)
         
         popular_tickers = [
             'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD',
@@ -728,7 +807,9 @@ def volemon_scan():
         
         print(f"✅ Found {len(results)}\n")
         
-        return jsonify({'success': True, 'results': results[:50]})
+        response_data = {'success': True, 'results': results[:50]}
+        cache_results('volemon', response_data, filters)
+        return jsonify(response_data)
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -739,6 +820,11 @@ def usuals_scan():
     try:
         data = request.json or {}
         tickers = data.get('tickers', ['SOFI', 'INTC', 'SPY', 'TSLA', 'COIN', 'CDE', 'PLTR', 'AAPL', 'BAC', 'NVDA', 'GOOGL', 'META', 'MSFT', 'UNH'])
+        
+        # Check cache first
+        cached = get_cached_results('usuals')
+        if cached:
+            return jsonify(cached)
         
         results = []
         
@@ -801,7 +887,9 @@ def usuals_scan():
         
         print(f"✅ Done! {len(results)} stocks\n")
         
-        return jsonify({'success': True, 'results': results})
+        response_data = {'success': True, 'results': results}
+        cache_results('usuals', response_data)
+        return jsonify(response_data)
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
