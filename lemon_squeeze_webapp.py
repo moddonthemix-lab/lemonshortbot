@@ -11,14 +11,90 @@ Changes:
 Total API calls reduced from 493-1,393 to ~200 per complete scan!
 """
 
-from flask import Flask, render_template, jsonify, request, send_from_directory
+from flask import Flask, render_template, jsonify, request, send_from_directory, session
 import yfinance as yf
 from datetime import datetime
 import time
 import os
 import json
+import hashlib
+import secrets
+import requests
+from collections import deque
 
 app = Flask(__name__)
+app.secret_key = secrets.token_hex(32)
+
+# ===== TRADIER API (OPTIONAL FALLBACK) =====
+TRADIER_API_KEY = os.environ.get('TRADIER_API_KEY', '')
+TRADIER_BASE_URL = 'https://api.tradier.com/v1'
+tradier_call_times = deque()
+
+def can_call_tradier():
+    """Rate limiter: 120 calls per minute"""
+    if not TRADIER_API_KEY:
+        return False
+    now = time.time()
+    while tradier_call_times and tradier_call_times[0] < now - 60:
+        tradier_call_times.popleft()
+    if len(tradier_call_times) >= 120:
+        return False
+    return True
+
+def get_tradier_quote(ticker):
+    """Fallback data source if Yahoo fails"""
+    if not can_call_tradier():
+        return None
+    try:
+        response = requests.get(
+            f'{TRADIER_BASE_URL}/markets/quotes',
+            params={'symbols': ticker},
+            headers={'Authorization': f'Bearer {TRADIER_API_KEY}', 'Accept': 'application/json'},
+            timeout=5
+        )
+        tradier_call_times.append(time.time())
+        if response.status_code == 200:
+            data = response.json()
+            if 'quotes' in data and 'quote' in data['quotes']:
+                quote = data['quotes']['quote']
+                if isinstance(quote, dict) and quote.get('last'):
+                    return quote
+    except:
+        pass
+    return None
+
+def safe_yf_ticker(ticker):
+    """Get stock data with Tradier fallback on rate limit"""
+    try:
+        time.sleep(0.5)  # Gentle rate limiting
+        stock = yf.Ticker(ticker)
+        hist = stock.history(period='3mo')
+        if len(hist) >= 2:
+            return stock, hist, stock.info
+    except Exception as e:
+        if '429' in str(e) or 'too many' in str(e).lower():
+            # Try Tradier fallback
+            quote = get_tradier_quote(ticker)
+            if quote:
+                print(f"🔄 {ticker}: Using Tradier fallback")
+                # Create minimal compatible objects
+                import pandas as pd
+                hist = pd.DataFrame({
+                    'Close': [float(quote.get('prevclose', 0)), float(quote.get('last', 0))],
+                    'Volume': [int(quote.get('average_volume', 0) or 0)] * 2,
+                    'High': [float(quote.get('last', 0))] * 2,
+                    'Low': [float(quote.get('last', 0))] * 2
+                })
+                info = {'symbol': ticker, 'shortName': ticker}
+                class Wrapper:
+                    def __init__(self, i):
+                        self.info = i
+                return Wrapper(info), hist, info
+    return None, None, None
+
+# Simple user storage (in-memory - for production use a database)
+users = {}
+user_favorites = {}
 
 # Load high short interest stocks
 def load_stock_data():
@@ -172,6 +248,196 @@ def index():
             return send_from_directory('.', html_file)
     
     return "<h1>🍋 Lemon Squeeze - Optimized Backend!</h1>"
+
+# ===== AUTHENTICATION ENDPOINTS =====
+
+def hash_password(password):
+    """Simple password hashing"""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+@app.route('/api/auth/signup', methods=['POST'])
+def signup():
+    """User signup endpoint"""
+    try:
+        data = request.json
+        name = data.get('name', '').strip()
+        email = data.get('email', '').strip().lower()
+        password = data.get('password', '')
+        
+        if not name or not email or not password:
+            return jsonify({'success': False, 'error': 'All fields are required'}), 400
+        
+        if email in users:
+            return jsonify({'success': False, 'error': 'Email already registered'}), 400
+        
+        if len(password) < 6:
+            return jsonify({'success': False, 'error': 'Password must be at least 6 characters'}), 400
+        
+        # Create user
+        users[email] = {
+            'name': name,
+            'email': email,
+            'password': hash_password(password),
+            'created_at': datetime.now().isoformat()
+        }
+        
+        # Initialize favorites
+        user_favorites[email] = []
+        
+        # Create session
+        session['user_email'] = email
+        
+        return jsonify({
+            'success': True,
+            'user': {
+                'name': name,
+                'email': email
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/auth/signin', methods=['POST'])
+def signin():
+    """User signin endpoint"""
+    try:
+        data = request.json
+        email = data.get('email', '').strip().lower()
+        password = data.get('password', '')
+        
+        if not email or not password:
+            return jsonify({'success': False, 'error': 'Email and password required'}), 400
+        
+        if email not in users:
+            return jsonify({'success': False, 'error': 'Invalid email or password'}), 401
+        
+        if users[email]['password'] != hash_password(password):
+            return jsonify({'success': False, 'error': 'Invalid email or password'}), 401
+        
+        # Create session
+        session['user_email'] = email
+        
+        return jsonify({
+            'success': True,
+            'user': {
+                'name': users[email]['name'],
+                'email': email
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/auth/me', methods=['GET'])
+def get_current_user():
+    """Get current logged-in user"""
+    try:
+        user_email = session.get('user_email')
+        
+        if not user_email or user_email not in users:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        return jsonify({
+            'success': True,
+            'user': {
+                'name': users[user_email]['name'],
+                'email': user_email
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/auth/signout', methods=['POST'])
+def signout():
+    """User signout endpoint"""
+    try:
+        session.pop('user_email', None)
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/favorites', methods=['GET'])
+def get_favorites():
+    """Get user's favorites"""
+    try:
+        user_email = session.get('user_email')
+        
+        if not user_email:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        favorites = user_favorites.get(user_email, [])
+        
+        return jsonify({
+            'success': True,
+            'favorites': favorites
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/favorites', methods=['POST'])
+def add_favorite():
+    """Add a favorite stock"""
+    try:
+        user_email = session.get('user_email')
+        
+        if not user_email:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        data = request.json
+        ticker = data.get('ticker', '').strip().upper()
+        company = data.get('company', '').strip()
+        timeframe = data.get('timeframe', '').strip()
+        
+        if not ticker:
+            return jsonify({'success': False, 'error': 'Ticker required'}), 400
+        
+        if user_email not in user_favorites:
+            user_favorites[user_email] = []
+        
+        # Check if already favorited
+        for fav in user_favorites[user_email]:
+            if fav['ticker'] == ticker and fav['timeframe'] == timeframe:
+                return jsonify({'success': False, 'error': 'Already in favorites'}), 400
+        
+        # Add favorite
+        favorite = {
+            'ticker': ticker,
+            'company': company,
+            'timeframe': timeframe,
+            'added_at': datetime.now().isoformat()
+        }
+        
+        user_favorites[user_email].append(favorite)
+        
+        return jsonify({
+            'success': True,
+            'favorite': favorite
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/favorites/<ticker>/<timeframe>', methods=['DELETE'])
+def remove_favorite(ticker, timeframe):
+    """Remove a favorite stock"""
+    try:
+        user_email = session.get('user_email')
+        
+        if not user_email:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        if user_email not in user_favorites:
+            return jsonify({'success': False, 'error': 'No favorites found'}), 404
+        
+        # Remove favorite
+        user_favorites[user_email] = [
+            fav for fav in user_favorites[user_email]
+            if not (fav['ticker'] == ticker.upper() and fav['timeframe'] == timeframe)
+        ]
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ===== END AUTHENTICATION ENDPOINTS =====
 
 @app.route('/api/scan', methods=['POST'])
 def scan():
@@ -549,13 +815,9 @@ def usuals_scan():
         
         for ticker in tickers:
             try:
-                time.sleep(0.7)
+                stock_data, hist, info = safe_yf_ticker(ticker)
                 
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='1mo')
-                info = stock_data.info
-                
-                if len(hist) >= 3:
+                if stock_data and hist is not None and len(hist) >= 3:
                     current_price = hist['Close'].iloc[-1]
                     prev_price = hist['Close'].iloc[-2]
                     change = ((current_price - prev_price) / prev_price) * 100
