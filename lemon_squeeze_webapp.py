@@ -69,27 +69,42 @@ def safe_yf_ticker(ticker):
         time.sleep(0.5)  # Gentle rate limiting
         stock = yf.Ticker(ticker)
         hist = stock.history(period='3mo')
+        
+        # Check if we got valid data
         if len(hist) >= 2:
+            print(f"✅ {ticker}: Yahoo")
             return stock, hist, stock.info
+        else:
+            # Empty data = likely rate limited
+            print(f"⚠️  {ticker}: Yahoo returned empty, trying Tradier...")
+            raise Exception("Empty data from Yahoo")
+            
     except Exception as e:
-        if '429' in str(e) or 'too many' in str(e).lower():
-            # Try Tradier fallback
+        error_msg = str(e).lower()
+        
+        # Try Tradier on any failure
+        if '429' in error_msg or 'too many' in error_msg or 'empty data' in error_msg:
             quote = get_tradier_quote(ticker)
             if quote:
-                print(f"🔄 {ticker}: Using Tradier fallback")
+                print(f"🔄 {ticker}: Tradier SUCCESS")
                 # Create minimal compatible objects
                 import pandas as pd
                 hist = pd.DataFrame({
-                    'Close': [float(quote.get('prevclose', 0)), float(quote.get('last', 0))],
+                    'Close': [float(quote.get('prevclose', 0) or 0), float(quote.get('last', 0) or 0)],
                     'Volume': [int(quote.get('average_volume', 0) or 0)] * 2,
-                    'High': [float(quote.get('last', 0))] * 2,
-                    'Low': [float(quote.get('last', 0))] * 2
+                    'High': [float(quote.get('last', 0) or 0)] * 2,
+                    'Low': [float(quote.get('last', 0) or 0) * 0.99] * 2
                 })
                 info = {'symbol': ticker, 'shortName': ticker}
                 class Wrapper:
                     def __init__(self, i):
                         self.info = i
                 return Wrapper(info), hist, info
+            else:
+                print(f"❌ {ticker}: Tradier also failed")
+        else:
+            print(f"❌ {ticker}: Error - {error_msg[:50]}")
+            
     return None, None, None
 
 # Simple user storage (in-memory - for production use a database)
@@ -334,7 +349,8 @@ def get_current_user():
         user_email = session.get('user_email')
         
         if not user_email or user_email not in users:
-            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+            # Allow guest mode - return success with no user
+            return jsonify({'success': True, 'user': None})
         
         return jsonify({
             'success': True,
