@@ -26,7 +26,7 @@ app.secret_key = secrets.token_hex(32)  # Generate secret key for sessions
 
 # ===== CACHING CONFIGURATION =====
 scan_cache = {}
-CACHE_DURATION = timedelta(minutes=14)  # Cache results for 14 minutes
+CACHE_DURATION = timedelta(minutes=5)  # Cache results for 5 minutes
 
 def get_cached_results(scan_type, filters=None):
     """Get cached scan results if still valid"""
@@ -90,8 +90,8 @@ def get_stock_data_with_fallback(ticker):
     """
     # Try Yahoo Finance first
     try:
-        stock_data = yf.Ticker(ticker)
-        hist = stock_data.history(period='3mo')
+        stock_data, hist = get_ticker_with_fallback(ticker)
+        # hist already fetched by fallback
         info = stock_data.info
         
         if len(hist) >= 2:
@@ -130,6 +130,62 @@ def get_stock_data_with_fallback(ticker):
     
     print(f"❌ {ticker}: Both sources failed")
     return (None, None, None, None, None, None, None)
+
+def get_ticker_with_fallback(ticker):
+    """
+    Simpler wrapper - returns Yahoo Ticker object, or creates fake one from Tradier
+    This makes it easier to integrate with existing code
+    """
+    try:
+        stock_data, hist = get_ticker_with_fallback(ticker)
+        # hist already fetched by fallback
+        
+        if len(hist) >= 2:
+            print(f"✅ {ticker}: Yahoo Finance")
+            return stock_data, hist
+    except Exception as e:
+        print(f"⚠️  {ticker}: Yahoo failed, trying Tradier...")
+    
+    # Fallback to Tradier
+    quote = get_tradier_quote(ticker)
+    
+    if quote and quote.get('last'):
+        print(f"🔄 {ticker}: Tradier Sandbox")
+        
+        # Create a fake object that mimics yfinance structure
+        class TradierWrapper:
+            def __init__(self, quote_data):
+                self.quote = quote_data
+                self.info = {
+                    'symbol': quote_data.get('symbol'),
+                    'longName': quote_data.get('description', ticker),
+                    'floatShares': 0,
+                    'sharesOutstanding': 0,
+                    'marketCap': 0,
+                    'fiftyTwoWeekHigh': float(quote_data.get('week_52_high', 0)),
+                    'fiftyTwoWeekLow': float(quote_data.get('week_52_low', 0))
+                }
+            
+            def history(self, period='1mo'):
+                # Return fake historical data for Tradier
+                import pandas as pd
+                current_price = float(self.quote.get('last', 0))
+                prev_close = float(self.quote.get('prevclose', current_price))
+                
+                # Create minimal dataframe
+                return pd.DataFrame({
+                    'Close': [prev_close, current_price],
+                    'Volume': [int(self.quote.get('average_volume', 0)), int(self.quote.get('volume', 0))],
+                    'High': [current_price * 1.02, current_price],
+                    'Low': [current_price * 0.98, current_price * 0.99]
+                })
+        
+        wrapper = TradierWrapper(quote)
+        hist = wrapper.history()
+        return wrapper, hist
+    
+    print(f"❌ {ticker}: Both sources failed")
+    raise Exception("Both Yahoo and Tradier failed")
 
 # Simple user storage (in-memory - for production use a database)
 users = {}
@@ -611,8 +667,7 @@ def daily_plays():
             try:
                 time.sleep(0.7)
                 
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='1mo')
+                stock_data, hist = get_ticker_with_fallback(ticker)
                 info = stock_data.info
                 
                 if len(hist) >= 3:
@@ -675,8 +730,8 @@ def weekly_plays():
             try:
                 time.sleep(0.7)
                 
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='3mo')
+                stock_data, hist = get_ticker_with_fallback(ticker)
+                # hist already fetched by fallback
                 
                 if len(hist) >= 3:
                     # Resample to weekly
@@ -731,8 +786,8 @@ def hourly_plays():
             try:
                 time.sleep(0.7)
                 
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='5d', interval='1h')
+                stock_data, hist = get_ticker_with_fallback(ticker)
+                # hist already fetched by fallback
                 
                 if len(hist) >= 3:
                     has_pattern, pattern_data = check_strat_31(hist)
@@ -785,8 +840,8 @@ def crypto_plays():
             try:
                 time.sleep(0.7)
                 
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='1mo')
+                stock_data, hist = get_ticker_with_fallback(ticker)
+                # hist already fetched by fallback
                 
                 if len(hist) >= 3:
                     has_pattern, pattern_data = check_strat_31(hist)
@@ -848,8 +903,8 @@ def volemon_scan():
             try:
                 time.sleep(0.7)
                 
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='5d')
+                stock_data, hist = get_ticker_with_fallback(ticker)
+                # hist already fetched by fallback
                 info = stock_data.info
                 
                 if len(hist) >= 2:
@@ -910,8 +965,8 @@ def usuals_scan():
             try:
                 time.sleep(0.7)
                 
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='1mo')
+                stock_data, hist = get_ticker_with_fallback(ticker)
+                # hist already fetched by fallback
                 info = stock_data.info
                 
                 if len(hist) >= 3:
