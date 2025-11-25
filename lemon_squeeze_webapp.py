@@ -21,20 +21,48 @@ import hashlib
 import secrets
 import requests
 import random
+from collections import deque
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(32)
 
-# ===== TRADIER PRODUCTION API =====
+# ===== TRADIER PRODUCTION API WITH RATE LIMITING =====
 TRADIER_API_KEY = os.environ.get('TRADIER_API_KEY', 'Yuvcbpb7jfPIKyyUf8FDNATV48Hc')
-TRADIER_BASE_URL = 'https://api.tradier.com/v1'  # PRODUCTION (not sandbox)
+TRADIER_BASE_URL = 'https://api.tradier.com/v1'
+
+# Rate limiter: 120 calls per minute max
+TRADIER_MAX_CALLS_PER_MINUTE = 120
+TRADIER_WINDOW_SECONDS = 60
+tradier_call_times = deque()
+
+def can_call_tradier():
+    """Check if we can make a Tradier API call without exceeding 120/min limit"""
+    now = time.time()
+    
+    # Remove calls older than 60 seconds
+    while tradier_call_times and tradier_call_times[0] < now - TRADIER_WINDOW_SECONDS:
+        tradier_call_times.popleft()
+    
+    # Check if under limit
+    if len(tradier_call_times) < TRADIER_MAX_CALLS_PER_MINUTE:
+        return True
+    
+    # Wait for oldest call to expire
+    oldest_call = tradier_call_times[0]
+    wait_time = TRADIER_WINDOW_SECONDS - (now - oldest_call) + 0.1
+    print(f"⏰ Tradier rate limit: {len(tradier_call_times)}/120, waiting {wait_time:.1f}s")
+    time.sleep(wait_time)
+    return True
 
 def get_tradier_quote(ticker):
-    """Get real-time quote from Tradier Production API"""
+    """Get real-time quote from Tradier Production API with rate limiting"""
     if not TRADIER_API_KEY:
         return None
     
     try:
+        # Check rate limit before calling
+        can_call_tradier()
+        
         headers = {
             'Authorization': f'Bearer {TRADIER_API_KEY}',
             'Accept': 'application/json'
@@ -47,14 +75,22 @@ def get_tradier_quote(ticker):
             timeout=5
         )
         
+        # Record this API call
+        tradier_call_times.append(time.time())
+        
         if response.status_code == 200:
             data = response.json()
             if 'quotes' in data and 'quote' in data['quotes']:
                 quote = data['quotes']['quote']
                 if isinstance(quote, dict) and quote.get('last'):
                     return quote
+        elif response.status_code == 429:
+            print(f"⚠️  Tradier 429 rate limit for {ticker}")
+            return None
+            
         return None
     except Exception as e:
+        print(f"⚠️  Tradier error for {ticker}: {str(e)[:50]}")
         return None
 
 def fetch_stock_data(ticker, max_retries=3):
