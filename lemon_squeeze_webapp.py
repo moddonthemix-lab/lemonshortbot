@@ -1,14 +1,6 @@
 """
-🍋 LEMON SQUEEZE WEB APP v3.0 - OPTIMIZED & REDUCED 🍋
-Changes:
-- Short Squeeze: Top 30 only (from CSV)
-- Daily Plays: Keep full list (47 stocks)
-- Weekly/Hourly Plays: Daily list + Volemon list combined
-- Volemon: Keep full list (33 stocks)
-- Usuals: Keep full list (14 stocks)
-- Crypto: Keep full list (5 cryptos)
-
-Total API calls reduced from 493-1,393 to ~200 per complete scan!
+🍋 LEMON SQUEEZE WEB APP v4.0 - WITH POSTGRESQL DATABASE 🍋
+Complete backend with persistent storage for all user data
 """
 
 from flask import Flask, render_template, jsonify, request, send_from_directory, session
@@ -19,16 +11,108 @@ import os
 import json
 import hashlib
 import secrets
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from contextlib import contextmanager
 
 app = Flask(__name__)
-app.secret_key = secrets.token_hex(32)  # Generate secret key for sessions
+app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 
-# Simple user storage (in-memory - for production use a database)
-users = {}
-user_favorites = {}
-user_profiles = {}  # Store extended profile info
-trading_journals = {}  # Store trading journal entries
-username_history = {}  # Track username changes
+# ===== DATABASE CONFIGURATION =====
+DATABASE_URL = os.environ.get('DATABASE_URL')
+
+@contextmanager
+def get_db():
+    """Context manager for database connections"""
+    conn = psycopg2.connect(DATABASE_URL)
+    conn.cursor_factory = RealDictCursor
+    try:
+        yield conn
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+def init_db():
+    """Initialize database tables"""
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+            
+            # Users table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    email TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    password TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            
+            # User profiles table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS profiles (
+                    email TEXT PRIMARY KEY,
+                    bio TEXT DEFAULT '',
+                    trader_types JSONB DEFAULT '[]'::jsonb,
+                    FOREIGN KEY (email) REFERENCES users(email) ON DELETE CASCADE
+                )
+            """)
+            
+            # Username changes table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS username_changes (
+                    id SERIAL PRIMARY KEY,
+                    email TEXT NOT NULL,
+                    old_name TEXT,
+                    new_name TEXT,
+                    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (email) REFERENCES users(email) ON DELETE CASCADE
+                )
+            """)
+            
+            # Favorites table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS favorites (
+                    id SERIAL PRIMARY KEY,
+                    email TEXT NOT NULL,
+                    ticker TEXT NOT NULL,
+                    company TEXT,
+                    timeframe TEXT,
+                    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (email) REFERENCES users(email) ON DELETE CASCADE,
+                    UNIQUE(email, ticker, timeframe)
+                )
+            """)
+            
+            # Trading journal table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS journal_entries (
+                    id TEXT PRIMARY KEY,
+                    email TEXT NOT NULL,
+                    date TEXT NOT NULL,
+                    profited BOOLEAN,
+                    percent REAL,
+                    type TEXT,
+                    stock TEXT,
+                    reason TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (email) REFERENCES users(email) ON DELETE CASCADE
+                )
+            """)
+            
+            conn.commit()
+            print("✅ Database initialized successfully!")
+    except Exception as e:
+        print(f"❌ Database initialization error: {e}")
+
+# Initialize database on startup
+if DATABASE_URL:
+    init_db()
+else:
+    print("⚠️ WARNING: DATABASE_URL not set! Add PostgreSQL database in Railway.")
 
 # Load high short interest stocks
 def load_stock_data():
@@ -36,158 +120,65 @@ def load_stock_data():
     stocks = []
     csv_path = 'high_short_stocks.csv'
     
-    if os.path.exists(csv_path):
+    if not os.path.exists(csv_path):
+        print(f"Warning: {csv_path} not found")
+        return stocks
+    
+    try:
         with open(csv_path, 'r') as f:
-            for line in f:
+            next(f)  # Skip header
+            for i, line in enumerate(f):
+                if i >= 30:  # LIMIT TO TOP 30
+                    break
                 parts = line.strip().split(',')
-                if len(parts) == 3:
-                    ticker, company, short_pct = parts
-                    ticker = ticker.strip().replace('$', '')
-                    try:
-                        short_interest = float(short_pct)
-                        if short_interest >= 25.0 and ticker:
-                            stocks.append({
-                                'ticker': ticker,
-                                'company': company,
-                                'short_interest': short_interest
-                            })
-                    except ValueError:
-                        continue
+                if len(parts) >= 3:
+                    stocks.append({
+                        'ticker': parts[0].strip(),
+                        'company': parts[1].strip(),
+                        'short_interest': float(parts[2].strip())
+                    })
+    except Exception as e:
+        print(f"Error loading CSV: {e}")
     
-    # LIMIT TO TOP 30 HIGHEST SHORT INTEREST
-    stocks.sort(key=lambda x: x['short_interest'], reverse=True)
-    return stocks[:30]
+    return stocks
 
-def calculate_risk_score(short_interest, daily_change, volume_ratio, days_to_cover, float_shares):
-    """Calculate risk score 0-100"""
-    
-    short_score = min(short_interest * 2, 100)
-    gain_score = min(daily_change * 2, 100)
-    vol_score = min(volume_ratio * 20, 100)
-    
-    if days_to_cover < 1:
-        dtc_score = days_to_cover * 20
-    elif days_to_cover <= 10:
-        dtc_score = 100
-    else:
-        dtc_score = max(100 - (days_to_cover - 10) * 5, 0)
-    
-    float_millions = float_shares / 1_000_000 if float_shares > 0 else 999
-    if float_millions < 50:
-        float_score = 100
-    elif float_millions < 100:
-        float_score = 80
-    elif float_millions < 200:
-        float_score = 60
-    elif float_millions < 500:
-        float_score = 40
-    else:
-        float_score = 20
-    
-    risk_score = (
-        short_score * 0.30 +
-        gain_score * 0.25 +
-        vol_score * 0.20 +
-        dtc_score * 0.15 +
-        float_score * 0.10
-    )
-    
-    return round(risk_score, 1)
+HIGH_SHORT_STOCKS = load_stock_data()
 
-def check_strat_31(hist):
-    """
-    Check if stock has a 3-1 pattern (The Strat)
-    """
-    if len(hist) < 3:
-        return False, None
-    
-    current = hist.iloc[-1]
-    previous = hist.iloc[-2]
-    before_prev = hist.iloc[-3]
-    
-    is_three = (previous['High'] > before_prev['High'] and 
-                previous['Low'] < before_prev['Low'])
-    
-    is_one = (current['High'] < previous['High'] and 
-              current['Low'] > previous['Low'])
-    
-    direction = "bullish" if current['Close'] > current['Open'] else "bearish"
-    
-    if is_three and is_one:
-        pattern_data = {
-            'has_pattern': True,
-            'direction': direction,
-            'three_candle': {
-                'high': float(previous['High']),
-                'low': float(previous['Low']),
-                'close': float(previous['Close']),
-                'date': previous.name.strftime('%Y-%m-%d')
-            },
-            'one_candle': {
-                'high': float(current['High']),
-                'low': float(current['Low']),
-                'close': float(current['Close']),
-                'open': float(current['Open']),
-                'date': current.name.strftime('%Y-%m-%d')
-            }
-        }
-        return True, pattern_data
-    
-    return False, None
+# Daily plays list (47 stocks)
+DAILY_PLAYS_TICKERS = [
+    'TSLA', 'NVDA', 'AMD', 'AAPL', 'MSFT', 'GOOGL', 'META', 'AMZN',
+    'NFLX', 'DIS', 'COIN', 'SQ', 'PYPL', 'SHOP', 'UBER', 'LYFT',
+    'PLTR', 'SOFI', 'RIVN', 'LCID', 'NIO', 'XPEV', 'LI',
+    'GME', 'AMC', 'BB', 'BBBY', 'TLRY', 'SNDL', 'MARA', 'RIOT',
+    'SPCE', 'ARKK', 'HOOD', 'RBLX', 'U', 'SNAP', 'PINS',
+    'DKNG', 'DRAFT', 'PENN', 'FUBO', 'SKLZ', 'PTON', 'ZM', 'DOCU', 'ROKU'
+]
 
-# COMBINED STOCK LIST FOR WEEKLY/HOURLY PLAYS
-def get_combined_weekly_hourly_list():
-    """
-    Combine Daily Plays + Volemon lists for Weekly/Hourly scans
-    Remove duplicates
-    """
-    daily_plays = [
-        'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD',
-        'SPY', 'QQQ', 'IWM', 'DIA',
-        'NFLX', 'DIS', 'BABA', 'PYPL', 'SQ', 'ROKU', 'SNAP', 'UBER',
-        'F', 'GM', 'NIO', 'LCID', 'RIVN',
-        'BA', 'GE', 'CAT', 'DE',
-        'JPM', 'BAC', 'GS', 'MS', 'C',
-        'XOM', 'CVX', 'COP', 'SLB',
-        'PFE', 'JNJ', 'MRNA', 'BNTX',
-        'WMT', 'TGT', 'COST', 'HD', 'LOW',
-    ]
-    
-    volemon = [
-        'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD',
-        'SPY', 'QQQ', 'IWM', 'DIA',
-        'NFLX', 'DIS', 'BABA', 'PYPL', 'SQ', 'ROKU', 'SNAP', 'UBER',
-        'F', 'GM', 'NIO', 'LCID', 'RIVN',
-        'JPM', 'BAC', 'GS', 'MS', 'C',
-        'XOM', 'CVX', 'COP', 'SLB',
-    ]
-    
-    # Combine and remove duplicates
-    combined = list(set(daily_plays + volemon))
-    return sorted(combined)
+# Volemon stocks (33 stocks - volume spike monitoring)
+VOLEMON_TICKERS = [
+    'SPY', 'QQQ', 'IWM', 'DIA',  # Major ETFs
+    'TSLA', 'NVDA', 'AMD', 'AAPL', 'MSFT', 'GOOGL', 'META', 'AMZN',
+    'GME', 'AMC', 'PLTR', 'SOFI', 'COIN', 'HOOD',
+    'MARA', 'RIOT', 'TLRY', 'SNDL',
+    'RIVN', 'LCID', 'NIO', 'XPEV',
+    'RBLX', 'SNAP', 'U', 'DKNG', 'PTON', 'ZM', 'ROKU'
+]
 
-@app.route('/')
-def index():
-    """Serve the main page"""
-    html_files = [
-        'lemon_squeeze_complete_with_chat.html',
-        'lemon_squeeze_with_volemon__4_.html',
-        'lemon_squeeze_webapp.html',
-        'lemon_squeeze.html',
-        'index.html'
-    ]
-    
-    for html_file in html_files:
-        if os.path.exists(html_file):
-            return send_from_directory('.', html_file)
-    
-    return "<h1>🍋 Lemon Squeeze - Optimized Backend!</h1>"
+# The Usuals (user's watchlist - 14 stocks)
+USUALS_TICKERS = [
+    'TSLA', 'NVDA', 'AMD', 'AAPL', 'MSFT',
+    'GME', 'AMC', 'PLTR', 'COIN',
+    'MARA', 'RIOT', 'RIVN', 'NIO', 'RBLX'
+]
 
-# ===== AUTHENTICATION ENDPOINTS =====
+# Crypto tickers
+CRYPTO_TICKERS = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'DOGE-USD', 'SHIB-USD']
 
 def hash_password(password):
-    """Simple password hashing"""
+    """Hash password with SHA-256"""
     return hashlib.sha256(password.encode()).hexdigest()
+
+# ===== AUTHENTICATION ENDPOINTS =====
 
 @app.route('/api/auth/signup', methods=['POST'])
 def signup():
@@ -201,22 +192,30 @@ def signup():
         if not name or not email or not password:
             return jsonify({'success': False, 'error': 'All fields are required'}), 400
         
-        if email in users:
-            return jsonify({'success': False, 'error': 'Email already registered'}), 400
-        
         if len(password) < 6:
             return jsonify({'success': False, 'error': 'Password must be at least 6 characters'}), 400
         
-        # Create user
-        users[email] = {
-            'name': name,
-            'email': email,
-            'password': hash_password(password),
-            'created_at': datetime.now().isoformat()
-        }
-        
-        # Initialize favorites
-        user_favorites[email] = []
+        with get_db() as conn:
+            cursor = conn.cursor()
+            
+            # Check if email exists
+            cursor.execute('SELECT email FROM users WHERE email = %s', (email,))
+            if cursor.fetchone():
+                return jsonify({'success': False, 'error': 'Email already registered'}), 400
+            
+            # Create user
+            cursor.execute(
+                'INSERT INTO users (email, name, password, created_at) VALUES (%s, %s, %s, %s)',
+                (email, name, hash_password(password), datetime.now())
+            )
+            
+            # Create empty profile
+            cursor.execute(
+                'INSERT INTO profiles (email, bio, trader_types) VALUES (%s, %s, %s)',
+                (email, '', '[]')
+            )
+            
+            conn.commit()
         
         # Create session
         session['user_email'] = email
@@ -225,7 +224,9 @@ def signup():
             'success': True,
             'user': {
                 'name': name,
-                'email': email
+                'email': email,
+                'joinedDate': datetime.now().isoformat(),
+                'avatar': name[0].upper()
             }
         })
     except Exception as e:
@@ -242,11 +243,16 @@ def signin():
         if not email or not password:
             return jsonify({'success': False, 'error': 'Email and password required'}), 400
         
-        if email not in users:
-            return jsonify({'success': False, 'error': 'Invalid email or password'}), 401
-        
-        if users[email]['password'] != hash_password(password):
-            return jsonify({'success': False, 'error': 'Invalid email or password'}), 401
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT name, password, created_at FROM users WHERE email = %s', (email,))
+            user = cursor.fetchone()
+            
+            if not user:
+                return jsonify({'success': False, 'error': 'Invalid email or password'}), 401
+            
+            if user['password'] != hash_password(password):
+                return jsonify({'success': False, 'error': 'Invalid email or password'}), 401
         
         # Create session
         session['user_email'] = email
@@ -254,8 +260,10 @@ def signin():
         return jsonify({
             'success': True,
             'user': {
-                'name': users[email]['name'],
-                'email': email
+                'name': user['name'],
+                'email': email,
+                'joinedDate': user['created_at'].isoformat(),
+                'avatar': user['name'][0].upper()
             }
         })
     except Exception as e:
@@ -263,18 +271,29 @@ def signin():
 
 @app.route('/api/auth/me', methods=['GET'])
 def get_current_user():
-    """Get current logged-in user"""
+    """Get current authenticated user"""
     try:
         user_email = session.get('user_email')
         
-        if not user_email or user_email not in users:
+        if not user_email:
             return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT name, email, created_at FROM users WHERE email = %s', (user_email,))
+            user = cursor.fetchone()
+            
+            if not user:
+                session.clear()
+                return jsonify({'success': False, 'error': 'User not found'}), 404
         
         return jsonify({
             'success': True,
             'user': {
-                'name': users[user_email]['name'],
-                'email': user_email
+                'name': user['name'],
+                'email': user['email'],
+                'joinedDate': user['created_at'].isoformat(),
+                'avatar': user['name'][0].upper()
             }
         })
     except Exception as e:
@@ -282,12 +301,11 @@ def get_current_user():
 
 @app.route('/api/auth/signout', methods=['POST'])
 def signout():
-    """User signout endpoint"""
-    try:
-        session.pop('user_email', None)
-        return jsonify({'success': True})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+    """Sign out user"""
+    session.clear()
+    return jsonify({'success': True})
+
+# ===== FAVORITES ENDPOINTS =====
 
 @app.route('/api/favorites', methods=['GET'])
 def get_favorites():
@@ -298,11 +316,20 @@ def get_favorites():
         if not user_email:
             return jsonify({'success': False, 'error': 'Not authenticated'}), 401
         
-        favorites = user_favorites.get(user_email, [])
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT ticker, company, timeframe, added_at
+                FROM favorites
+                WHERE email = %s
+                ORDER BY added_at DESC
+            ''', (user_email,))
+            
+            favorites = cursor.fetchall()
         
         return jsonify({
             'success': True,
-            'favorites': favorites
+            'favorites': [dict(f) for f in favorites]
         })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -317,35 +344,24 @@ def add_favorite():
             return jsonify({'success': False, 'error': 'Not authenticated'}), 401
         
         data = request.json
-        ticker = data.get('ticker', '').strip().upper()
-        company = data.get('company', '').strip()
-        timeframe = data.get('timeframe', '').strip()
+        ticker = data.get('ticker', '').upper()
+        company = data.get('company', '')
+        timeframe = data.get('timeframe', '')
         
-        if not ticker:
-            return jsonify({'success': False, 'error': 'Ticker required'}), 400
+        if not ticker or not timeframe:
+            return jsonify({'success': False, 'error': 'Ticker and timeframe required'}), 400
         
-        if user_email not in user_favorites:
-            user_favorites[user_email] = []
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO favorites (email, ticker, company, timeframe, added_at)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (email, ticker, timeframe) DO NOTHING
+            ''', (user_email, ticker, company, timeframe, datetime.now()))
+            
+            conn.commit()
         
-        # Check if already favorited
-        for fav in user_favorites[user_email]:
-            if fav['ticker'] == ticker and fav['timeframe'] == timeframe:
-                return jsonify({'success': False, 'error': 'Already in favorites'}), 400
-        
-        # Add favorite
-        favorite = {
-            'ticker': ticker,
-            'company': company,
-            'timeframe': timeframe,
-            'added_at': datetime.now().isoformat()
-        }
-        
-        user_favorites[user_email].append(favorite)
-        
-        return jsonify({
-            'success': True,
-            'favorite': favorite
-        })
+        return jsonify({'success': True})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -358,14 +374,14 @@ def remove_favorite(ticker, timeframe):
         if not user_email:
             return jsonify({'success': False, 'error': 'Not authenticated'}), 401
         
-        if user_email not in user_favorites:
-            return jsonify({'success': False, 'error': 'No favorites found'}), 404
-        
-        # Remove favorite
-        user_favorites[user_email] = [
-            fav for fav in user_favorites[user_email]
-            if not (fav['ticker'] == ticker.upper() and fav['timeframe'] == timeframe)
-        ]
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                DELETE FROM favorites
+                WHERE email = %s AND ticker = %s AND timeframe = %s
+            ''', (user_email, ticker.upper(), timeframe))
+            
+            conn.commit()
         
         return jsonify({'success': True})
     except Exception as e:
@@ -381,21 +397,35 @@ def get_profile():
         if not user_email:
             return jsonify({'success': False, 'error': 'Not authenticated'}), 401
         
-        profile = user_profiles.get(user_email, {
-            'bio': '',
-            'trader_types': [],
-            'username_changes': username_history.get(user_email, [])
-        })
+        with get_db() as conn:
+            cursor = conn.cursor()
+            
+            # Get user info
+            cursor.execute('SELECT name, created_at FROM users WHERE email = %s', (user_email,))
+            user = cursor.fetchone()
+            
+            # Get profile
+            cursor.execute('SELECT bio, trader_types FROM profiles WHERE email = %s', (user_email,))
+            profile = cursor.fetchone()
+            
+            # Get username changes
+            cursor.execute('''
+                SELECT old_name, new_name, changed_at
+                FROM username_changes
+                WHERE email = %s
+                ORDER BY changed_at DESC
+            ''', (user_email,))
+            changes = cursor.fetchall()
         
         return jsonify({
             'success': True,
             'profile': {
-                'name': users[user_email]['name'],
+                'name': user['name'],
                 'email': user_email,
-                'bio': profile.get('bio', ''),
-                'trader_types': profile.get('trader_types', []),
-                'username_changes': profile.get('username_changes', []),
-                'joined_date': users[user_email].get('created_at', datetime.now().isoformat())
+                'bio': profile['bio'] if profile else '',
+                'trader_types': profile['trader_types'] if profile else [],
+                'username_changes': [{'old_name': c['old_name'], 'new_name': c['new_name'], 'date': c['changed_at'].isoformat()} for c in changes],
+                'joined_date': user['created_at'].isoformat()
             }
         })
     except Exception as e:
@@ -411,56 +441,55 @@ def update_profile():
         
         data = request.json
         
-        # Initialize profile if doesn't exist
-        if user_email not in user_profiles:
-            user_profiles[user_email] = {
-                'bio': '',
-                'trader_types': [],
-                'username_changes': []
-            }
-        
-        # Update bio (max 100 chars)
-        if 'bio' in data:
-            bio = data['bio'].strip()[:100]
-            user_profiles[user_email]['bio'] = bio
-        
-        # Update trader types
-        if 'trader_types' in data:
-            valid_types = ['day', 'swing', 'hodler']
-            trader_types = [t for t in data['trader_types'] if t in valid_types]
-            user_profiles[user_email]['trader_types'] = trader_types
-        
-        # Update username (with restrictions)
-        if 'name' in data:
-            new_name = data['name'].strip()
+        with get_db() as conn:
+            cursor = conn.cursor()
             
-            if not new_name:
-                return jsonify({'success': False, 'error': 'Name cannot be empty'}), 400
+            # Update bio
+            if 'bio' in data:
+                bio = data['bio'].strip()[:100]
+                cursor.execute('UPDATE profiles SET bio = %s WHERE email = %s', (bio, user_email))
             
-            # Get username change history
-            changes = user_profiles[user_email].get('username_changes', [])
+            # Update trader types
+            if 'trader_types' in data:
+                valid_types = ['day', 'swing', 'hodler']
+                trader_types = [t for t in data['trader_types'] if t in valid_types]
+                cursor.execute('UPDATE profiles SET trader_types = %s WHERE email = %s', (json.dumps(trader_types), user_email))
             
-            # Check if user can change username
-            recent_changes = [c for c in changes if 
-                datetime.fromisoformat(c['date']) > datetime.now().replace(day=datetime.now().day-14)]
+            # Update username (with restrictions)
+            if 'name' in data:
+                new_name = data['name'].strip()
+                
+                if not new_name:
+                    return jsonify({'success': False, 'error': 'Name cannot be empty'}), 400
+                
+                # Check recent changes
+                cursor.execute('''
+                    SELECT COUNT(*) as count FROM username_changes
+                    WHERE email = %s AND changed_at > NOW() - INTERVAL '14 days'
+                ''', (user_email,))
+                
+                recent_count = cursor.fetchone()['count']
+                
+                if recent_count >= 2:
+                    return jsonify({
+                        'success': False,
+                        'error': 'You can only change your username 2 times every 14 days'
+                    }), 400
+                
+                # Get old name
+                cursor.execute('SELECT name FROM users WHERE email = %s', (user_email,))
+                old_name = cursor.fetchone()['name']
+                
+                # Update name
+                cursor.execute('UPDATE users SET name = %s WHERE email = %s', (new_name, user_email))
+                
+                # Record change
+                cursor.execute('''
+                    INSERT INTO username_changes (email, old_name, new_name, changed_at)
+                    VALUES (%s, %s, %s, %s)
+                ''', (user_email, old_name, new_name, datetime.now()))
             
-            if len(recent_changes) >= 2:
-                return jsonify({
-                    'success': False, 
-                    'error': 'You can only change your username 2 times every 14 days'
-                }), 400
-            
-            # Update username
-            old_name = users[user_email]['name']
-            users[user_email]['name'] = new_name
-            
-            # Record the change
-            changes.append({
-                'old_name': old_name,
-                'new_name': new_name,
-                'date': datetime.now().isoformat()
-            })
-            user_profiles[user_email]['username_changes'] = changes
+            conn.commit()
         
         return jsonify({'success': True})
     except Exception as e:
@@ -483,24 +512,30 @@ def update_email():
         if not new_email or not password:
             return jsonify({'success': False, 'error': 'Email and password required'}), 400
         
-        # Verify password
-        if users[user_email]['password'] != hash_password(password):
-            return jsonify({'success': False, 'error': 'Invalid password'}), 401
+        with get_db() as conn:
+            cursor = conn.cursor()
+            
+            # Verify password
+            cursor.execute('SELECT password FROM users WHERE email = %s', (user_email,))
+            user = cursor.fetchone()
+            
+            if user['password'] != hash_password(password):
+                return jsonify({'success': False, 'error': 'Invalid password'}), 401
+            
+            # Check if new email exists
+            cursor.execute('SELECT email FROM users WHERE email = %s', (new_email,))
+            if cursor.fetchone() and new_email != user_email:
+                return jsonify({'success': False, 'error': 'Email already in use'}), 400
+            
+            # Update email everywhere
+            cursor.execute('UPDATE users SET email = %s WHERE email = %s', (new_email, user_email))
+            cursor.execute('UPDATE profiles SET email = %s WHERE email = %s', (new_email, user_email))
+            cursor.execute('UPDATE favorites SET email = %s WHERE email = %s', (new_email, user_email))
+            cursor.execute('UPDATE journal_entries SET email = %s WHERE email = %s', (new_email, user_email))
+            cursor.execute('UPDATE username_changes SET email = %s WHERE email = %s', (new_email, user_email))
+            
+            conn.commit()
         
-        # Check if new email already exists
-        if new_email in users and new_email != user_email:
-            return jsonify({'success': False, 'error': 'Email already in use'}), 400
-        
-        # Update email
-        users[new_email] = users.pop(user_email)
-        if user_email in user_favorites:
-            user_favorites[new_email] = user_favorites.pop(user_email)
-        if user_email in user_profiles:
-            user_profiles[new_email] = user_profiles.pop(user_email)
-        if user_email in trading_journals:
-            trading_journals[new_email] = trading_journals.pop(user_email)
-        
-        users[new_email]['email'] = new_email
         session['user_email'] = new_email
         
         return jsonify({'success': True})
@@ -522,15 +557,23 @@ def update_password():
         if not current_password or not new_password:
             return jsonify({'success': False, 'error': 'Both passwords required'}), 400
         
-        # Verify current password
-        if users[user_email]['password'] != hash_password(current_password):
-            return jsonify({'success': False, 'error': 'Current password is incorrect'}), 401
-        
         if len(new_password) < 6:
             return jsonify({'success': False, 'error': 'New password must be at least 6 characters'}), 400
         
-        # Update password
-        users[user_email]['password'] = hash_password(new_password)
+        with get_db() as conn:
+            cursor = conn.cursor()
+            
+            # Verify current password
+            cursor.execute('SELECT password FROM users WHERE email = %s', (user_email,))
+            user = cursor.fetchone()
+            
+            if user['password'] != hash_password(current_password):
+                return jsonify({'success': False, 'error': 'Current password is incorrect'}), 401
+            
+            # Update password
+            cursor.execute('UPDATE users SET password = %s WHERE email = %s', (hash_password(new_password), user_email))
+            
+            conn.commit()
         
         return jsonify({'success': True})
     except Exception as e:
@@ -546,11 +589,20 @@ def get_journal_entries():
         if not user_email:
             return jsonify({'success': False, 'error': 'Not authenticated'}), 401
         
-        entries = trading_journals.get(user_email, [])
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT id, date, profited, percent, type, stock, reason, created_at
+                FROM journal_entries
+                WHERE email = %s
+                ORDER BY date DESC
+            ''', (user_email,))
+            
+            entries = cursor.fetchall()
         
         return jsonify({
             'success': True,
-            'entries': entries
+            'entries': [dict(e) for e in entries]
         })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -565,21 +617,26 @@ def add_journal_entry():
         
         data = request.json
         
+        entry_id = secrets.token_hex(8)
         entry = {
-            'id': secrets.token_hex(8),
+            'id': entry_id,
             'date': data.get('date', datetime.now().strftime('%Y-%m-%d')),
             'profited': data.get('profited', False),
             'percent': float(data.get('percent', 0)),
-            'type': data.get('type', 'shares'),  # 'shares' or 'options'
+            'type': data.get('type', 'shares'),
             'stock': data.get('stock', '').upper(),
-            'reason': data.get('reason', '').strip()[:500],  # Max 500 chars
-            'created_at': datetime.now().isoformat()
+            'reason': data.get('reason', '').strip()[:500],
         }
         
-        if user_email not in trading_journals:
-            trading_journals[user_email] = []
-        
-        trading_journals[user_email].append(entry)
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO journal_entries (id, email, date, profited, percent, type, stock, reason, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ''', (entry_id, user_email, entry['date'], entry['profited'], entry['percent'],
+                  entry['type'], entry['stock'], entry['reason'], datetime.now()))
+            
+            conn.commit()
         
         return jsonify({
             'success': True,
@@ -596,55 +653,19 @@ def delete_journal_entry(entry_id):
         if not user_email:
             return jsonify({'success': False, 'error': 'Not authenticated'}), 401
         
-        if user_email not in trading_journals:
-            return jsonify({'success': False, 'error': 'No entries found'}), 404
-        
-        trading_journals[user_email] = [
-            entry for entry in trading_journals[user_email]
-            if entry['id'] != entry_id
-        ]
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                DELETE FROM journal_entries
+                WHERE id = %s AND email = %s
+            ''', (entry_id, user_email))
+            
+            conn.commit()
         
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ===== END PROFILE/JOURNAL ENDPOINTS =====
-
-@app.route('/api/scan', methods=['POST'])
-def scan():
-    """API endpoint to scan for squeeze candidates - TOP 30 ONLY"""
-    try:
-        data = request.json
-        min_short = float(data.get('minShort', 25))
-        min_gain = float(data.get('minGain', 15))
-        min_vol_ratio = float(data.get('minVolRatio', 1.5))
-        min_risk = float(data.get('minRisk', 60))
-        
-        stocks = load_stock_data()  # Already limited to top 30
-        results = []
-        
-        print(f"\n🔍 Short Squeeze Scan - Top {len(stocks)} stocks...")
-        
-        for stock in stocks:
-            ticker = stock['ticker']
-            
-            try:
-                time.sleep(0.7)  # Rate limiting
-                
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='3mo')
-                info = stock_data.info
-                
-                if len(hist) >= 2:
-                    current_price = hist['Close'].iloc[-1]
-                    previous_close = hist['Close'].iloc[-2]
-                    daily_change = ((current_price - previous_close) / previous_close) * 100
-                    
-                    current_volume = hist['Volume'].iloc[-1]
-                    avg_volume = hist['Volume'].iloc[-21:-1].mean() if len(hist) > 20 else hist['Volume'].mean()
-                    volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1.0
-                    
-                    float_shares = info.get('floatShares', info.get('sharesOutstanding', 0))
                     market_cap = info.get('marketCap', 0)
                     week_high_52 = info.get('fiftyTwoWeekHigh', current_price)
                     week_low_52 = info.get('fiftyTwoWeekLow', current_price)
