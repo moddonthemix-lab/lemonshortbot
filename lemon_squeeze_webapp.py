@@ -11,38 +11,21 @@ Changes:
 Total API calls reduced from 493-1,393 to ~200 per complete scan!
 """
 
-from flask import Flask, render_template, jsonify, request, send_from_directory
+from flask import Flask, render_template, jsonify, request, send_from_directory, session
 import yfinance as yf
-from datetime import datetime, timedelta
+from datetime import datetime
 import time
 import os
 import json
+import hashlib
+import secrets
 
 app = Flask(__name__)
+app.secret_key = secrets.token_hex(32)  # Generate secret key for sessions
 
-# ===== CACHING CONFIGURATION =====
-scan_cache = {}
-CACHE_DURATION = timedelta(minutes=5)
-
-def get_cached_results(scan_type, filters=None):
-    """Get cached scan results if still valid"""
-    cache_key = f"{scan_type}_{str(filters)}" if filters else scan_type
-    
-    if cache_key in scan_cache:
-        cached_data, timestamp = scan_cache[cache_key]
-        if datetime.now() - timestamp < CACHE_DURATION:
-            print(f"✅ Cache hit for {scan_type} (age: {(datetime.now() - timestamp).seconds}s)")
-            return cached_data
-        else:
-            del scan_cache[cache_key]
-    
-    return None
-
-def cache_results(scan_type, results, filters=None):
-    """Cache scan results with timestamp"""
-    cache_key = f"{scan_type}_{str(filters)}" if filters else scan_type
-    scan_cache[cache_key] = (results, datetime.now())
-    print(f"💾 Cached {scan_type}")
+# Simple user storage (in-memory - for production use a database)
+users = {}
+user_favorites = {}
 
 # Load high short interest stocks
 def load_stock_data():
@@ -184,6 +167,7 @@ def get_combined_weekly_hourly_list():
 def index():
     """Serve the main page"""
     html_files = [
+        'lemon_squeeze_complete_with_chat.html',
         'lemon_squeeze_with_volemon__4_.html',
         'lemon_squeeze_webapp.html',
         'lemon_squeeze.html',
@@ -196,6 +180,196 @@ def index():
     
     return "<h1>🍋 Lemon Squeeze - Optimized Backend!</h1>"
 
+# ===== AUTHENTICATION ENDPOINTS =====
+
+def hash_password(password):
+    """Simple password hashing"""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+@app.route('/api/auth/signup', methods=['POST'])
+def signup():
+    """User signup endpoint"""
+    try:
+        data = request.json
+        name = data.get('name', '').strip()
+        email = data.get('email', '').strip().lower()
+        password = data.get('password', '')
+        
+        if not name or not email or not password:
+            return jsonify({'success': False, 'error': 'All fields are required'}), 400
+        
+        if email in users:
+            return jsonify({'success': False, 'error': 'Email already registered'}), 400
+        
+        if len(password) < 6:
+            return jsonify({'success': False, 'error': 'Password must be at least 6 characters'}), 400
+        
+        # Create user
+        users[email] = {
+            'name': name,
+            'email': email,
+            'password': hash_password(password),
+            'created_at': datetime.now().isoformat()
+        }
+        
+        # Initialize favorites
+        user_favorites[email] = []
+        
+        # Create session
+        session['user_email'] = email
+        
+        return jsonify({
+            'success': True,
+            'user': {
+                'name': name,
+                'email': email
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/auth/signin', methods=['POST'])
+def signin():
+    """User signin endpoint"""
+    try:
+        data = request.json
+        email = data.get('email', '').strip().lower()
+        password = data.get('password', '')
+        
+        if not email or not password:
+            return jsonify({'success': False, 'error': 'Email and password required'}), 400
+        
+        if email not in users:
+            return jsonify({'success': False, 'error': 'Invalid email or password'}), 401
+        
+        if users[email]['password'] != hash_password(password):
+            return jsonify({'success': False, 'error': 'Invalid email or password'}), 401
+        
+        # Create session
+        session['user_email'] = email
+        
+        return jsonify({
+            'success': True,
+            'user': {
+                'name': users[email]['name'],
+                'email': email
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/auth/me', methods=['GET'])
+def get_current_user():
+    """Get current logged-in user"""
+    try:
+        user_email = session.get('user_email')
+        
+        if not user_email or user_email not in users:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        return jsonify({
+            'success': True,
+            'user': {
+                'name': users[user_email]['name'],
+                'email': user_email
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/auth/signout', methods=['POST'])
+def signout():
+    """User signout endpoint"""
+    try:
+        session.pop('user_email', None)
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/favorites', methods=['GET'])
+def get_favorites():
+    """Get user's favorites"""
+    try:
+        user_email = session.get('user_email')
+        
+        if not user_email:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        favorites = user_favorites.get(user_email, [])
+        
+        return jsonify({
+            'success': True,
+            'favorites': favorites
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/favorites', methods=['POST'])
+def add_favorite():
+    """Add a favorite stock"""
+    try:
+        user_email = session.get('user_email')
+        
+        if not user_email:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        data = request.json
+        ticker = data.get('ticker', '').strip().upper()
+        company = data.get('company', '').strip()
+        timeframe = data.get('timeframe', '').strip()
+        
+        if not ticker:
+            return jsonify({'success': False, 'error': 'Ticker required'}), 400
+        
+        if user_email not in user_favorites:
+            user_favorites[user_email] = []
+        
+        # Check if already favorited
+        for fav in user_favorites[user_email]:
+            if fav['ticker'] == ticker and fav['timeframe'] == timeframe:
+                return jsonify({'success': False, 'error': 'Already in favorites'}), 400
+        
+        # Add favorite
+        favorite = {
+            'ticker': ticker,
+            'company': company,
+            'timeframe': timeframe,
+            'added_at': datetime.now().isoformat()
+        }
+        
+        user_favorites[user_email].append(favorite)
+        
+        return jsonify({
+            'success': True,
+            'favorite': favorite
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/favorites/<ticker>/<timeframe>', methods=['DELETE'])
+def remove_favorite(ticker, timeframe):
+    """Remove a favorite stock"""
+    try:
+        user_email = session.get('user_email')
+        
+        if not user_email:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        if user_email not in user_favorites:
+            return jsonify({'success': False, 'error': 'No favorites found'}), 404
+        
+        # Remove favorite
+        user_favorites[user_email] = [
+            fav for fav in user_favorites[user_email]
+            if not (fav['ticker'] == ticker.upper() and fav['timeframe'] == timeframe)
+        ]
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ===== END AUTHENTICATION ENDPOINTS =====
+
 @app.route('/api/scan', methods=['POST'])
 def scan():
     """API endpoint to scan for squeeze candidates - TOP 30 ONLY"""
@@ -205,12 +379,6 @@ def scan():
         min_gain = float(data.get('minGain', 15))
         min_vol_ratio = float(data.get('minVolRatio', 1.5))
         min_risk = float(data.get('minRisk', 60))
-        
-        # Check cache first
-        filters = {'minShort': min_short, 'minGain': min_gain, 'minVolRatio': min_vol_ratio, 'minRisk': min_risk}
-        cached = get_cached_results('short_squeeze', filters)
-        if cached:
-            return jsonify(cached)
         
         stocks = load_stock_data()  # Already limited to top 30
         results = []
@@ -283,16 +451,11 @@ def scan():
         
         print(f"✅ Found {len(results)} squeeze candidates\n")
         
-        response_data = {
+        return jsonify({
             'success': True,
             'results': results,
             'timestamp': datetime.now().isoformat()
-        }
-        
-        # Cache the results
-        cache_results('short_squeeze', response_data, filters)
-        
-        return jsonify(response_data)
+        })
         
     except Exception as e:
         return jsonify({
