@@ -26,6 +26,9 @@ app.secret_key = secrets.token_hex(32)  # Generate secret key for sessions
 # Simple user storage (in-memory - for production use a database)
 users = {}
 user_favorites = {}
+user_profiles = {}  # Store extended profile info
+trading_journals = {}  # Store trading journal entries
+username_history = {}  # Track username changes
 
 # Load high short interest stocks
 def load_stock_data():
@@ -368,7 +371,244 @@ def remove_favorite(ticker, timeframe):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ===== END AUTHENTICATION ENDPOINTS =====
+# ===== PROFILE ENDPOINTS =====
+
+@app.route('/api/profile', methods=['GET'])
+def get_profile():
+    """Get user profile"""
+    try:
+        user_email = session.get('user_email')
+        if not user_email:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        profile = user_profiles.get(user_email, {
+            'bio': '',
+            'trader_types': [],
+            'username_changes': username_history.get(user_email, [])
+        })
+        
+        return jsonify({
+            'success': True,
+            'profile': {
+                'name': users[user_email]['name'],
+                'email': user_email,
+                'bio': profile.get('bio', ''),
+                'trader_types': profile.get('trader_types', []),
+                'username_changes': profile.get('username_changes', []),
+                'joined_date': users[user_email].get('created_at', datetime.now().isoformat())
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/profile/update', methods=['POST'])
+def update_profile():
+    """Update user profile"""
+    try:
+        user_email = session.get('user_email')
+        if not user_email:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        data = request.json
+        
+        # Initialize profile if doesn't exist
+        if user_email not in user_profiles:
+            user_profiles[user_email] = {
+                'bio': '',
+                'trader_types': [],
+                'username_changes': []
+            }
+        
+        # Update bio (max 100 chars)
+        if 'bio' in data:
+            bio = data['bio'].strip()[:100]
+            user_profiles[user_email]['bio'] = bio
+        
+        # Update trader types
+        if 'trader_types' in data:
+            valid_types = ['day', 'swing', 'hodler']
+            trader_types = [t for t in data['trader_types'] if t in valid_types]
+            user_profiles[user_email]['trader_types'] = trader_types
+        
+        # Update username (with restrictions)
+        if 'name' in data:
+            new_name = data['name'].strip()
+            
+            if not new_name:
+                return jsonify({'success': False, 'error': 'Name cannot be empty'}), 400
+            
+            # Get username change history
+            changes = user_profiles[user_email].get('username_changes', [])
+            
+            # Check if user can change username
+            recent_changes = [c for c in changes if 
+                datetime.fromisoformat(c['date']) > datetime.now().replace(day=datetime.now().day-14)]
+            
+            if len(recent_changes) >= 2:
+                return jsonify({
+                    'success': False, 
+                    'error': 'You can only change your username 2 times every 14 days'
+                }), 400
+            
+            # Update username
+            old_name = users[user_email]['name']
+            users[user_email]['name'] = new_name
+            
+            # Record the change
+            changes.append({
+                'old_name': old_name,
+                'new_name': new_name,
+                'date': datetime.now().isoformat()
+            })
+            user_profiles[user_email]['username_changes'] = changes
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ===== SETTINGS ENDPOINTS =====
+
+@app.route('/api/settings/email', methods=['POST'])
+def update_email():
+    """Update user email"""
+    try:
+        user_email = session.get('user_email')
+        if not user_email:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        data = request.json
+        new_email = data.get('email', '').strip().lower()
+        password = data.get('password', '')
+        
+        if not new_email or not password:
+            return jsonify({'success': False, 'error': 'Email and password required'}), 400
+        
+        # Verify password
+        if users[user_email]['password'] != hash_password(password):
+            return jsonify({'success': False, 'error': 'Invalid password'}), 401
+        
+        # Check if new email already exists
+        if new_email in users and new_email != user_email:
+            return jsonify({'success': False, 'error': 'Email already in use'}), 400
+        
+        # Update email
+        users[new_email] = users.pop(user_email)
+        if user_email in user_favorites:
+            user_favorites[new_email] = user_favorites.pop(user_email)
+        if user_email in user_profiles:
+            user_profiles[new_email] = user_profiles.pop(user_email)
+        if user_email in trading_journals:
+            trading_journals[new_email] = trading_journals.pop(user_email)
+        
+        users[new_email]['email'] = new_email
+        session['user_email'] = new_email
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/settings/password', methods=['POST'])
+def update_password():
+    """Update user password"""
+    try:
+        user_email = session.get('user_email')
+        if not user_email:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        data = request.json
+        current_password = data.get('current_password', '')
+        new_password = data.get('new_password', '')
+        
+        if not current_password or not new_password:
+            return jsonify({'success': False, 'error': 'Both passwords required'}), 400
+        
+        # Verify current password
+        if users[user_email]['password'] != hash_password(current_password):
+            return jsonify({'success': False, 'error': 'Current password is incorrect'}), 401
+        
+        if len(new_password) < 6:
+            return jsonify({'success': False, 'error': 'New password must be at least 6 characters'}), 400
+        
+        # Update password
+        users[user_email]['password'] = hash_password(new_password)
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ===== TRADING JOURNAL ENDPOINTS =====
+
+@app.route('/api/journal', methods=['GET'])
+def get_journal_entries():
+    """Get all journal entries for user"""
+    try:
+        user_email = session.get('user_email')
+        if not user_email:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        entries = trading_journals.get(user_email, [])
+        
+        return jsonify({
+            'success': True,
+            'entries': entries
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/journal', methods=['POST'])
+def add_journal_entry():
+    """Add a trading journal entry"""
+    try:
+        user_email = session.get('user_email')
+        if not user_email:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        data = request.json
+        
+        entry = {
+            'id': secrets.token_hex(8),
+            'date': data.get('date', datetime.now().strftime('%Y-%m-%d')),
+            'profited': data.get('profited', False),
+            'percent': float(data.get('percent', 0)),
+            'type': data.get('type', 'shares'),  # 'shares' or 'options'
+            'stock': data.get('stock', '').upper(),
+            'reason': data.get('reason', '').strip()[:500],  # Max 500 chars
+            'created_at': datetime.now().isoformat()
+        }
+        
+        if user_email not in trading_journals:
+            trading_journals[user_email] = []
+        
+        trading_journals[user_email].append(entry)
+        
+        return jsonify({
+            'success': True,
+            'entry': entry
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/journal/<entry_id>', methods=['DELETE'])
+def delete_journal_entry(entry_id):
+    """Delete a journal entry"""
+    try:
+        user_email = session.get('user_email')
+        if not user_email:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        if user_email not in trading_journals:
+            return jsonify({'success': False, 'error': 'No entries found'}), 404
+        
+        trading_journals[user_email] = [
+            entry for entry in trading_journals[user_email]
+            if entry['id'] != entry_id
+        ]
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ===== END PROFILE/JOURNAL ENDPOINTS =====
 
 @app.route('/api/scan', methods=['POST'])
 def scan():
