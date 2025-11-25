@@ -19,13 +19,14 @@ import os
 import json
 import hashlib
 import secrets
+import requests
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(32)  # Generate secret key for sessions
 
 # ===== CACHING CONFIGURATION =====
 scan_cache = {}
-CACHE_DURATION = timedelta(minutes=25)  # Cache results for 25 minutes
+CACHE_DURATION = timedelta(minutes=14)  # Cache results for 14 minutes
 
 def get_cached_results(scan_type, filters=None):
     """Get cached scan results if still valid"""
@@ -48,6 +49,87 @@ def cache_results(scan_type, results, filters=None):
     cache_key = f"{scan_type}_{str(filters)}" if filters else scan_type
     scan_cache[cache_key] = (results, datetime.now())
     print(f"💾 Cached {len(results)} results for {scan_type}")
+
+# ===== TRADIER BACKUP CONFIGURATION =====
+TRADIER_API_KEY = os.environ.get('TRADIER_API_KEY', '3WHzBJ2L0mRLW1hJKQgXJUFxToPU')
+TRADIER_BASE_URL = 'https://sandbox.tradier.com/v1'
+
+def get_tradier_quote(ticker):
+    """Get stock quote from Tradier Sandbox API"""
+    if not TRADIER_API_KEY:
+        return None
+    
+    try:
+        headers = {
+            'Authorization': f'Bearer {TRADIER_API_KEY}',
+            'Accept': 'application/json'
+        }
+        
+        response = requests.get(
+            f'{TRADIER_BASE_URL}/markets/quotes',
+            params={'symbols': ticker},
+            headers=headers,
+            timeout=5
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            if 'quotes' in data and 'quote' in data['quotes']:
+                quote = data['quotes']['quote']
+                if isinstance(quote, dict):  # Single quote
+                    return quote
+        return None
+    except Exception as e:
+        print(f"Tradier error for {ticker}: {e}")
+        return None
+
+def get_stock_data_with_fallback(ticker):
+    """
+    Try Yahoo Finance first, fall back to Tradier if it fails
+    Returns: (source, current_price, previous_close, volume, avg_volume, info_dict)
+    """
+    # Try Yahoo Finance first
+    try:
+        stock_data = yf.Ticker(ticker)
+        hist = stock_data.history(period='3mo')
+        info = stock_data.info
+        
+        if len(hist) >= 2:
+            current_price = hist['Close'].iloc[-1]
+            previous_close = hist['Close'].iloc[-2]
+            current_volume = hist['Volume'].iloc[-1]
+            avg_volume = hist['Volume'].iloc[-21:-1].mean() if len(hist) > 20 else hist['Volume'].mean()
+            
+            print(f"✅ {ticker}: Yahoo Finance")
+            return ('yahoo', current_price, previous_close, current_volume, avg_volume, info, hist)
+    except Exception as e:
+        print(f"⚠️  {ticker}: Yahoo failed ({str(e)[:50]}), trying Tradier...")
+    
+    # Fall back to Tradier
+    quote = get_tradier_quote(ticker)
+    
+    if quote and quote.get('last'):
+        current_price = float(quote.get('last', 0))
+        previous_close = float(quote.get('prevclose', quote.get('close', current_price)))
+        current_volume = int(quote.get('volume', 0))
+        avg_volume = int(quote.get('average_volume', current_volume))
+        
+        # Build info dict from Tradier data
+        info = {
+            'symbol': quote.get('symbol'),
+            'longName': quote.get('description', ticker),
+            'floatShares': 0,  # Not available in sandbox
+            'sharesOutstanding': 0,
+            'marketCap': 0,
+            'fiftyTwoWeekHigh': float(quote.get('week_52_high', current_price)),
+            'fiftyTwoWeekLow': float(quote.get('week_52_low', current_price))
+        }
+        
+        print(f"🔄 {ticker}: Tradier Sandbox (15min delayed)")
+        return ('tradier', current_price, previous_close, current_volume, avg_volume, info, None)
+    
+    print(f"❌ {ticker}: Both sources failed")
+    return (None, None, None, None, None, None, None)
 
 # Simple user storage (in-memory - for production use a database)
 users = {}
@@ -428,17 +510,11 @@ def scan():
             try:
                 time.sleep(0.7)  # Rate limiting
                 
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='3mo')
-                info = stock_data.info
+                # Try Yahoo, fallback to Tradier
+                source, current_price, previous_close, current_volume, avg_volume, info, hist = get_stock_data_with_fallback(ticker)
                 
-                if len(hist) >= 2:
-                    current_price = hist['Close'].iloc[-1]
-                    previous_close = hist['Close'].iloc[-2]
+                if source and current_price and previous_close:
                     daily_change = ((current_price - previous_close) / previous_close) * 100
-                    
-                    current_volume = hist['Volume'].iloc[-1]
-                    avg_volume = hist['Volume'].iloc[-21:-1].mean() if len(hist) > 20 else hist['Volume'].mean()
                     volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1.0
                     
                     float_shares = info.get('floatShares', info.get('sharesOutstanding', 0))
