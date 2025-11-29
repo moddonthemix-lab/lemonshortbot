@@ -63,32 +63,52 @@ def get_tradier_quote(ticker):
         pass
     return None
 
-def safe_yf_ticker(ticker, period='3mo', interval='1d'):
-    """Get stock data with Tradier fallback on rate limit"""
-    try:
-        time.sleep(0.5)  # Gentle rate limiting
-        stock = yf.Ticker(ticker)
-        hist = stock.history(period=period, interval=interval)
-        
-        # Check if we got valid data
-        if len(hist) >= 2:
-            print(f"✅ {ticker}: Yahoo")
-            return stock, hist, stock.info
-        else:
-            # Empty data = likely rate limited
-            print(f"⚠️  {ticker}: Yahoo returned empty, trying Tradier...")
-            raise Exception("Empty data from Yahoo")
-            
-    except Exception as e:
-        error_msg = str(e).lower()
-        
-        # Try Tradier on any failure
-        if '429' in error_msg or 'too many' in error_msg or 'empty data' in error_msg:
+def safe_yf_ticker(ticker, period='3mo', interval='1d', max_retries=3):
+    """Get stock data with retries and better error handling"""
+    import pandas as pd
+
+    for attempt in range(max_retries):
+        try:
+            # Progressive delay: 0.5s, 1.5s, 3.5s
+            wait_time = 0.5 * (2 ** attempt)
+            time.sleep(wait_time)
+
+            # Create ticker object
+            stock = yf.Ticker(ticker)
+
+            # Try to get historical data
+            hist = stock.history(period=period, interval=interval)
+
+            # Check if we got valid data
+            if hist is not None and len(hist) >= 2:
+                try:
+                    # Try to get info, but don't fail if it doesn't work
+                    info = stock.info if hasattr(stock, 'info') else {}
+                except:
+                    info = {'symbol': ticker, 'shortName': ticker}
+
+                print(f"✅ {ticker}: Yahoo (attempt {attempt + 1})")
+                return stock, hist, info
+
+            # Empty or invalid data
+            if attempt < max_retries - 1:
+                print(f"⚠️  {ticker}: Empty data, retry {attempt + 1}/{max_retries}")
+                continue
+
+        except Exception as e:
+            error_msg = str(e)
+            if attempt < max_retries - 1:
+                print(f"⚠️  {ticker}: Error on attempt {attempt + 1}/{max_retries}: {error_msg[:100]}")
+                continue
+            else:
+                print(f"❌ {ticker}: All retries failed - {error_msg[:100]}")
+
+    # All retries exhausted - try Tradier as last resort
+    if TRADIER_API_KEY:
+        try:
             quote = get_tradier_quote(ticker)
             if quote:
-                print(f"🔄 {ticker}: Tradier SUCCESS")
-                # Create minimal compatible objects
-                import pandas as pd
+                print(f"🔄 {ticker}: Tradier fallback SUCCESS")
                 hist = pd.DataFrame({
                     'Close': [float(quote.get('prevclose', 0) or 0), float(quote.get('last', 0) or 0)],
                     'Volume': [int(quote.get('average_volume', 0) or 0)] * 2,
@@ -100,11 +120,9 @@ def safe_yf_ticker(ticker, period='3mo', interval='1d'):
                     def __init__(self, i):
                         self.info = i
                 return Wrapper(info), hist, info
-            else:
-                print(f"❌ {ticker}: Tradier also failed")
-        else:
-            print(f"❌ {ticker}: Error - {error_msg[:50]}")
-            
+        except Exception as e:
+            print(f"❌ {ticker}: Tradier also failed - {str(e)[:50]}")
+
     return None, None, None
 
 # Simple user storage (in-memory - for production use a database)
