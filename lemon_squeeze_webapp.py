@@ -63,12 +63,12 @@ def get_tradier_quote(ticker):
         pass
     return None
 
-def safe_yf_ticker(ticker):
+def safe_yf_ticker(ticker, period='3mo', interval='1d'):
     """Get stock data with Tradier fallback on rate limit"""
     try:
         time.sleep(0.5)  # Gentle rate limiting
         stock = yf.Ticker(ticker)
-        hist = stock.history(period='3mo')
+        hist = stock.history(period=period, interval=interval)
         
         # Check if we got valid data
         if len(hist) >= 2:
@@ -472,15 +472,11 @@ def scan():
         
         for stock in stocks:
             ticker = stock['ticker']
-            
+
             try:
-                time.sleep(0.7)  # Rate limiting
-                
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='3mo')
-                info = stock_data.info
-                
-                if len(hist) >= 2:
+                stock_data, hist, info = safe_yf_ticker(ticker)
+
+                if stock_data and hist is not None and len(hist) >= 2:
                     current_price = hist['Close'].iloc[-1]
                     previous_close = hist['Close'].iloc[-2]
                     daily_change = ((current_price - previous_close) / previous_close) * 100
@@ -571,13 +567,9 @@ def daily_plays():
         
         for i, ticker in enumerate(popular_tickers, 1):
             try:
-                time.sleep(0.7)
-                
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='1mo')
-                info = stock_data.info
-                
-                if len(hist) >= 3:
+                stock_data, hist, info = safe_yf_ticker(ticker)
+
+                if stock_data and hist is not None and len(hist) >= 3:
                     has_pattern, pattern_data = check_strat_31(hist)
                     
                     if has_pattern:
@@ -625,12 +617,9 @@ def weekly_plays():
         
         for ticker in combined_tickers:
             try:
-                time.sleep(0.7)
-                
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='3mo')
-                
-                if len(hist) >= 3:
+                stock_data, hist, info = safe_yf_ticker(ticker)
+
+                if stock_data and hist is not None and len(hist) >= 3:
                     # Resample to weekly
                     weekly = hist.resample('W').agg({
                         'Open': 'first',
@@ -674,12 +663,9 @@ def hourly_plays():
         
         for ticker in combined_tickers:
             try:
-                time.sleep(0.7)
-                
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='5d', interval='1h')
-                
-                if len(hist) >= 3:
+                stock_data, hist, info = safe_yf_ticker(ticker, period='5d', interval='1h')
+
+                if stock_data and hist is not None and len(hist) >= 3:
                     has_pattern, pattern_data = check_strat_31(hist)
                     
                     if has_pattern:
@@ -721,12 +707,9 @@ def crypto_plays():
         
         for ticker, name in crypto_tickers.items():
             try:
-                time.sleep(0.7)
-                
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='1mo')
-                
-                if len(hist) >= 3:
+                stock_data, hist, info = safe_yf_ticker(ticker, period='1mo')
+
+                if stock_data and hist is not None and len(hist) >= 3:
                     has_pattern, pattern_data = check_strat_31(hist)
                     
                     if has_pattern:
@@ -776,13 +759,9 @@ def volemon_scan():
         
         for ticker in popular_tickers:
             try:
-                time.sleep(0.7)
-                
-                stock_data = yf.Ticker(ticker)
-                hist = stock_data.history(period='5d')
-                info = stock_data.info
-                
-                if len(hist) >= 2:
+                stock_data, hist, info = safe_yf_ticker(ticker, period='5d')
+
+                if stock_data and hist is not None and len(hist) >= 2:
                     current_volume = hist['Volume'].iloc[-1]
                     avg_volume = hist['Volume'].iloc[:-1].mean()
                     
