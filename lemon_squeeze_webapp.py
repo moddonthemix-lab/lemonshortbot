@@ -439,6 +439,36 @@ def signout():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/auth/delete', methods=['DELETE'])
+def delete_account():
+    """Delete user account and all associated data"""
+    try:
+        user_email = session.get('user_email')
+
+        if not user_email:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+
+        # Delete user data
+        if user_email in users:
+            del users[user_email]
+
+        if user_email in user_favorites:
+            del user_favorites[user_email]
+
+        if user_email in user_journal:
+            del user_journal[user_email]
+
+        # Delete user's chat messages
+        global chat_messages
+        chat_messages = [msg for msg in chat_messages if msg['email'] != user_email]
+
+        # Clear session
+        session.pop('user_email', None)
+
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/favorites', methods=['GET'])
 def get_favorites():
     """Get user's favorites"""
@@ -705,6 +735,33 @@ def send_chat_message():
             'success': True,
             'message': msg
         })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/chat/message/<message_id>', methods=['DELETE'])
+def delete_chat_message(message_id):
+    """Delete a chat message (only by the sender)"""
+    try:
+        user_email = session.get('user_email')
+
+        if not user_email:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+
+        # Find the message
+        global chat_messages
+        message = next((msg for msg in chat_messages if msg['id'] == message_id), None)
+
+        if not message:
+            return jsonify({'success': False, 'error': 'Message not found'}), 404
+
+        # Check if user owns the message
+        if message['email'] != user_email:
+            return jsonify({'success': False, 'error': 'Not authorized to delete this message'}), 403
+
+        # Delete the message
+        chat_messages = [msg for msg in chat_messages if msg['id'] != message_id]
+
+        return jsonify({'success': True})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
