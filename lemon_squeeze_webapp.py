@@ -176,6 +176,7 @@ def safe_yf_ticker(ticker, period='3mo', interval='1d', max_retries=3):
 # Simple user storage (in-memory - for production use a database)
 users = {}
 user_favorites = {}
+user_journal = {}  # {email: [journal_entries]}
 
 # Load high short interest stocks
 def load_stock_data():
@@ -515,6 +516,129 @@ def remove_favorite(ticker, timeframe):
             if not (fav['ticker'] == ticker.upper() and fav['timeframe'] == timeframe)
         ]
         
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ===== TRADING JOURNAL ENDPOINTS =====
+
+@app.route('/api/journal/entries', methods=['GET'])
+def get_journal_entries():
+    """Get user's journal entries"""
+    try:
+        user_email = session.get('user_email')
+
+        if not user_email:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+
+        entries = user_journal.get(user_email, [])
+
+        # Sort by date (newest first)
+        entries.sort(key=lambda x: x.get('createdAt', ''), reverse=True)
+
+        return jsonify({
+            'success': True,
+            'entries': entries
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/journal/entry', methods=['POST'])
+def add_journal_entry():
+    """Add a journal entry"""
+    try:
+        user_email = session.get('user_email')
+
+        if not user_email:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+
+        data = request.json
+
+        # Validate required fields
+        required = ['ticker', 'date', 'type', 'entryPrice', 'positionSize', 'outcome']
+        for field in required:
+            if field not in data:
+                return jsonify({'success': False, 'error': f'Missing field: {field}'}), 400
+
+        # Create entry
+        entry = {
+            'id': hashlib.md5(f"{user_email}{data['ticker']}{data['createdAt']}".encode()).hexdigest()[:12],
+            'ticker': data['ticker'].upper(),
+            'date': data['date'],
+            'type': data['type'],
+            'entryPrice': float(data['entryPrice']),
+            'exitPrice': float(data['exitPrice']) if data.get('exitPrice') else None,
+            'positionSize': int(data['positionSize']),
+            'outcome': data['outcome'],
+            'notes': data.get('notes', ''),
+            'createdAt': data.get('createdAt', datetime.now().isoformat())
+        }
+
+        # Initialize user's journal if not exists
+        if user_email not in user_journal:
+            user_journal[user_email] = []
+
+        user_journal[user_email].append(entry)
+
+        return jsonify({
+            'success': True,
+            'entry': entry
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/journal/entry/<entry_id>', methods=['PUT'])
+def update_journal_entry(entry_id):
+    """Update a journal entry"""
+    try:
+        user_email = session.get('user_email')
+
+        if not user_email:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+
+        if user_email not in user_journal:
+            return jsonify({'success': False, 'error': 'No journal entries found'}), 404
+
+        data = request.json
+
+        # Find and update entry
+        for entry in user_journal[user_email]:
+            if entry['id'] == entry_id:
+                # Update fields
+                if 'exitPrice' in data:
+                    entry['exitPrice'] = float(data['exitPrice']) if data['exitPrice'] else None
+                if 'outcome' in data:
+                    entry['outcome'] = data['outcome']
+                if 'notes' in data:
+                    entry['notes'] = data['notes']
+
+                return jsonify({
+                    'success': True,
+                    'entry': entry
+                })
+
+        return jsonify({'success': False, 'error': 'Entry not found'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/journal/entry/<entry_id>', methods=['DELETE'])
+def delete_journal_entry(entry_id):
+    """Delete a journal entry"""
+    try:
+        user_email = session.get('user_email')
+
+        if not user_email:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+
+        if user_email not in user_journal:
+            return jsonify({'success': False, 'error': 'No journal entries found'}), 404
+
+        # Remove entry
+        user_journal[user_email] = [
+            entry for entry in user_journal[user_email]
+            if entry['id'] != entry_id
+        ]
+
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
