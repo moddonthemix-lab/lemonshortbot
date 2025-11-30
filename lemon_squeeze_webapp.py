@@ -177,6 +177,7 @@ def safe_yf_ticker(ticker, period='3mo', interval='1d', max_retries=3):
 users = {}
 user_favorites = {}
 user_journal = {}  # {email: [journal_entries]}
+chat_messages = []  # Global chat messages
 
 # Load high short interest stocks
 def load_stock_data():
@@ -640,6 +641,70 @@ def delete_journal_entry(entry_id):
         ]
 
         return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ===== CHAT ENDPOINTS =====
+
+@app.route('/api/chat/messages', methods=['GET'])
+def get_chat_messages():
+    """Get all chat messages (last 100)"""
+    try:
+        user_email = session.get('user_email')
+
+        if not user_email:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+
+        # Return last 100 messages
+        messages = chat_messages[-100:] if len(chat_messages) > 100 else chat_messages
+
+        return jsonify({
+            'success': True,
+            'messages': messages
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/chat/message', methods=['POST'])
+def send_chat_message():
+    """Send a chat message"""
+    try:
+        user_email = session.get('user_email')
+
+        if not user_email:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+
+        if user_email not in users:
+            return jsonify({'success': False, 'error': 'User not found'}), 404
+
+        data = request.json
+        message = data.get('message', '').strip()
+
+        if not message:
+            return jsonify({'success': False, 'error': 'Message cannot be empty'}), 400
+
+        if len(message) > 500:
+            return jsonify({'success': False, 'error': 'Message too long (max 500 characters)'}), 400
+
+        # Create message
+        msg = {
+            'id': hashlib.md5(f"{user_email}{time.time()}".encode()).hexdigest()[:12],
+            'email': user_email,
+            'name': users[user_email]['name'],
+            'message': message,
+            'timestamp': datetime.now().isoformat()
+        }
+
+        chat_messages.append(msg)
+
+        # Keep only last 500 messages in memory
+        if len(chat_messages) > 500:
+            chat_messages.pop(0)
+
+        return jsonify({
+            'success': True,
+            'message': msg
+        })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
