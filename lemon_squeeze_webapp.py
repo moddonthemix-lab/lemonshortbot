@@ -27,24 +27,40 @@ app.secret_key = secrets.token_hex(32)
 
 # ===== TRADIER API (OPTIONAL FALLBACK) =====
 TRADIER_API_KEY = os.environ.get('TRADIER_API_KEY', '')
+USE_TRADIER_FIRST = os.environ.get('USE_TRADIER_FIRST', 'false').lower() == 'true'
 TRADIER_BASE_URL = 'https://api.tradier.com/v1'
 tradier_call_times = deque()
 
 def can_call_tradier():
-    """Rate limiter: 120 calls per minute"""
+    """Rate limiter: 120 calls per minute with warnings"""
     if not TRADIER_API_KEY:
         return False
     now = time.time()
+    # Clean up old calls (older than 60 seconds)
     while tradier_call_times and tradier_call_times[0] < now - 60:
         tradier_call_times.popleft()
-    if len(tradier_call_times) >= 120:
+
+    calls_in_last_minute = len(tradier_call_times)
+
+    # Warn if approaching limit
+    if calls_in_last_minute >= 100:
+        print(f"⚠️  Tradier rate limit warning: {calls_in_last_minute}/120 calls used in last minute")
+
+    # Hard limit at 120 calls per minute
+    if calls_in_last_minute >= 120:
+        print(f"🛑 Tradier rate limit reached! Waiting...")
         return False
+
     return True
 
 def get_tradier_quote(ticker):
-    """Fallback data source if Yahoo fails"""
+    """Get data from Tradier API with rate limiting"""
     if not can_call_tradier():
-        return None
+        # If at limit, wait a bit and try once more
+        time.sleep(2)
+        if not can_call_tradier():
+            return None
+
     try:
         response = requests.get(
             f'{TRADIER_BASE_URL}/markets/quotes',
@@ -53,20 +69,64 @@ def get_tradier_quote(ticker):
             timeout=5
         )
         tradier_call_times.append(time.time())
+
         if response.status_code == 200:
             data = response.json()
             if 'quotes' in data and 'quote' in data['quotes']:
                 quote = data['quotes']['quote']
                 if isinstance(quote, dict) and quote.get('last'):
                     return quote
-    except:
-        pass
+        elif response.status_code == 429:
+            print(f"⚠️  Tradier rate limit hit for {ticker}")
+    except Exception as e:
+        print(f"⚠️  Tradier error for {ticker}: {str(e)[:50]}")
+
     return None
 
 def safe_yf_ticker(ticker, period='3mo', interval='1d', max_retries=3):
-    """Get stock data with retries and better error handling"""
+    """Get stock data with retries and better error handling
+
+    If USE_TRADIER_FIRST=true, tries Tradier first, then Yahoo as fallback
+    Otherwise, tries Yahoo first with Tradier as fallback
+    """
     import pandas as pd
 
+    def get_tradier_data():
+        """Helper to fetch and format Tradier data"""
+        quote = get_tradier_quote(ticker)
+        if quote:
+            hist = pd.DataFrame({
+                'Close': [float(quote.get('prevclose', 0) or 0), float(quote.get('last', 0) or 0)],
+                'Volume': [int(quote.get('average_volume', 0) or 0)] * 2,
+                'High': [float(quote.get('last', 0) or 0)] * 2,
+                'Low': [float(quote.get('last', 0) or 0) * 0.99] * 2
+            })
+            info = {
+                'symbol': ticker,
+                'shortName': ticker,
+                'marketCap': quote.get('market_cap', 0),
+                'floatShares': 0,  # Tradier doesn't provide this
+                'sharesOutstanding': 0,
+                'fiftyTwoWeekHigh': float(quote.get('week_52_high', 0) or 0),
+                'fiftyTwoWeekLow': float(quote.get('week_52_low', 0) or 0)
+            }
+            class Wrapper:
+                def __init__(self, i):
+                    self.info = i
+            return Wrapper(info), hist, info
+        return None, None, None
+
+    # MODE 1: Tradier First (if Yahoo Finance is broken)
+    if USE_TRADIER_FIRST and TRADIER_API_KEY:
+        print(f"🔄 {ticker}: Trying Tradier first...")
+        stock_data, hist, info = get_tradier_data()
+        if stock_data:
+            print(f"✅ {ticker}: Tradier SUCCESS")
+            return stock_data, hist, info
+        else:
+            print(f"⚠️  {ticker}: Tradier failed, trying Yahoo...")
+
+    # MODE 2: Yahoo First (default behavior)
     for attempt in range(max_retries):
         try:
             # Progressive delay: 0.5s, 1.5s, 3.5s
@@ -101,27 +161,15 @@ def safe_yf_ticker(ticker, period='3mo', interval='1d', max_retries=3):
                 print(f"⚠️  {ticker}: Error on attempt {attempt + 1}/{max_retries}: {error_msg[:100]}")
                 continue
             else:
-                print(f"❌ {ticker}: All retries failed - {error_msg[:100]}")
+                print(f"❌ {ticker}: All Yahoo retries failed - {error_msg[:100]}")
 
-    # All retries exhausted - try Tradier as last resort
-    if TRADIER_API_KEY:
-        try:
-            quote = get_tradier_quote(ticker)
-            if quote:
-                print(f"🔄 {ticker}: Tradier fallback SUCCESS")
-                hist = pd.DataFrame({
-                    'Close': [float(quote.get('prevclose', 0) or 0), float(quote.get('last', 0) or 0)],
-                    'Volume': [int(quote.get('average_volume', 0) or 0)] * 2,
-                    'High': [float(quote.get('last', 0) or 0)] * 2,
-                    'Low': [float(quote.get('last', 0) or 0) * 0.99] * 2
-                })
-                info = {'symbol': ticker, 'shortName': ticker}
-                class Wrapper:
-                    def __init__(self, i):
-                        self.info = i
-                return Wrapper(info), hist, info
-        except Exception as e:
-            print(f"❌ {ticker}: Tradier also failed - {str(e)[:50]}")
+    # All retries exhausted - try Tradier as fallback (if not already tried)
+    if TRADIER_API_KEY and not USE_TRADIER_FIRST:
+        print(f"🔄 {ticker}: Trying Tradier fallback...")
+        stock_data, hist, info = get_tradier_data()
+        if stock_data:
+            print(f"✅ {ticker}: Tradier fallback SUCCESS")
+            return stock_data, hist, info
 
     return None, None, None
 
@@ -886,7 +934,7 @@ def usuals_scan():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
-    
+
     print("\n" + "="*60)
     print("🍋 LEMON SQUEEZE WEB APP v3.0 - OPTIMIZED 🍋")
     print("="*60)
@@ -898,8 +946,25 @@ if __name__ == '__main__':
     print("  - Usuals: 14 stocks (default)")
     print("  - Crypto: 5 cryptos")
     print("\n✅ Total API calls reduced by ~67%!")
-    print("📱 http://localhost:8080")
+
+    # Tradier API status
+    print("\n📡 Data Sources:")
+    if TRADIER_API_KEY:
+        if USE_TRADIER_FIRST:
+            print("  ✅ Tradier API: ACTIVE (PRIMARY)")
+            print("  ⚠️  Yahoo Finance: Fallback only")
+            print("  ⚡ Rate Limit: 120 calls/minute")
+        else:
+            print("  ✅ Yahoo Finance: PRIMARY")
+            print("  ✅ Tradier API: Available as fallback")
+            print("  ⚡ Rate Limit: 120 calls/minute")
+    else:
+        print("  ✅ Yahoo Finance: Only source")
+        print("  ℹ️  Set TRADIER_API_KEY for backup data source")
+        print("  📖 See TRADIER_SETUP.md for instructions")
+
+    print("\n📱 http://localhost:8080")
     print("\n🛑 Press Ctrl+C to stop")
     print("\n" + "="*60 + "\n")
-    
+
     app.run(debug=True, host='0.0.0.0', port=port)

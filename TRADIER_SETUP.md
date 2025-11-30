@@ -36,20 +36,29 @@ If you're experiencing issues with Yahoo Finance (rate limits, parsing errors, o
 export TRADIER_API_KEY="your_api_key_here"
 ```
 
+**OPTIONAL - Use Tradier as PRIMARY data source** (recommended if Yahoo Finance is broken):
+```bash
+export TRADIER_API_KEY="your_api_key_here"
+export USE_TRADIER_FIRST="true"
+```
+
 Add this to your `~/.bashrc` or `~/.zshrc` to make it permanent:
 ```bash
 echo 'export TRADIER_API_KEY="your_api_key_here"' >> ~/.bashrc
+echo 'export USE_TRADIER_FIRST="true"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
 **On Windows:**
 ```cmd
 set TRADIER_API_KEY=your_api_key_here
+set USE_TRADIER_FIRST=true
 ```
 
 Or use PowerShell:
 ```powershell
 $env:TRADIER_API_KEY="your_api_key_here"
+$env:USE_TRADIER_FIRST="true"
 ```
 
 #### For Production (Railway, Heroku, etc.):
@@ -59,18 +68,23 @@ $env:TRADIER_API_KEY="your_api_key_here"
 3. Add:
    - **Key**: `TRADIER_API_KEY`
    - **Value**: Your API token
+   - **Key** (Optional): `USE_TRADIER_FIRST`
+   - **Value**: `true` (use Tradier as primary source)
 
 **Railway:**
 - Settings → Variables → Add `TRADIER_API_KEY`
+- Settings → Variables → Add `USE_TRADIER_FIRST=true` (optional)
 
 **Heroku:**
 - Settings → Config Vars → Add `TRADIER_API_KEY`
+- Settings → Config Vars → Add `USE_TRADIER_FIRST=true` (optional)
 
 **Docker:**
 Add to your `docker-compose.yml`:
 ```yaml
 environment:
   - TRADIER_API_KEY=your_api_key_here
+  - USE_TRADIER_FIRST=true  # Optional: use Tradier first
 ```
 
 ### Step 4: Verify Setup
@@ -110,9 +124,26 @@ environment:
 - With Tradier configured, the app will automatically fall back
 - Failed tickers will be skipped, but most should work
 
-## Alternative: Use Tradier-Only Mode
+## Data Source Modes
 
-If Yahoo Finance is completely broken, you can modify the code to use Tradier as the primary source. Let me know if you need help with this!
+### Mode 1: Yahoo First (Default)
+- Tries Yahoo Finance first with 3 retries
+- Falls back to Tradier if all Yahoo attempts fail
+- **Best for**: Normal operation when Yahoo works most of the time
+
+### Mode 2: Tradier First (`USE_TRADIER_FIRST=true`)
+- Tries Tradier API first
+- Falls back to Yahoo Finance if Tradier fails
+- **Best for**: When Yahoo Finance is completely broken
+- **Rate Limit**: 120 calls/minute, so scans will be paced
+
+### Rate Limit Protection
+- The app tracks Tradier API usage automatically
+- Warns you at 100/120 calls per minute
+- Blocks calls at 120/120 to prevent errors
+- Automatically waits when limit is reached
+
+**Example**: Scanning 47 stocks with Tradier-first mode takes about 30-40 seconds to stay under the 120 calls/minute limit.
 
 ---
 
