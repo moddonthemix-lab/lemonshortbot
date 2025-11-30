@@ -179,6 +179,17 @@ user_favorites = {}
 user_journal = {}  # {email: [journal_entries]}
 chat_messages = []  # Global chat messages
 
+# Scan results cache for #lemonplays bot
+scan_cache = {
+    'squeeze': {'results': [], 'timestamp': None, 'timeframe': '3mo'},
+    'daily': {'results': [], 'timestamp': None, 'timeframe': '1d'},
+    'weekly': {'results': [], 'timestamp': None, 'timeframe': '5d'},
+    'hourly': {'results': [], 'timestamp': None, 'timeframe': '1d'},
+    'volemon': {'results': [], 'timestamp': None, 'timeframe': '5d'},
+    'usuals': {'results': [], 'timestamp': None, 'timeframe': '5d'},
+    'crypto': {'results': [], 'timestamp': None, 'timeframe': '7d'}
+}
+
 # Load high short interest stocks
 def load_stock_data():
     """Load stocks from CSV - LIMITED TO TOP 30"""
@@ -676,6 +687,105 @@ def delete_journal_entry(entry_id):
 
 # ===== CHAT ENDPOINTS =====
 
+def generate_lemonplays_report():
+    """Generate bot response for #lemonplays command"""
+    report_lines = ["📊 **Latest LemonPlays Scan Results**\n"]
+
+    # Check if any scans have been run
+    has_results = any(cache['timestamp'] is not None for cache in scan_cache.values())
+
+    if not has_results:
+        return "No scans have been run yet. Run a scan to see patterns!"
+
+    # Short Squeeze Scanner
+    if scan_cache['squeeze']['results']:
+        count = len(scan_cache['squeeze']['results'])
+        timeframe = scan_cache['squeeze']['timeframe']
+        timestamp = scan_cache['squeeze']['timestamp']
+        age = format_time_ago(timestamp)
+        top_tickers = [r['ticker'] for r in scan_cache['squeeze']['results'][:3]]
+        report_lines.append(f"🎯 **Short Squeeze** ({timeframe}): {count} candidates {age}")
+        if top_tickers:
+            report_lines.append(f"   Top: {', '.join(top_tickers)}")
+
+    # Daily Plays
+    if scan_cache['daily']['results']:
+        count = len(scan_cache['daily']['results'])
+        timeframe = scan_cache['daily']['timeframe']
+        age = format_time_ago(scan_cache['daily']['timestamp'])
+        patterns = {}
+        for r in scan_cache['daily']['results']:
+            direction = r.get('pattern', {}).get('direction', 'unknown')
+            patterns[direction] = patterns.get(direction, 0) + 1
+        report_lines.append(f"\n📅 **Daily Plays** ({timeframe}): {count} patterns {age}")
+        for direction, cnt in patterns.items():
+            report_lines.append(f"   {direction.title()}: {cnt}")
+
+    # Weekly Plays
+    if scan_cache['weekly']['results']:
+        count = len(scan_cache['weekly']['results'])
+        timeframe = scan_cache['weekly']['timeframe']
+        age = format_time_ago(scan_cache['weekly']['timestamp'])
+        report_lines.append(f"\n📆 **Weekly Plays** ({timeframe}): {count} patterns {age}")
+
+    # Hourly Plays
+    if scan_cache['hourly']['results']:
+        count = len(scan_cache['hourly']['results'])
+        timeframe = scan_cache['hourly']['timeframe']
+        age = format_time_ago(scan_cache['hourly']['timestamp'])
+        report_lines.append(f"\n⏰ **Hourly Plays** ({timeframe}): {count} patterns {age}")
+
+    # Volemon
+    if scan_cache['volemon']['results']:
+        count = len(scan_cache['volemon']['results'])
+        timeframe = scan_cache['volemon']['timeframe']
+        age = format_time_ago(scan_cache['volemon']['timestamp'])
+        top_vol = scan_cache['volemon']['results'][:3]
+        report_lines.append(f"\n🔊 **Volemon** ({timeframe}): {count} high volume stocks {age}")
+        for stock in top_vol:
+            ticker = stock['ticker']
+            vol_mult = stock['volume_multiple']
+            report_lines.append(f"   {ticker}: {vol_mult:.1f}x volume")
+
+    # Usuals
+    if scan_cache['usuals']['results']:
+        count = len(scan_cache['usuals']['results'])
+        timeframe = scan_cache['usuals']['timeframe']
+        age = format_time_ago(scan_cache['usuals']['timestamp'])
+        report_lines.append(f"\n⭐ **Usuals** ({timeframe}): {count} stocks scanned {age}")
+
+    # Crypto
+    if scan_cache['crypto']['results']:
+        count = len(scan_cache['crypto']['results'])
+        timeframe = scan_cache['crypto']['timeframe']
+        age = format_time_ago(scan_cache['crypto']['timestamp'])
+        tickers = [r['ticker'] for r in scan_cache['crypto']['results']]
+        report_lines.append(f"\n₿ **Crypto** ({timeframe}): {count} patterns {age}")
+        if tickers:
+            report_lines.append(f"   {', '.join(tickers)}")
+
+    return '\n'.join(report_lines)
+
+def format_time_ago(timestamp):
+    """Format timestamp as 'X mins/hours ago'"""
+    if timestamp is None:
+        return "never"
+
+    now = datetime.now()
+    delta = now - timestamp
+
+    if delta.total_seconds() < 60:
+        return "just now"
+    elif delta.total_seconds() < 3600:
+        mins = int(delta.total_seconds() / 60)
+        return f"{mins}m ago"
+    elif delta.total_seconds() < 86400:
+        hours = int(delta.total_seconds() / 3600)
+        return f"{hours}h ago"
+    else:
+        days = int(delta.total_seconds() / 86400)
+        return f"{days}d ago"
+
 @app.route('/api/chat/messages', methods=['GET'])
 def get_chat_messages():
     """Get all chat messages (last 100)"""
@@ -730,6 +840,18 @@ def send_chat_message():
         # Keep only last 500 messages in memory
         if len(chat_messages) > 500:
             chat_messages.pop(0)
+
+        # Check for #lemonplays bot command
+        if '#lemonplays' in message.lower():
+            bot_response = generate_lemonplays_report()
+            bot_msg = {
+                'id': hashlib.md5(f"bot{time.time()}".encode()).hexdigest()[:12],
+                'email': 'bot@lemonshort.com',
+                'name': '🍋 LemonBot',
+                'message': bot_response,
+                'timestamp': datetime.now().isoformat()
+            }
+            chat_messages.append(bot_msg)
 
         return jsonify({
             'success': True,
@@ -841,13 +963,18 @@ def scan():
                 continue
         
         results.sort(key=lambda x: x['riskScore'], reverse=True)
-        
+
         print(f"✅ Found {len(results)} squeeze candidates\n")
-        
+
+        # Cache results for #lemonplays bot
+        timestamp = datetime.now()
+        scan_cache['squeeze']['results'] = results
+        scan_cache['squeeze']['timestamp'] = timestamp
+
         return jsonify({
             'success': True,
             'results': results,
-            'timestamp': datetime.now().isoformat()
+            'timestamp': timestamp.isoformat()
         })
         
     except Exception as e:
@@ -908,11 +1035,16 @@ def daily_plays():
                 continue
         
         print(f"✅ Found {len(results)} daily patterns\n")
-        
+
+        # Cache results for #lemonplays bot
+        timestamp = datetime.now()
+        scan_cache['daily']['results'] = results
+        scan_cache['daily']['timestamp'] = timestamp
+
         return jsonify({
             'success': True,
             'results': results,
-            'timestamp': datetime.now().isoformat()
+            'timestamp': timestamp.isoformat()
         })
         
     except Exception as e:
@@ -958,7 +1090,11 @@ def weekly_plays():
                 continue
         
         print(f"✅ Found {len(results)} weekly patterns\n")
-        
+
+        # Cache results for #lemonplays bot
+        scan_cache['weekly']['results'] = results
+        scan_cache['weekly']['timestamp'] = datetime.now()
+
         return jsonify({'success': True, 'results': results})
         
     except Exception as e:
@@ -995,7 +1131,11 @@ def hourly_plays():
                 continue
         
         print(f"✅ Found {len(results)} hourly patterns\n")
-        
+
+        # Cache results for #lemonplays bot
+        scan_cache['hourly']['results'] = results
+        scan_cache['hourly']['timestamp'] = datetime.now()
+
         return jsonify({'success': True, 'results': results})
         
     except Exception as e:
@@ -1043,7 +1183,11 @@ def crypto_plays():
                 continue
         
         print(f"✅ Found {len(results)} crypto patterns\n")
-        
+
+        # Cache results for #lemonplays bot
+        scan_cache['crypto']['results'] = results
+        scan_cache['crypto']['timestamp'] = datetime.now()
+
         return jsonify({'success': True, 'results': results})
         
     except Exception as e:
@@ -1101,9 +1245,13 @@ def volemon_scan():
                 continue
         
         results.sort(key=lambda x: x['volume_multiple'], reverse=True)
-        
+
         print(f"✅ Found {len(results)}\n")
-        
+
+        # Cache results for #lemonplays bot
+        scan_cache['volemon']['results'] = results[:50]
+        scan_cache['volemon']['timestamp'] = datetime.now()
+
         return jsonify({'success': True, 'results': results[:50]})
         
     except Exception as e:
@@ -1172,7 +1320,11 @@ def usuals_scan():
                 continue
         
         print(f"✅ Done! {len(results)} stocks\n")
-        
+
+        # Cache results for #lemonplays bot
+        scan_cache['usuals']['results'] = results
+        scan_cache['usuals']['timestamp'] = datetime.now()
+
         return jsonify({'success': True, 'results': results})
         
     except Exception as e:
