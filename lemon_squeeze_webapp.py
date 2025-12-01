@@ -713,13 +713,12 @@ def generate_lemonplays_report():
         count = len(scan_cache['daily']['results'])
         timeframe = scan_cache['daily']['timeframe']
         age = format_time_ago(scan_cache['daily']['timestamp'])
-        patterns = {}
-        for r in scan_cache['daily']['results']:
-            direction = r.get('pattern', {}).get('direction', 'unknown')
-            patterns[direction] = patterns.get(direction, 0) + 1
         report_lines.append(f"\n📅 **Daily Plays** ({timeframe}): {count} patterns {age}")
-        for direction, cnt in patterns.items():
-            report_lines.append(f"   {direction.title()}: {cnt}")
+        for r in scan_cache['daily']['results'][:10]:  # Show top 10
+            ticker = r['ticker']
+            direction = r.get('pattern', {}).get('direction', 'unknown')
+            pattern_type = r.get('pattern', {}).get('type', 'Pattern')
+            report_lines.append(f"   {ticker}: {direction.title()} {pattern_type}")
 
     # Weekly Plays
     if scan_cache['weekly']['results']:
