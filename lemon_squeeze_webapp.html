@@ -234,7 +234,47 @@
             margin-top: 10px;
             font-weight: bold;
         }
-        
+
+        /* Market Timer */
+        .market-timer {
+            background: var(--card-bg);
+            padding: 15px 40px;
+            text-align: center;
+            border-bottom: 2px solid var(--border-color);
+            box-shadow: 0 2px 10px var(--shadow);
+        }
+
+        .market-timer-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .market-timer-icon {
+            font-size: 1.4em;
+        }
+
+        .market-timer-time {
+            color: #4CAF50;
+            font-family: 'Courier New', monospace;
+            font-size: 1.3em;
+        }
+
+        .market-timer-label {
+            color: var(--text-secondary);
+        }
+
+        .market-closed .market-timer-time {
+            color: #FF6B6B;
+        }
+
+        .market-open .market-timer-time {
+            color: #4CAF50;
+        }
+
         /* Tab Navigation */
         .tabs {
             display: flex;
@@ -1244,7 +1284,16 @@
             <p>Multi-Timeframe Scanner: Stocks & Crypto</p>
             <span class="badge">v2.0 - Hourly • Daily • Weekly • Crypto</span>
         </div>
-        
+
+        <!-- Market Timer -->
+        <div class="market-timer" id="marketTimer">
+            <div class="market-timer-content">
+                <span class="market-timer-icon">⏱️</span>
+                <span class="market-timer-time" id="marketTimerTime">--:--:--</span>
+                <span class="market-timer-label" id="marketTimerLabel">until close</span>
+            </div>
+        </div>
+
         <!-- Toolbar with actions -->
         <div class="toolbar">
             <button class="favorites-toggle" onclick="toggleFavoritesModal()">
@@ -3142,29 +3191,111 @@
             });
         }
         
+        // ===== MARKET TIMER =====
+        function updateMarketTimer() {
+            const now = new Date();
+
+            // Convert to ET (UTC-5 or UTC-4 for DST)
+            const etOffset = -5; // Standard time offset
+            const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+            const etTime = new Date(utc + (3600000 * etOffset));
+
+            const day = etTime.getDay(); // 0 = Sunday, 6 = Saturday
+            const hours = etTime.getHours();
+            const minutes = etTime.getMinutes();
+            const seconds = etTime.getSeconds();
+
+            const timerElement = document.getElementById('marketTimer');
+            const timeElement = document.getElementById('marketTimerTime');
+            const labelElement = document.getElementById('marketTimerLabel');
+
+            // Weekend check
+            if (day === 0 || day === 6) {
+                // Weekend - show time until Monday 9:30 AM
+                const daysUntilMonday = day === 0 ? 1 : 2;
+                const monday = new Date(etTime);
+                monday.setDate(etTime.getDate() + daysUntilMonday);
+                monday.setHours(9, 30, 0, 0);
+
+                const diff = monday - etTime;
+                const daysLeft = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const hoursLeft = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minsLeft = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+                timerElement.className = 'market-timer market-closed';
+                timeElement.textContent = `${daysLeft}d ${hoursLeft}h ${minsLeft}m`;
+                labelElement.textContent = 'until open';
+                return;
+            }
+
+            // Market hours: 9:30 AM - 4:00 PM ET
+            const marketOpenMinutes = (9 * 60) + 30;  // 9:30 AM
+            const marketCloseMinutes = 16 * 60;        // 4:00 PM
+            const currentMinutes = (hours * 60) + minutes;
+
+            if (currentMinutes >= marketOpenMinutes && currentMinutes < marketCloseMinutes) {
+                // Market is OPEN - show time until close
+                const closeTime = new Date(etTime);
+                closeTime.setHours(16, 0, 0, 0);
+
+                const diff = closeTime - etTime;
+                const hoursLeft = Math.floor(diff / (1000 * 60 * 60));
+                const minsLeft = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const secsLeft = Math.floor((diff % (1000 * 60)) / 1000);
+
+                timerElement.className = 'market-timer market-open';
+                timeElement.textContent = `${hoursLeft}:${String(minsLeft).padStart(2, '0')}:${String(secsLeft).padStart(2, '0')}`;
+                labelElement.textContent = 'until close';
+            } else {
+                // Market is CLOSED - show time until next open
+                const openTime = new Date(etTime);
+
+                if (currentMinutes >= marketCloseMinutes) {
+                    // After close - next open is tomorrow (or Monday)
+                    const daysToAdd = (day === 5) ? 3 : 1; // Friday -> Monday, else next day
+                    openTime.setDate(etTime.getDate() + daysToAdd);
+                }
+
+                openTime.setHours(9, 30, 0, 0);
+
+                const diff = openTime - etTime;
+                const hoursLeft = Math.floor(diff / (1000 * 60 * 60));
+                const minsLeft = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const secsLeft = Math.floor((diff % (1000 * 60)) / 1000);
+
+                timerElement.className = 'market-timer market-closed';
+                timeElement.textContent = `${hoursLeft}:${String(minsLeft).padStart(2, '0')}:${String(secsLeft).padStart(2, '0')}`;
+                labelElement.textContent = 'until open';
+            }
+        }
+
         // Load saved theme on page load
         document.addEventListener('DOMContentLoaded', function() {
             // Load authentication
             loadUserSession();
-            
+
             const savedTheme = localStorage.getItem('theme') || 'light';
             document.documentElement.setAttribute('data-theme', savedTheme);
-            
+
             if (savedTheme === 'dark') {
                 const icons = [document.getElementById('darkModeIcon'), document.getElementById('darkModeIconMobile')];
                 const texts = [document.getElementById('darkModeText'), document.getElementById('darkModeTextMobile')];
-                
+
                 icons.forEach(icon => {
                     if (icon) icon.textContent = '☀️';
                 });
-                
+
                 texts.forEach(text => {
                     if (text) text.textContent = 'Light';
                 });
             }
-            
+
             updateFavoritesCount();
             loadHistoricalData();
+
+            // Start market timer
+            updateMarketTimer();
+            setInterval(updateMarketTimer, 1000); // Update every second
         });
         
         // ===== FAVORITES SYSTEM =====
