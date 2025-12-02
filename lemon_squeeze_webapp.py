@@ -1304,42 +1304,42 @@ def usuals_scan():
                     # Fetch news (top 3 articles)
                     news_articles = []
                     try:
-                        # Debug: check what type of object we have
-                        print(f"🔍 {ticker}: stock_data type: {type(stock_data).__name__}")
-                        print(f"🔍 {ticker}: has 'news' attr: {hasattr(stock_data, 'news')}")
-
                         # Only try to get news if it's a real yfinance Ticker (not Tradier wrapper)
                         if hasattr(stock_data, 'news'):
                             try:
                                 news_data = stock_data.news
-                                print(f"🔍 {ticker}: news_data type: {type(news_data)}, length: {len(news_data) if news_data else 0}")
 
                                 if news_data and len(news_data) > 0:
-                                    # Print first article structure
-                                    print(f"📰 {ticker}: First article keys: {news_data[0].keys()}")
-                                    print(f"📰 {ticker}: First article: {news_data[0]}")
+                                    print(f"📰 {ticker}: Processing {len(news_data[:3])} articles")
 
                                     for article in news_data[:3]:
-                                        # Try different possible field names
-                                        title = (article.get('title') or
-                                                article.get('headline') or
-                                                article.get('summary') or
-                                                'No title')
+                                        # News structure: article['content'] contains the actual data
+                                        content = article.get('content', {})
 
-                                        link = (article.get('link') or
-                                               article.get('url') or
-                                               article.get('guid') or
-                                               '')
+                                        # Extract fields from nested structure
+                                        title = content.get('title', 'No title')
 
-                                        publisher = (article.get('publisher') or
-                                                   article.get('source') or
-                                                   article.get('providerName') or
-                                                   'Unknown')
+                                        # Try clickThroughUrl first, then canonicalUrl
+                                        click_url = content.get('clickThroughUrl', {})
+                                        canonical_url = content.get('canonicalUrl', {})
+                                        link = click_url.get('url') or canonical_url.get('url', '')
 
-                                        published = (article.get('providerPublishTime') or
-                                                   article.get('publishedAt') or
-                                                   article.get('timestamp') or
-                                                   0)
+                                        # Get provider displayName
+                                        provider = content.get('provider', {})
+                                        publisher = provider.get('displayName', 'Unknown')
+
+                                        # Get pubDate (it's a string like '2025-12-02T16:48:01Z')
+                                        pub_date_str = content.get('pubDate', '')
+                                        # Convert to timestamp
+                                        try:
+                                            from datetime import datetime
+                                            if pub_date_str:
+                                                dt = datetime.fromisoformat(pub_date_str.replace('Z', '+00:00'))
+                                                published = int(dt.timestamp())
+                                            else:
+                                                published = 0
+                                        except:
+                                            published = 0
 
                                         news_articles.append({
                                             'title': title,
@@ -1347,13 +1347,8 @@ def usuals_scan():
                                             'publisher': publisher,
                                             'published': published
                                         })
-                                        print(f"✅ {ticker}: Added news article: {title[:50]}")
-                                else:
-                                    print(f"⚠️  {ticker}: No news data available")
                             except Exception as e:
                                 print(f"⚠️  {ticker}: Error accessing news: {e}")
-                        else:
-                            print(f"⚠️  {ticker}: No news attribute (likely Tradier data)")
                     except Exception as news_error:
                         print(f"⚠️  {ticker} news error: {news_error}")
 
