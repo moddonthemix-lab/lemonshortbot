@@ -1283,7 +1283,7 @@ def usuals_scan():
                     # Check patterns
                     patterns = {}
                     has_pattern, pattern_data = check_strat_31(hist)
-                    
+
                     if has_pattern:
                         patterns['daily'] = {
                             'type': '3-1 Strat',
@@ -1293,14 +1293,28 @@ def usuals_scan():
                         # Check inside bar
                         current = hist.iloc[-1]
                         previous = hist.iloc[-2]
-                        is_inside = (current['High'] < previous['High'] and 
+                        is_inside = (current['High'] < previous['High'] and
                                    current['Low'] > previous['Low'])
                         if is_inside:
                             patterns['daily'] = {
                                 'type': 'Inside Bar (1)',
                                 'direction': 'neutral'
                             }
-                    
+
+                    # Fetch news (top 3 articles)
+                    news_articles = []
+                    try:
+                        if hasattr(stock_data, 'news') and stock_data.news:
+                            for article in stock_data.news[:3]:
+                                news_articles.append({
+                                    'title': article.get('title', 'No title'),
+                                    'link': article.get('link', ''),
+                                    'publisher': article.get('publisher', 'Unknown'),
+                                    'published': article.get('providerPublishTime', 0)
+                                })
+                    except Exception as news_error:
+                        print(f"⚠️  {ticker} news error: {news_error}")
+
                     results.append({
                         'ticker': ticker,
                         'company': info.get('longName', ticker),
@@ -1309,7 +1323,8 @@ def usuals_scan():
                         'volume': int(current_volume),
                         'avg_volume': int(avg_volume),
                         'volume_ratio': float(volume_ratio),
-                        'patterns': patterns
+                        'patterns': patterns,
+                        'news': news_articles
                     })
                     
                     print(f"✅ {ticker}")
