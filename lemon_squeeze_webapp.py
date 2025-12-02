@@ -1304,39 +1304,56 @@ def usuals_scan():
                     # Fetch news (top 3 articles)
                     news_articles = []
                     try:
-                        if hasattr(stock_data, 'news') and stock_data.news:
-                            for article in stock_data.news[:3]:
-                                # Debug: print article keys to see what's available
-                                if not news_articles:  # Only print once
-                                    print(f"📰 {ticker} news fields: {article.keys()}")
+                        # Debug: check what type of object we have
+                        print(f"🔍 {ticker}: stock_data type: {type(stock_data).__name__}")
+                        print(f"🔍 {ticker}: has 'news' attr: {hasattr(stock_data, 'news')}")
 
-                                # Try different possible field names
-                                title = (article.get('title') or
-                                        article.get('headline') or
-                                        article.get('summary') or
-                                        'No title')
+                        # Only try to get news if it's a real yfinance Ticker (not Tradier wrapper)
+                        if hasattr(stock_data, 'news'):
+                            try:
+                                news_data = stock_data.news
+                                print(f"🔍 {ticker}: news_data type: {type(news_data)}, length: {len(news_data) if news_data else 0}")
 
-                                link = (article.get('link') or
-                                       article.get('url') or
-                                       article.get('guid') or
-                                       '')
+                                if news_data and len(news_data) > 0:
+                                    # Print first article structure
+                                    print(f"📰 {ticker}: First article keys: {news_data[0].keys()}")
+                                    print(f"📰 {ticker}: First article: {news_data[0]}")
 
-                                publisher = (article.get('publisher') or
-                                           article.get('source') or
-                                           article.get('providerName') or
-                                           'Unknown')
+                                    for article in news_data[:3]:
+                                        # Try different possible field names
+                                        title = (article.get('title') or
+                                                article.get('headline') or
+                                                article.get('summary') or
+                                                'No title')
 
-                                published = (article.get('providerPublishTime') or
-                                           article.get('publishedAt') or
-                                           article.get('timestamp') or
-                                           0)
+                                        link = (article.get('link') or
+                                               article.get('url') or
+                                               article.get('guid') or
+                                               '')
 
-                                news_articles.append({
-                                    'title': title,
-                                    'link': link,
-                                    'publisher': publisher,
-                                    'published': published
-                                })
+                                        publisher = (article.get('publisher') or
+                                                   article.get('source') or
+                                                   article.get('providerName') or
+                                                   'Unknown')
+
+                                        published = (article.get('providerPublishTime') or
+                                                   article.get('publishedAt') or
+                                                   article.get('timestamp') or
+                                                   0)
+
+                                        news_articles.append({
+                                            'title': title,
+                                            'link': link,
+                                            'publisher': publisher,
+                                            'published': published
+                                        })
+                                        print(f"✅ {ticker}: Added news article: {title[:50]}")
+                                else:
+                                    print(f"⚠️  {ticker}: No news data available")
+                            except Exception as e:
+                                print(f"⚠️  {ticker}: Error accessing news: {e}")
+                        else:
+                            print(f"⚠️  {ticker}: No news attribute (likely Tradier data)")
                     except Exception as news_error:
                         print(f"⚠️  {ticker} news error: {news_error}")
 
