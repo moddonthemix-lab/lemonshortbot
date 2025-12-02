@@ -190,6 +190,65 @@ scan_cache = {
     'crypto': {'results': [], 'timestamp': None, 'timeframe': '7d'}
 }
 
+def fetch_news(stock_data, ticker, max_articles=3):
+    """Helper function to fetch news for a ticker
+
+    Args:
+        stock_data: yfinance Ticker object
+        ticker: stock symbol
+        max_articles: number of articles to return (default 3)
+
+    Returns:
+        list of news articles with title, link, publisher, published
+    """
+    news_articles = []
+    try:
+        if hasattr(stock_data, 'news'):
+            try:
+                news_data = stock_data.news
+
+                if news_data and len(news_data) > 0:
+                    for article in news_data[:max_articles]:
+                        # News structure: article['content'] contains the actual data
+                        content = article.get('content', {})
+
+                        # Extract fields from nested structure
+                        title = content.get('title', 'No title')
+
+                        # Try clickThroughUrl first, then canonicalUrl
+                        click_url = content.get('clickThroughUrl', {})
+                        canonical_url = content.get('canonicalUrl', {})
+                        link = click_url.get('url') or canonical_url.get('url', '')
+
+                        # Get provider displayName
+                        provider = content.get('provider', {})
+                        publisher = provider.get('displayName', 'Unknown')
+
+                        # Get pubDate (it's a string like '2025-12-02T16:48:01Z')
+                        pub_date_str = content.get('pubDate', '')
+                        # Convert to timestamp
+                        try:
+                            if pub_date_str:
+                                dt = datetime.fromisoformat(pub_date_str.replace('Z', '+00:00'))
+                                published = int(dt.timestamp())
+                            else:
+                                published = 0
+                        except:
+                            published = 0
+
+                        news_articles.append({
+                            'title': title,
+                            'link': link,
+                            'publisher': publisher,
+                            'published': published
+                        })
+            except Exception as e:
+                print(f"⚠️  {ticker}: Error accessing news: {e}")
+    except Exception as news_error:
+        print(f"⚠️  {ticker} news error: {news_error}")
+
+    return news_articles
+
 # Load high short interest stocks
 def load_stock_data():
     """Load stocks from CSV - LIMITED TO TOP 30"""
@@ -934,11 +993,14 @@ def scan():
                         float_shares
                     )
                     
-                    if (stock['short_interest'] >= min_short and 
-                        daily_change >= min_gain and 
+                    if (stock['short_interest'] >= min_short and
+                        daily_change >= min_gain and
                         volume_ratio >= min_vol_ratio and
                         risk_score >= min_risk):
-                        
+
+                        # Fetch news for this ticker
+                        news = fetch_news(stock_data, ticker)
+
                         results.append({
                             'ticker': ticker,
                             'company': stock['company'],
@@ -954,7 +1016,8 @@ def scan():
                             'daysToCover': float(days_to_cover),
                             'weekHigh52': float(week_high_52),
                             'weekLow52': float(week_low_52),
-                            'riskScore': float(risk_score)
+                            'riskScore': float(risk_score),
+                            'news': news
                         })
                 
             except Exception as e:
@@ -1014,7 +1077,10 @@ def daily_plays():
                         current_price = hist['Close'].iloc[-1]
                         previous_close = hist['Close'].iloc[-2]
                         daily_change = ((current_price - previous_close) / previous_close) * 100
-                        
+
+                        # Fetch news for this ticker
+                        news = fetch_news(stock_data, ticker)
+
                         results.append({
                             'ticker': ticker,
                             'company': info.get('longName', ticker),
@@ -1024,7 +1090,8 @@ def daily_plays():
                             'avgVolume': int(hist['Volume'].mean()),
                             'marketCap': info.get('marketCap', 0),
                             'pattern': pattern_data,
-                            'timeframe': 'daily'
+                            'timeframe': 'daily',
+                            'news': news
                         })
                         
                         print(f"✅ {ticker}: {pattern_data['direction']} ({i}/{total})")
@@ -1076,13 +1143,18 @@ def weekly_plays():
                     
                     if has_pattern:
                         current_price = hist['Close'].iloc[-1]
+
+                        # Fetch news for this ticker
+                        news = fetch_news(stock_data, ticker)
+
                         results.append({
                             'ticker': ticker,
                             'company': ticker,
                             'currentPrice': float(current_price),
                             'volume': int(hist['Volume'].iloc[-1]),
                             'pattern': pattern_data,
-                            'timeframe': 'weekly'
+                            'timeframe': 'weekly',
+                            'news': news
                         })
                         print(f"✅ {ticker}")
             except:
@@ -1301,56 +1373,8 @@ def usuals_scan():
                                 'direction': 'neutral'
                             }
 
-                    # Fetch news (top 3 articles)
-                    news_articles = []
-                    try:
-                        # Only try to get news if it's a real yfinance Ticker (not Tradier wrapper)
-                        if hasattr(stock_data, 'news'):
-                            try:
-                                news_data = stock_data.news
-
-                                if news_data and len(news_data) > 0:
-                                    print(f"📰 {ticker}: Processing {len(news_data[:3])} articles")
-
-                                    for article in news_data[:3]:
-                                        # News structure: article['content'] contains the actual data
-                                        content = article.get('content', {})
-
-                                        # Extract fields from nested structure
-                                        title = content.get('title', 'No title')
-
-                                        # Try clickThroughUrl first, then canonicalUrl
-                                        click_url = content.get('clickThroughUrl', {})
-                                        canonical_url = content.get('canonicalUrl', {})
-                                        link = click_url.get('url') or canonical_url.get('url', '')
-
-                                        # Get provider displayName
-                                        provider = content.get('provider', {})
-                                        publisher = provider.get('displayName', 'Unknown')
-
-                                        # Get pubDate (it's a string like '2025-12-02T16:48:01Z')
-                                        pub_date_str = content.get('pubDate', '')
-                                        # Convert to timestamp
-                                        try:
-                                            from datetime import datetime
-                                            if pub_date_str:
-                                                dt = datetime.fromisoformat(pub_date_str.replace('Z', '+00:00'))
-                                                published = int(dt.timestamp())
-                                            else:
-                                                published = 0
-                                        except:
-                                            published = 0
-
-                                        news_articles.append({
-                                            'title': title,
-                                            'link': link,
-                                            'publisher': publisher,
-                                            'published': published
-                                        })
-                            except Exception as e:
-                                print(f"⚠️  {ticker}: Error accessing news: {e}")
-                    except Exception as news_error:
-                        print(f"⚠️  {ticker} news error: {news_error}")
+                    # Fetch news for this ticker
+                    news_articles = fetch_news(stock_data, ticker)
 
                     results.append({
                         'ticker': ticker,

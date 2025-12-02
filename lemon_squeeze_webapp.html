@@ -3802,14 +3802,32 @@
                                 </div>
                             </div>
                         </div>
-                        
+
+                        <!-- News Section -->
+                        <div class="metric-section" style="grid-column: 1 / -1; margin-top: 20px;">
+                            <h4>📰 Latest News</h4>
+                            ${stock.news && stock.news.length > 0 ? stock.news.map(item => {
+                                const publishedDate = item.published ? new Date(item.published * 1000).toLocaleDateString() : 'Recently';
+                                return `
+                                    <div style="background: rgba(245, 158, 11, 0.1); padding: 10px; border-radius: 5px; margin-bottom: 8px;">
+                                        <a href="${item.link}" target="_blank" style="color: var(--text-primary); text-decoration: none; font-weight: 500; display: block; margin-bottom: 3px; line-height: 1.4;">
+                                            📌 ${item.title}
+                                        </a>
+                                        <span style="font-size: 0.85em; color: var(--text-secondary);">
+                                            ${item.publisher} • ${publishedDate}
+                                        </span>
+                                    </div>
+                                `;
+                            }).join('') : '<p style="color: var(--text-secondary);">No recent news</p>'}
+                        </div>
+
                         <div class="chart-container" id="chart-${stock.ticker}-squeeze-${idx}"></div>
                     </div>
                 `;
             });
-            
+
             resultsDiv.innerHTML = html;
-            
+
             // Create charts after HTML is rendered
             candidates.forEach((stock, idx) => {
                 setTimeout(() => createChart(`chart-${stock.ticker}-squeeze-${idx}`, stock.ticker, 'daily'), 200 + (idx * 100));
@@ -3986,7 +4004,25 @@
                                 </div>
                             </div>
                         </div>
-                        
+
+                        <!-- News Section -->
+                        <div class="metric-section" style="grid-column: 1 / -1; margin-top: 20px;">
+                            <h4>📰 Latest News</h4>
+                            ${stock.news && stock.news.length > 0 ? stock.news.map(item => {
+                                const publishedDate = item.published ? new Date(item.published * 1000).toLocaleDateString() : 'Recently';
+                                return `
+                                    <div style="background: rgba(245, 158, 11, 0.1); padding: 10px; border-radius: 5px; margin-bottom: 8px;">
+                                        <a href="${item.link}" target="_blank" style="color: var(--text-primary); text-decoration: none; font-weight: 500; display: block; margin-bottom: 3px; line-height: 1.4;">
+                                            📌 ${item.title}
+                                        </a>
+                                        <span style="font-size: 0.85em; color: var(--text-secondary);">
+                                            ${item.publisher} • ${publishedDate}
+                                        </span>
+                                    </div>
+                                `;
+                            }).join('') : '<p style="color: var(--text-secondary);">No recent news</p>'}
+                        </div>
+
                         <div class="chart-container" id="chart-${stock.ticker}-daily-${idx}"></div>
                     </div>
                 `;
@@ -4170,14 +4206,32 @@
                                 </div>
                             </div>
                         </div>
-                        
+
+                        <!-- News Section -->
+                        <div class="metric-section" style="grid-column: 1 / -1; margin-top: 20px;">
+                            <h4>📰 Latest News</h4>
+                            ${stock.news && stock.news.length > 0 ? stock.news.map(item => {
+                                const publishedDate = item.published ? new Date(item.published * 1000).toLocaleDateString() : 'Recently';
+                                return `
+                                    <div style="background: rgba(245, 158, 11, 0.1); padding: 10px; border-radius: 5px; margin-bottom: 8px;">
+                                        <a href="${item.link}" target="_blank" style="color: var(--text-primary); text-decoration: none; font-weight: 500; display: block; margin-bottom: 3px; line-height: 1.4;">
+                                            📌 ${item.title}
+                                        </a>
+                                        <span style="font-size: 0.85em; color: var(--text-secondary);">
+                                            ${item.publisher} • ${publishedDate}
+                                        </span>
+                                    </div>
+                                `;
+                            }).join('') : '<p style="color: var(--text-secondary);">No recent news</p>'}
+                        </div>
+
                         <div class="chart-container" id="chart-${stock.ticker}-weekly-${idx}"></div>
                     </div>
                 `;
             });
-            
+
             resultsDiv.innerHTML = html;
-            
+
             // Create charts after HTML is rendered
             patterns.forEach((stock, idx) => {
                 setTimeout(() => createChart(`chart-${stock.ticker}-weekly-${idx}`, stock.ticker, 'weekly'), 200 + (idx * 100));
