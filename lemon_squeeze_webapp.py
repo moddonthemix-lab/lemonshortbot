@@ -1306,11 +1306,36 @@ def usuals_scan():
                     try:
                         if hasattr(stock_data, 'news') and stock_data.news:
                             for article in stock_data.news[:3]:
+                                # Debug: print article keys to see what's available
+                                if not news_articles:  # Only print once
+                                    print(f"📰 {ticker} news fields: {article.keys()}")
+
+                                # Try different possible field names
+                                title = (article.get('title') or
+                                        article.get('headline') or
+                                        article.get('summary') or
+                                        'No title')
+
+                                link = (article.get('link') or
+                                       article.get('url') or
+                                       article.get('guid') or
+                                       '')
+
+                                publisher = (article.get('publisher') or
+                                           article.get('source') or
+                                           article.get('providerName') or
+                                           'Unknown')
+
+                                published = (article.get('providerPublishTime') or
+                                           article.get('publishedAt') or
+                                           article.get('timestamp') or
+                                           0)
+
                                 news_articles.append({
-                                    'title': article.get('title', 'No title'),
-                                    'link': article.get('link', ''),
-                                    'publisher': article.get('publisher', 'Unknown'),
-                                    'published': article.get('providerPublishTime', 0)
+                                    'title': title,
+                                    'link': link,
+                                    'publisher': publisher,
+                                    'published': published
                                 })
                     except Exception as news_error:
                         print(f"⚠️  {ticker} news error: {news_error}")
