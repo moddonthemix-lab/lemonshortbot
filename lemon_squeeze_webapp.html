@@ -1708,8 +1708,11 @@
 
                 <div class="scan-section">
                     <button id="lemonaiButton" class="scan-button" onclick="startLemonAIScan()">
-                        🤖 GENERATE AI RECOMMENDATIONS 🧠
+                        🔄 REFRESH RECOMMENDATIONS NOW
                     </button>
+                    <p style="text-align: center; color: #666; margin-top: 15px; font-size: 0.95em;">
+                        💡 Plays auto-load when you open this tab and refresh weekly
+                    </p>
                 </div>
 
                 <div id="lemonaiLoading" class="loading">
@@ -3660,6 +3663,12 @@
                 document.getElementById('volemonTab').classList.add('active');
             } else if (tab === 'usuals') {
                 document.getElementById('usualsTab').classList.add('active');
+            } else if (tab === 'lemonai') {
+                document.getElementById('lemonaiTab').classList.add('active');
+                // Auto-load LemonAI recommendations when tab is opened
+                if (document.getElementById('lemonaiResults').innerHTML === '') {
+                    startLemonAIScan();
+                }
             } else if (tab === 'howto') {
                 document.getElementById('howtoTab').classList.add('active');
             }
@@ -4646,7 +4655,7 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    displayLemonAIResults(data.recommendations);
+                    displayLemonAIResults(data.recommendations, data.cached, data.cache_age_days);
                 } else {
                     alert('Error: ' + data.error);
                 }
@@ -4657,12 +4666,12 @@
             } finally {
                 isScanning = false;
                 document.getElementById('lemonaiButton').disabled = false;
-                document.getElementById('lemonaiButton').textContent = '🤖 GENERATE AI RECOMMENDATIONS 🧠';
+                document.getElementById('lemonaiButton').textContent = '🔄 REFRESH RECOMMENDATIONS NOW';
                 document.getElementById('lemonaiLoading').classList.remove('active');
             }
         }
 
-        function displayLemonAIResults(recommendations) {
+        function displayLemonAIResults(recommendations, cached = false, cacheAge = 0) {
             const resultsDiv = document.getElementById('lemonaiResults');
             resultsDiv.classList.add('active');
 
@@ -4671,11 +4680,10 @@
                     <div class="no-results">
                         <h3>🤖 No Recommendations Available</h3>
                         <p style="font-size: 1.2em; color: #666; margin: 20px 0;">
-                            LemonAI couldn't find any high-confidence setups at this time.
+                            LemonAI is analyzing patterns and will have recommendations ready soon!
                         </p>
                         <p style="color: #999;">
-                            💡 Try running other scans first (Daily, Weekly, Squeeze, Usuals) to populate data,
-                            then come back to LemonAI for analysis.
+                            💡 Fresh plays are generated weekly. Check back in a few moments.
                         </p>
                     </div>
                 `;
@@ -4684,12 +4692,22 @@
 
             const avgConfidence = recommendations.reduce((sum, r) => sum + r.confidence, 0) / recommendations.length;
 
+            // Cache status message
+            const cacheMessage = cached && cacheAge > 0
+                ? `<div style="background: #e7f3ff; border: 1px solid #2196F3; padding: 10px 15px; border-radius: 8px; margin: 10px 0; font-size: 0.95em;">
+                     📋 Showing weekly plays (generated ${cacheAge} day${cacheAge !== 1 ? 's' : ''} ago). Refreshes ${7 - cacheAge} day${(7 - cacheAge) !== 1 ? 's' : ''} from now.
+                   </div>`
+                : `<div style="background: #e8f5e9; border: 1px solid #4CAF50; padding: 10px 15px; border-radius: 8px; margin: 10px 0; font-size: 0.95em;">
+                     ✨ Fresh plays generated today! These recommendations will be available for 7 days.
+                   </div>`;
+
             let html = `
                 <div class="results-header">
                     <h2>🤖 AI Options Recommendations</h2>
                     <p style="font-size: 1.2em; color: #666; margin: 10px 0;">
                         ${new Date().toLocaleString()}
                     </p>
+                    ${cacheMessage}
                     <div class="summary-stats">
                         <div class="stat">
                             <span class="stat-value">${recommendations.length}</span>

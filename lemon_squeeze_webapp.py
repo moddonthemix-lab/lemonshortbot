@@ -187,7 +187,8 @@ scan_cache = {
     'hourly': {'results': [], 'timestamp': None, 'timeframe': '1d'},
     'volemon': {'results': [], 'timestamp': None, 'timeframe': '5d'},
     'usuals': {'results': [], 'timestamp': None, 'timeframe': '5d'},
-    'crypto': {'results': [], 'timestamp': None, 'timeframe': '7d'}
+    'crypto': {'results': [], 'timestamp': None, 'timeframe': '7d'},
+    'lemonai': {'results': [], 'timestamp': None, 'timeframe': '1 week'}
 }
 
 def fetch_news(stock_data, ticker, max_articles=3):
@@ -1407,9 +1408,33 @@ def usuals_scan():
 
 @app.route('/api/lemonai-analyze', methods=['POST'])
 def lemonai_analyze():
-    """LemonAI - AI-powered options recommendations"""
+    """LemonAI - AI-powered options recommendations (auto-refreshes weekly)"""
     try:
         print("\n🤖 LemonAI: Starting analysis...")
+
+        # Check if we have cached recommendations less than 7 days old
+        lemonai_cache = scan_cache['lemonai']
+        if lemonai_cache['timestamp']:
+            age_days = (datetime.now() - lemonai_cache['timestamp']).days
+            if age_days < 7 and len(lemonai_cache['results']) > 0:
+                print(f"✅ LemonAI: Returning cached recommendations ({age_days} days old)")
+                return jsonify({
+                    'success': True,
+                    'recommendations': lemonai_cache['results'],
+                    'cached': True,
+                    'cache_age_days': age_days
+                })
+
+        print("🔄 LemonAI: Generating fresh recommendations...")
+
+        # Auto-run scans if no data exists
+        if not any([
+            scan_cache['daily']['results'],
+            scan_cache['weekly']['results'],
+            scan_cache['usuals']['results']
+        ]):
+            print("📊 LemonAI: Auto-running scans...")
+            auto_run_scans_for_lemonai()
 
         # Collect all stocks from cached scans
         all_stocks = []
@@ -1552,16 +1577,112 @@ def lemonai_analyze():
         recommendations.sort(key=lambda x: x['confidence'], reverse=True)
         top_recommendations = recommendations[:10]
 
-        print(f"✅ LemonAI: Generated {len(top_recommendations)} recommendations\n")
+        # Cache the recommendations for 7 days
+        scan_cache['lemonai']['results'] = top_recommendations
+        scan_cache['lemonai']['timestamp'] = datetime.now()
+
+        print(f"✅ LemonAI: Generated {len(top_recommendations)} recommendations (cached for 7 days)\n")
 
         return jsonify({
             'success': True,
-            'recommendations': top_recommendations
+            'recommendations': top_recommendations,
+            'cached': False,
+            'cache_age_days': 0
         })
 
     except Exception as e:
         print(f"❌ LemonAI error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+def auto_run_scans_for_lemonai():
+    """Auto-run scans to populate data for LemonAI recommendations"""
+    try:
+        print("🔄 Auto-running Daily Plays scan...")
+        # Run daily plays scanner
+        popular_tickers = [
+            'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD',
+            'SPY', 'QQQ', 'NFLX', 'DIS'  # Quick subset for faster results
+        ]
+
+        daily_results = []
+        for ticker in popular_tickers[:10]:  # Limit to 10 for speed
+            try:
+                stock_data, hist, info = safe_yf_ticker(ticker)
+                if stock_data and hist is not None and len(hist) >= 3:
+                    has_pattern, pattern_data = check_strat_31(hist)
+                    if has_pattern:
+                        current_price = hist['Close'].iloc[-1]
+                        previous_close = hist['Close'].iloc[-2]
+                        daily_change = ((current_price - previous_close) / previous_close) * 100
+                        news = fetch_news(stock_data, ticker)
+
+                        daily_results.append({
+                            'ticker': ticker,
+                            'company': info.get('longName', ticker),
+                            'currentPrice': float(current_price),
+                            'dailyChange': float(daily_change),
+                            'volume': int(hist['Volume'].iloc[-1]),
+                            'avgVolume': int(hist['Volume'].mean()),
+                            'marketCap': info.get('marketCap', 0),
+                            'pattern': pattern_data,
+                            'timeframe': 'daily',
+                            'news': news
+                        })
+            except:
+                continue
+
+        scan_cache['daily']['results'] = daily_results
+        scan_cache['daily']['timestamp'] = datetime.now()
+        print(f"✅ Auto-scan: Found {len(daily_results)} daily patterns")
+
+        # Run usuals scanner
+        print("🔄 Auto-running Usuals scan...")
+        default_tickers = ['SOFI', 'PLTR', 'AMD', 'NVDA', 'TSLA', 'SPY', 'QQQ', 'INTC']
+        usuals_results = []
+
+        for ticker in default_tickers[:8]:  # Limit to 8 for speed
+            try:
+                stock_data, hist, info = safe_yf_ticker(ticker)
+                if stock_data and hist is not None and len(hist) >= 3:
+                    current_price = hist['Close'].iloc[-1]
+                    prev_price = hist['Close'].iloc[-2]
+                    change = ((current_price - prev_price) / prev_price) * 100
+
+                    current_volume = hist['Volume'].iloc[-1]
+                    avg_volume = hist['Volume'].iloc[:-1].mean()
+                    volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1
+
+                    # Check patterns
+                    patterns = {}
+                    has_pattern, pattern_data = check_strat_31(hist)
+                    if has_pattern:
+                        patterns['daily'] = {
+                            'type': '3-1 Strat',
+                            'direction': pattern_data['direction']
+                        }
+
+                    news = fetch_news(stock_data, ticker)
+
+                    usuals_results.append({
+                        'ticker': ticker,
+                        'company': info.get('longName', ticker),
+                        'price': float(current_price),
+                        'change': float(change),
+                        'volume': int(current_volume),
+                        'avg_volume': int(avg_volume),
+                        'volume_ratio': float(volume_ratio),
+                        'patterns': patterns,
+                        'news': news
+                    })
+            except:
+                continue
+
+        scan_cache['usuals']['results'] = usuals_results
+        scan_cache['usuals']['timestamp'] = datetime.now()
+        print(f"✅ Auto-scan: Scanned {len(usuals_results)} usuals")
+
+    except Exception as e:
+        print(f"⚠️  Auto-scan error: {e}")
 
 def calculate_ai_confidence(stock):
     """Calculate confidence score for a trade based on multiple factors"""
