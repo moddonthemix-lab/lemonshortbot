@@ -13,11 +13,13 @@ Total API calls reduced from 493-1,393 to ~200 per complete scan!
 
 from flask import Flask, render_template, jsonify, request, send_from_directory, session
 import yfinance as yf
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 import os
 import json
 import hashlib
+import sqlite3
+from collections import deque
 import secrets
 import requests
 from collections import deque
@@ -190,6 +192,76 @@ scan_cache = {
     'crypto': {'results': [], 'timestamp': None, 'timeframe': '7d'},
     'lemonai': {'results': [], 'timestamp': None, 'timeframe': '1 week'}
 }
+
+# ===== LEMONAI DATABASE =====
+DB_FILE = 'lemonai_history.db'
+
+def init_database():
+    """Initialize SQLite database for LemonAI tracking and backtesting"""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+
+    # Recommendations table - stores each AI recommendation
+    c.execute('''CREATE TABLE IF NOT EXISTS recommendations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticker TEXT NOT NULL,
+        company TEXT,
+        option_type TEXT NOT NULL,
+        strike_price REAL NOT NULL,
+        current_price REAL NOT NULL,
+        expiration TEXT NOT NULL,
+        confidence INTEGER NOT NULL,
+        pattern TEXT,
+        direction TEXT,
+        volume_ratio REAL,
+        news_sentiment TEXT,
+        source TEXT,
+        reasoning TEXT,
+        news_json TEXT,
+        recommendation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expiration_date DATE
+    )''')
+
+    # Outcomes table - tracks what actually happened
+    c.execute('''CREATE TABLE IF NOT EXISTS outcomes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        recommendation_id INTEGER NOT NULL,
+        days_after INTEGER NOT NULL,
+        actual_price REAL NOT NULL,
+        price_change_pct REAL NOT NULL,
+        volume_ratio REAL,
+        was_profitable BOOLEAN,
+        profit_pct REAL,
+        check_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (recommendation_id) REFERENCES recommendations(id)
+    )''')
+
+    # Performance metrics table - aggregated learning data
+    c.execute('''CREATE TABLE IF NOT EXISTS pattern_performance (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        pattern TEXT NOT NULL UNIQUE,
+        total_recommendations INTEGER DEFAULT 0,
+        successful_count INTEGER DEFAULT 0,
+        failed_count INTEGER DEFAULT 0,
+        avg_confidence INTEGER DEFAULT 0,
+        avg_success_rate REAL DEFAULT 0.0,
+        confidence_adjustment INTEGER DEFAULT 0,
+        last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+
+    # Initialize pattern performance records
+    patterns = ['3-1 Strat', 'Inside Bar (1)', 'Outside Bar (3)', 'Momentum Play', 'Short Squeeze']
+    for pattern in patterns:
+        c.execute('''INSERT OR IGNORE INTO pattern_performance
+                     (pattern, total_recommendations, successful_count, failed_count, avg_confidence, avg_success_rate, confidence_adjustment)
+                     VALUES (?, 0, 0, 0, 50, 0.0, 0)''', (pattern,))
+
+    conn.commit()
+    conn.close()
+    print("✅ LemonAI database initialized")
+
+# Initialize database on startup
+init_database()
 
 def fetch_news(stock_data, ticker, max_articles=3):
     """Helper function to fetch news for a ticker
@@ -1564,8 +1636,10 @@ def lemonai_analyze():
                     'confidence': confidence,
                     'reasoning': reasoning,
                     'pattern': stock['pattern'],
+                    'direction': stock['direction'],
                     'volume_ratio': stock['volume_ratio'],
                     'news_sentiment': news_sentiment,
+                    'news': stock.get('news', []),
                     'source': stock['source']
                 })
 
@@ -1576,6 +1650,18 @@ def lemonai_analyze():
         # Sort by confidence score (highest first) and return top 10
         recommendations.sort(key=lambda x: x['confidence'], reverse=True)
         top_recommendations = recommendations[:10]
+
+        # Save recommendations to database for tracking and learning
+        print("💾 Saving recommendations to database...")
+        for rec in top_recommendations:
+            save_recommendation_to_db(rec)
+
+        # Run backtesting on historical recommendations
+        print("🔄 Running backtest on historical recommendations...")
+        try:
+            backtest_recommendations()
+        except Exception as backtest_error:
+            print(f"⚠️  Backtest error (non-critical): {backtest_error}")
 
         # Cache the recommendations for 7 days
         scan_cache['lemonai']['results'] = top_recommendations
@@ -1771,8 +1857,226 @@ def auto_run_scans_for_lemonai():
     except Exception as e:
         print(f"⚠️  Auto-scan error: {e}")
 
+def save_recommendation_to_db(recommendation):
+    """Save a recommendation to the database for tracking"""
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+
+        # Calculate expiration date (convert text like "1-2 weeks" to actual date)
+        exp_text = recommendation['expiration']
+        if 'week' in exp_text:
+            weeks = int(exp_text.split('-')[0]) if '-' in exp_text else int(exp_text.split()[0])
+            exp_date = datetime.now() + timedelta(weeks=weeks)
+        else:
+            exp_date = datetime.now() + timedelta(days=14)  # Default 2 weeks
+
+        c.execute('''INSERT INTO recommendations
+                     (ticker, company, option_type, strike_price, current_price, expiration,
+                      confidence, pattern, direction, volume_ratio, news_sentiment, source,
+                      reasoning, news_json, expiration_date)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                  (recommendation['ticker'],
+                   recommendation['company'],
+                   recommendation['option_type'],
+                   recommendation['strike_price'],
+                   recommendation['current_price'],
+                   recommendation['expiration'],
+                   recommendation['confidence'],
+                   recommendation['pattern'],
+                   recommendation.get('direction', 'unknown'),
+                   recommendation['volume_ratio'],
+                   recommendation['news_sentiment'],
+                   recommendation['source'],
+                   recommendation['reasoning'],
+                   json.dumps(recommendation.get('news', [])),
+                   exp_date.strftime('%Y-%m-%d')))
+
+        rec_id = c.lastrowid
+        conn.commit()
+        conn.close()
+        return rec_id
+    except Exception as e:
+        print(f"⚠️  Error saving recommendation to DB: {e}")
+        return None
+
+def backtest_recommendations():
+    """Check outcomes of past recommendations and update outcomes table"""
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+
+        # Get recommendations from last 30 days that haven't been fully checked
+        c.execute('''SELECT r.id, r.ticker, r.option_type, r.strike_price, r.current_price,
+                           r.recommendation_date, r.pattern, r.confidence, r.direction
+                     FROM recommendations r
+                     WHERE r.recommendation_date >= datetime('now', '-30 days')
+                       AND r.id NOT IN (SELECT recommendation_id FROM outcomes WHERE days_after >= 7)
+                     ORDER BY r.recommendation_date DESC
+                     LIMIT 50''')
+
+        recs = c.fetchall()
+
+        for rec in recs:
+            rec_id, ticker, option_type, strike_price, initial_price, rec_date, pattern, confidence, direction = rec
+
+            # Calculate days since recommendation
+            rec_datetime = datetime.fromisoformat(rec_date)
+            days_passed = (datetime.now() - rec_datetime).days
+
+            # Skip if less than 1 day old
+            if days_passed < 1:
+                continue
+
+            # Check multiple timeframes (1, 3, 5, 7, 14 days)
+            check_points = [1, 3, 5, 7, 14]
+            for days_after in check_points:
+                if days_passed < days_after:
+                    continue
+
+                # Check if we already have this outcome
+                c.execute('SELECT id FROM outcomes WHERE recommendation_id = ? AND days_after = ?',
+                         (rec_id, days_after))
+                if c.fetchone():
+                    continue  # Already checked
+
+                # Fetch current price
+                try:
+                    stock_data, hist, _ = safe_yf_ticker(ticker, period='1mo', interval='1d')
+                    if hist is None or len(hist) == 0:
+                        continue
+
+                    # Get price from N days ago
+                    target_date = rec_datetime + timedelta(days=days_after)
+                    closest_price = None
+                    min_diff = float('inf')
+
+                    for idx, row in hist.iterrows():
+                        date_diff = abs((idx.date() - target_date.date()).days)
+                        if date_diff < min_diff:
+                            min_diff = date_diff
+                            closest_price = row['Close']
+
+                    if closest_price is None:
+                        continue
+
+                    # Calculate outcome
+                    price_change_pct = ((closest_price - initial_price) / initial_price) * 100
+
+                    # Determine if profitable (for calls: price went up and above strike, for puts: price went down and below strike)
+                    was_profitable = False
+                    profit_pct = 0.0
+
+                    if option_type == 'CALL':
+                        if closest_price > strike_price:
+                            was_profitable = True
+                            profit_pct = ((closest_price - strike_price) / strike_price) * 100
+                    else:  # PUT
+                        if closest_price < strike_price:
+                            was_profitable = True
+                            profit_pct = ((strike_price - closest_price) / strike_price) * 100
+
+                    # Get volume info
+                    volume_ratio = hist['Volume'].iloc[-1] / hist['Volume'].mean() if len(hist) > 1 else 1.0
+
+                    # Save outcome
+                    c.execute('''INSERT INTO outcomes
+                                (recommendation_id, days_after, actual_price, price_change_pct,
+                                 volume_ratio, was_profitable, profit_pct)
+                                VALUES (?, ?, ?, ?, ?, ?, ?)''',
+                             (rec_id, days_after, float(closest_price), float(price_change_pct),
+                              float(volume_ratio), was_profitable, float(profit_pct)))
+
+                    print(f"✅ Backtested {ticker} {option_type} at {days_after}d: {'WIN' if was_profitable else 'LOSS'}")
+
+                except Exception as e:
+                    print(f"⚠️  Error backtesting {ticker}: {e}")
+                    continue
+
+        conn.commit()
+        conn.close()
+
+        # Update pattern performance after backtesting
+        update_pattern_performance()
+
+    except Exception as e:
+        print(f"⚠️  Error in backtest: {e}")
+
+def update_pattern_performance():
+    """Update pattern performance metrics based on outcomes"""
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+
+        # Get all patterns
+        c.execute('SELECT DISTINCT pattern FROM recommendations')
+        patterns = [row[0] for row in c.fetchall()]
+
+        for pattern in patterns:
+            # Get 7-day outcomes for this pattern (most relevant timeframe)
+            c.execute('''SELECT r.confidence, o.was_profitable
+                        FROM recommendations r
+                        JOIN outcomes o ON r.id = o.recommendation_id
+                        WHERE r.pattern = ? AND o.days_after = 7''', (pattern,))
+
+            results = c.fetchall()
+
+            if len(results) == 0:
+                continue
+
+            total = len(results)
+            successful = sum(1 for _, profitable in results if profitable)
+            failed = total - successful
+            avg_conf = sum(conf for conf, _ in results) / total
+            success_rate = (successful / total) * 100
+
+            # Calculate confidence adjustment based on success rate
+            # If success rate > 60%, boost confidence. If < 40%, reduce it.
+            if success_rate >= 70:
+                adjustment = +5
+            elif success_rate >= 60:
+                adjustment = +3
+            elif success_rate <= 30:
+                adjustment = -5
+            elif success_rate <= 40:
+                adjustment = -3
+            else:
+                adjustment = 0
+
+            # Update pattern performance
+            c.execute('''UPDATE pattern_performance
+                        SET total_recommendations = ?,
+                            successful_count = ?,
+                            failed_count = ?,
+                            avg_confidence = ?,
+                            avg_success_rate = ?,
+                            confidence_adjustment = ?,
+                            last_updated = CURRENT_TIMESTAMP
+                        WHERE pattern = ?''',
+                     (total, successful, failed, int(avg_conf), success_rate, adjustment, pattern))
+
+            print(f"📊 {pattern}: {successful}/{total} wins ({success_rate:.1f}%), adjustment: {adjustment:+d}")
+
+        conn.commit()
+        conn.close()
+
+    except Exception as e:
+        print(f"⚠️  Error updating pattern performance: {e}")
+
+def get_pattern_adjustment(pattern):
+    """Get learned confidence adjustment for a pattern"""
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute('SELECT confidence_adjustment FROM pattern_performance WHERE pattern = ?', (pattern,))
+        result = c.fetchone()
+        conn.close()
+        return result[0] if result else 0
+    except:
+        return 0
+
 def calculate_ai_confidence(stock):
-    """Calculate confidence score for a trade based on multiple factors"""
+    """Calculate confidence score for a trade based on multiple factors + learned adjustments"""
     confidence = 50  # Base confidence
     reasoning_parts = []
 
@@ -1836,6 +2140,15 @@ def calculate_ai_confidence(stock):
     elif news_sentiment != 'Neutral':
         confidence += 5
         reasoning_parts.append(f"{news_sentiment} news sentiment")
+
+    # 5. Apply machine learning adjustment based on historical performance
+    pattern_adjustment = get_pattern_adjustment(stock['pattern'])
+    if pattern_adjustment != 0:
+        confidence += pattern_adjustment
+        if pattern_adjustment > 0:
+            reasoning_parts.append(f"AI learned this pattern performs well (+{pattern_adjustment} confidence)")
+        else:
+            reasoning_parts.append(f"AI learned to be cautious with this pattern ({pattern_adjustment} confidence)")
 
     # Cap confidence at 95 (never 100%)
     confidence = min(confidence, 95)
