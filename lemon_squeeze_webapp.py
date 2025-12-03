@@ -1595,26 +1595,90 @@ def lemonai_analyze():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 def auto_run_scans_for_lemonai():
-    """Auto-run scans to populate data for LemonAI recommendations"""
+    """Auto-run scans to populate data for LemonAI recommendations - ALWAYS finds plays"""
     try:
-        print("🔄 Auto-running Daily Plays scan...")
-        # Run daily plays scanner
+        print("🔄 Auto-running comprehensive scan for LemonAI...")
+        # Expanded list to ensure we always have plays
         popular_tickers = [
             'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD',
-            'SPY', 'QQQ', 'NFLX', 'DIS'  # Quick subset for faster results
+            'SPY', 'QQQ', 'NFLX', 'DIS', 'PYPL', 'SQ', 'UBER', 'BABA',
+            'F', 'GM', 'BA', 'JPM'
         ]
 
         daily_results = []
-        for ticker in popular_tickers[:10]:  # Limit to 10 for speed
+        for ticker in popular_tickers:
             try:
                 stock_data, hist, info = safe_yf_ticker(ticker)
                 if stock_data and hist is not None and len(hist) >= 3:
-                    has_pattern, pattern_data = check_strat_31(hist)
-                    if has_pattern:
-                        current_price = hist['Close'].iloc[-1]
-                        previous_close = hist['Close'].iloc[-2]
-                        daily_change = ((current_price - previous_close) / previous_close) * 100
+                    current_price = hist['Close'].iloc[-1]
+                    previous_close = hist['Close'].iloc[-2]
+                    daily_change = ((current_price - previous_close) / previous_close) * 100
+
+                    # Check for ANY pattern - 3-1 Strat, Inside Bar, or Outside Bar
+                    pattern_found = None
+                    has_31_pattern, pattern_data = check_strat_31(hist)
+
+                    if has_31_pattern:
+                        pattern_found = pattern_data
+                    else:
+                        # Check for inside bar (1-bar in Strat)
+                        current = hist.iloc[-1]
+                        previous = hist.iloc[-2]
+                        is_inside = (current['High'] < previous['High'] and
+                                   current['Low'] > previous['Low'])
+
+                        if is_inside:
+                            # Determine direction based on close position
+                            if current['Close'] > previous['Close']:
+                                direction = 'bullish'
+                            elif current['Close'] < previous['Close']:
+                                direction = 'bearish'
+                            else:
+                                direction = 'neutral'
+
+                            pattern_found = {
+                                'type': 'Inside Bar (1)',
+                                'direction': direction,
+                                'one_candle': {
+                                    'high': float(current['High']),
+                                    'low': float(current['Low']),
+                                    'open': float(current['Open']),
+                                    'close': float(current['Close']),
+                                    'date': current.name.strftime('%Y-%m-%d')
+                                }
+                            }
+                        else:
+                            # Outside bar (3-bar in Strat) - expansion candle
+                            is_outside = (current['High'] > previous['High'] and
+                                        current['Low'] < previous['Low'])
+
+                            if is_outside:
+                                if current['Close'] > previous['Close']:
+                                    direction = 'bullish'
+                                else:
+                                    direction = 'bearish'
+
+                                pattern_found = {
+                                    'type': 'Outside Bar (3)',
+                                    'direction': direction,
+                                    'three_candle': {
+                                        'high': float(current['High']),
+                                        'low': float(current['Low']),
+                                        'close': float(current['Close']),
+                                        'date': current.name.strftime('%Y-%m-%d')
+                                    }
+                                }
+
+                    # Include stock if it has ANY pattern OR significant price movement
+                    if pattern_found or abs(daily_change) >= 1.0:
                         news = fetch_news(stock_data, ticker)
+
+                        # If no pattern found but has momentum, create a momentum-based pattern
+                        if not pattern_found:
+                            pattern_found = {
+                                'type': 'Momentum Play',
+                                'direction': 'bullish' if daily_change > 0 else 'bearish'
+                            }
 
                         daily_results.append({
                             'ticker': ticker,
@@ -1624,23 +1688,24 @@ def auto_run_scans_for_lemonai():
                             'volume': int(hist['Volume'].iloc[-1]),
                             'avgVolume': int(hist['Volume'].mean()),
                             'marketCap': info.get('marketCap', 0),
-                            'pattern': pattern_data,
+                            'pattern': pattern_found,
                             'timeframe': 'daily',
                             'news': news
                         })
-            except:
+            except Exception as e:
+                print(f"⚠️  Error scanning {ticker}: {e}")
                 continue
 
         scan_cache['daily']['results'] = daily_results
         scan_cache['daily']['timestamp'] = datetime.now()
-        print(f"✅ Auto-scan: Found {len(daily_results)} daily patterns")
+        print(f"✅ Auto-scan: Found {len(daily_results)} setups (patterns + momentum)")
 
-        # Run usuals scanner
+        # Run usuals scanner - include ALL stocks with ANY setup
         print("🔄 Auto-running Usuals scan...")
-        default_tickers = ['SOFI', 'PLTR', 'AMD', 'NVDA', 'TSLA', 'SPY', 'QQQ', 'INTC']
+        default_tickers = ['SOFI', 'PLTR', 'AMD', 'NVDA', 'TSLA', 'SPY', 'QQQ', 'INTC', 'AAPL', 'MSFT']
         usuals_results = []
 
-        for ticker in default_tickers[:8]:  # Limit to 8 for speed
+        for ticker in default_tickers:
             try:
                 stock_data, hist, info = safe_yf_ticker(ticker)
                 if stock_data and hist is not None and len(hist) >= 3:
@@ -1652,17 +1717,38 @@ def auto_run_scans_for_lemonai():
                     avg_volume = hist['Volume'].iloc[:-1].mean()
                     volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1
 
-                    # Check patterns
+                    # Check for ANY pattern - always include the stock
                     patterns = {}
-                    has_pattern, pattern_data = check_strat_31(hist)
-                    if has_pattern:
+                    has_31_pattern, pattern_data = check_strat_31(hist)
+
+                    if has_31_pattern:
                         patterns['daily'] = {
                             'type': '3-1 Strat',
                             'direction': pattern_data['direction']
                         }
+                    else:
+                        # Check for inside bar
+                        current = hist.iloc[-1]
+                        previous = hist.iloc[-2]
+                        is_inside = (current['High'] < previous['High'] and
+                                   current['Low'] > previous['Low'])
+
+                        if is_inside:
+                            direction = 'bullish' if current['Close'] > previous['Close'] else 'bearish'
+                            patterns['daily'] = {
+                                'type': 'Inside Bar (1)',
+                                'direction': direction
+                            }
+                        elif abs(change) >= 1.0:
+                            # Momentum play
+                            patterns['daily'] = {
+                                'type': 'Momentum',
+                                'direction': 'bullish' if change > 0 else 'bearish'
+                            }
 
                     news = fetch_news(stock_data, ticker)
 
+                    # Always include stock (with or without patterns)
                     usuals_results.append({
                         'ticker': ticker,
                         'company': info.get('longName', ticker),
@@ -1674,12 +1760,13 @@ def auto_run_scans_for_lemonai():
                         'patterns': patterns,
                         'news': news
                     })
-            except:
+            except Exception as e:
+                print(f"⚠️  Error scanning {ticker}: {e}")
                 continue
 
         scan_cache['usuals']['results'] = usuals_results
         scan_cache['usuals']['timestamp'] = datetime.now()
-        print(f"✅ Auto-scan: Scanned {len(usuals_results)} usuals")
+        print(f"✅ Auto-scan: Scanned {len(usuals_results)} usuals (all included)")
 
     except Exception as e:
         print(f"⚠️  Auto-scan error: {e}")
@@ -1703,6 +1790,15 @@ def calculate_ai_confidence(stock):
     elif '3-1 Strat' in stock['pattern']:
         confidence += 15
         reasoning_parts.append(f"Strong {stock['pattern']} pattern detected")
+    elif 'Inside Bar (1)' in stock['pattern']:
+        confidence += 12
+        reasoning_parts.append("Inside bar consolidation suggests potential breakout")
+    elif 'Outside Bar (3)' in stock['pattern']:
+        confidence += 14
+        reasoning_parts.append("Outside bar expansion shows increased volatility")
+    elif 'Momentum Play' in stock['pattern'] or 'Momentum' in stock['pattern']:
+        confidence += 8
+        reasoning_parts.append("Strong price momentum detected")
     else:
         confidence += 10
         reasoning_parts.append(f"{stock['pattern']} pattern identified")
