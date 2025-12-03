@@ -4809,6 +4809,39 @@
                                     <span class="metric-value">${rec.source}</span>
                                 </div>
                             </div>
+
+                            ${rec.options_flow && rec.options_flow.flow_score > 0 ? `
+                                <div class="metric-section">
+                                    <h4>🔥 Options Flow Analysis</h4>
+                                    <div style="background: ${rec.options_flow.has_pattern ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#f3f4f6'}; color: ${rec.options_flow.has_pattern ? 'white' : '#374151'}; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                                        <div style="font-size: 1.1em; font-weight: bold; margin-bottom: 5px;">
+                                            ${rec.options_flow.has_pattern ? '🎯 3-LEGS PATTERN DETECTED!' : '📊 Options Activity'}
+                                        </div>
+                                        <div style="font-size: 0.95em; opacity: 0.9;">
+                                            Flow Score: ${rec.options_flow.flow_score}/100
+                                        </div>
+                                    </div>
+                                    <div class="metric-item">
+                                        <span class="metric-label">Avg Volume:</span>
+                                        <span class="metric-value">${Math.round(rec.options_flow.avg_volume).toLocaleString()} contracts</span>
+                                    </div>
+                                    <div class="metric-item">
+                                        <span class="metric-label">Avg Open Interest:</span>
+                                        <span class="metric-value">${Math.round(rec.options_flow.avg_oi).toLocaleString()} contracts</span>
+                                    </div>
+                                    <div class="metric-item">
+                                        <span class="metric-label">Total Volume:</span>
+                                        <span class="metric-value">${Math.round(rec.options_flow.total_volume).toLocaleString()}</span>
+                                    </div>
+                                    <div class="metric-item">
+                                        <span class="metric-label">Total OI:</span>
+                                        <span class="metric-value">${Math.round(rec.options_flow.total_oi).toLocaleString()}</span>
+                                    </div>
+                                    <div style="background: white; padding: 12px; border-radius: 8px; margin-top: 10px; line-height: 1.5; font-size: 0.95em;">
+                                        ${rec.options_flow.details.split('\n').map(line => `<div style="margin: 5px 0;">${line}</div>`).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
                         </div>
 
                         <!-- Risk Warning -->

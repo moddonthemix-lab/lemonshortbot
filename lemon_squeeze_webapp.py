@@ -218,9 +218,46 @@ def init_database():
         source TEXT,
         reasoning TEXT,
         news_json TEXT,
+        options_flow_score INTEGER DEFAULT 0,
+        options_avg_volume REAL DEFAULT 0,
+        options_avg_oi REAL DEFAULT 0,
+        options_total_volume REAL DEFAULT 0,
+        options_total_oi REAL DEFAULT 0,
+        options_has_pattern BOOLEAN DEFAULT 0,
+        options_details TEXT,
         recommendation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         expiration_date DATE
     )''')
+
+    # Add options columns if they don't exist (for existing databases)
+    try:
+        c.execute("ALTER TABLE recommendations ADD COLUMN options_flow_score INTEGER DEFAULT 0")
+    except:
+        pass
+    try:
+        c.execute("ALTER TABLE recommendations ADD COLUMN options_avg_volume REAL DEFAULT 0")
+    except:
+        pass
+    try:
+        c.execute("ALTER TABLE recommendations ADD COLUMN options_avg_oi REAL DEFAULT 0")
+    except:
+        pass
+    try:
+        c.execute("ALTER TABLE recommendations ADD COLUMN options_total_volume REAL DEFAULT 0")
+    except:
+        pass
+    try:
+        c.execute("ALTER TABLE recommendations ADD COLUMN options_total_oi REAL DEFAULT 0")
+    except:
+        pass
+    try:
+        c.execute("ALTER TABLE recommendations ADD COLUMN options_has_pattern BOOLEAN DEFAULT 0")
+    except:
+        pass
+    try:
+        c.execute("ALTER TABLE recommendations ADD COLUMN options_details TEXT")
+    except:
+        pass
 
     # Outcomes table - tracks what actually happened
     c.execute('''CREATE TABLE IF NOT EXISTS outcomes (
@@ -1588,24 +1625,45 @@ def lemonai_analyze():
 
         for stock in all_stocks:
             try:
-                confidence, reasoning = calculate_ai_confidence(stock)
+                # Determine option type first (needed for options flow analysis)
+                if stock['direction'] == 'bullish':
+                    option_type = 'CALL'
+                elif stock['direction'] == 'bearish':
+                    option_type = 'PUT'
+                else:
+                    continue  # Skip neutral
+
+                # Fetch options chain data
+                print(f"📊 Fetching options data for {stock['ticker']}...")
+                stock_data, _, _ = safe_yf_ticker(stock['ticker'])
+                options_data = None
+                if stock_data:
+                    options_data = fetch_options_chain(stock['ticker'], stock_data)
+
+                # Analyze options flow for 3-legs pattern
+                options_flow = analyze_options_flow(
+                    stock['ticker'],
+                    stock['current_price'],
+                    option_type,
+                    options_data
+                )
+
+                # Add options flow to stock data
+                stock['options_flow'] = options_flow
+
+                # Calculate confidence with options flow included
+                confidence, reasoning, options_flow_result = calculate_ai_confidence(stock)
 
                 if confidence < 50:  # Skip low confidence trades
                     continue
 
-                # Determine option type based on direction
-                if stock['direction'] == 'bullish':
-                    option_type = 'CALL'
-                    # Strike price: 2-5% above current price
-                    strike_distance = 0.03 if confidence >= 75 else 0.05
+                # Strike price: 2-5% above/below current price
+                strike_distance = 0.03 if confidence >= 75 else 0.05
+
+                if option_type == 'CALL':
                     strike_price = stock['current_price'] * (1 + strike_distance)
-                elif stock['direction'] == 'bearish':
-                    option_type = 'PUT'
-                    # Strike price: 2-5% below current price
-                    strike_distance = 0.03 if confidence >= 75 else 0.05
+                else:  # PUT
                     strike_price = stock['current_price'] * (1 - strike_distance)
-                else:
-                    continue  # Skip neutral
 
                 # Round strike to nearest common strike (multiples of 0.5 or 1 or 5)
                 if strike_price < 20:
@@ -1640,7 +1698,8 @@ def lemonai_analyze():
                     'volume_ratio': stock['volume_ratio'],
                     'news_sentiment': news_sentiment,
                     'news': stock.get('news', []),
-                    'source': stock['source']
+                    'source': stock['source'],
+                    'options_flow': options_flow_result
                 })
 
             except Exception as e:
@@ -1871,11 +1930,16 @@ def save_recommendation_to_db(recommendation):
         else:
             exp_date = datetime.now() + timedelta(days=14)  # Default 2 weeks
 
+        # Extract options flow data
+        options_flow = recommendation.get('options_flow', {})
+
         c.execute('''INSERT INTO recommendations
                      (ticker, company, option_type, strike_price, current_price, expiration,
                       confidence, pattern, direction, volume_ratio, news_sentiment, source,
-                      reasoning, news_json, expiration_date)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                      reasoning, news_json, options_flow_score, options_avg_volume, options_avg_oi,
+                      options_total_volume, options_total_oi, options_has_pattern, options_details,
+                      expiration_date)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                   (recommendation['ticker'],
                    recommendation['company'],
                    recommendation['option_type'],
@@ -1890,6 +1954,13 @@ def save_recommendation_to_db(recommendation):
                    recommendation['source'],
                    recommendation['reasoning'],
                    json.dumps(recommendation.get('news', [])),
+                   options_flow.get('flow_score', 0),
+                   options_flow.get('avg_volume', 0),
+                   options_flow.get('avg_oi', 0),
+                   options_flow.get('total_volume', 0),
+                   options_flow.get('total_oi', 0),
+                   options_flow.get('has_pattern', False),
+                   options_flow.get('details', ''),
                    exp_date.strftime('%Y-%m-%d')))
 
         rec_id = c.lastrowid
@@ -2150,11 +2221,25 @@ def calculate_ai_confidence(stock):
         else:
             reasoning_parts.append(f"AI learned to be cautious with this pattern ({pattern_adjustment} confidence)")
 
+    # 6. Options flow analysis (max +15)
+    options_flow = stock.get('options_flow', {})
+    if options_flow and options_flow.get('flow_score', 0) > 0:
+        flow_score = options_flow['flow_score']
+        if flow_score >= 70:
+            confidence += 15
+            reasoning_parts.append(f"🔥 Strong options flow ({flow_score}/100): {options_flow.get('details', 'N/A')}")
+        elif flow_score >= 40:
+            confidence += 10
+            reasoning_parts.append(f"📊 Good options flow ({flow_score}/100): {options_flow.get('details', 'N/A')}")
+        elif flow_score >= 20:
+            confidence += 5
+            reasoning_parts.append(f"Options activity detected ({flow_score}/100)")
+
     # Cap confidence at 95 (never 100%)
     confidence = min(confidence, 95)
 
     reasoning = '\n'.join(reasoning_parts)
-    return confidence, reasoning
+    return confidence, reasoning, options_flow
 
 def analyze_news_sentiment(news_articles):
     """Analyze news sentiment based on keywords"""
@@ -2182,6 +2267,163 @@ def analyze_news_sentiment(news_articles):
         return 'Negative'
     else:
         return 'Neutral'
+
+def fetch_options_chain(ticker, stock_data):
+    """Fetch options chain data for a ticker
+
+    Returns:
+        dict with 'calls' and 'puts' DataFrames, or None if error
+    """
+    try:
+        # Get available expiration dates
+        expirations = stock_data.options
+
+        if not expirations or len(expirations) == 0:
+            return None
+
+        # Use nearest expiration (most liquid, typically weekly or monthly)
+        nearest_exp = expirations[0]
+
+        # Get options chain
+        opt_chain = stock_data.option_chain(nearest_exp)
+
+        return {
+            'calls': opt_chain.calls,
+            'puts': opt_chain.puts,
+            'expiration': nearest_exp
+        }
+    except Exception as e:
+        print(f"⚠️  Error fetching options for {ticker}: {e}")
+        return None
+
+def analyze_options_flow(ticker, current_price, option_type, options_data):
+    """Analyze options flow for '3 legs up' (calls) or '3 legs down' (puts) patterns
+
+    Args:
+        ticker: stock symbol
+        current_price: current stock price
+        option_type: 'CALL' or 'PUT'
+        options_data: dict with 'calls' and 'puts' DataFrames
+
+    Returns:
+        dict with flow_score (0-100), has_pattern (bool), and details
+    """
+    if not options_data:
+        return {
+            'flow_score': 0,
+            'has_pattern': False,
+            'details': 'No options data available',
+            'avg_volume': 0,
+            'avg_oi': 0,
+            'total_volume': 0,
+            'total_oi': 0
+        }
+
+    try:
+        if option_type == 'CALL':
+            # Look for 3 legs UP (strikes above current price)
+            chain = options_data['calls']
+            # Filter strikes above current price
+            relevant_strikes = chain[chain['strike'] > current_price].head(10)
+        else:  # PUT
+            # Look for 3 legs DOWN (strikes below current price)
+            chain = options_data['puts']
+            # Filter strikes below current price
+            relevant_strikes = chain[chain['strike'] < current_price].head(10)
+
+        if len(relevant_strikes) < 3:
+            return {
+                'flow_score': 0,
+                'has_pattern': False,
+                'details': 'Insufficient strikes for analysis',
+                'avg_volume': 0,
+                'avg_oi': 0,
+                'total_volume': 0,
+                'total_oi': 0
+            }
+
+        # Sort by strike price
+        if option_type == 'CALL':
+            relevant_strikes = relevant_strikes.sort_values('strike', ascending=True)
+        else:
+            relevant_strikes = relevant_strikes.sort_values('strike', ascending=False)
+
+        # Get top 3 strikes for analysis
+        top_3_strikes = relevant_strikes.head(3)
+
+        # Extract volumes and open interest
+        volumes = top_3_strikes['volume'].fillna(0).tolist()
+        open_interests = top_3_strikes['openInterest'].fillna(0).tolist()
+        strikes = top_3_strikes['strike'].tolist()
+
+        # Calculate total and average
+        total_volume = sum(volumes)
+        total_oi = sum(open_interests)
+        avg_volume = total_volume / 3 if total_volume > 0 else 0
+        avg_oi = total_oi / 3 if total_oi > 0 else 0
+
+        # Check for "3 legs" pattern - increasing volume/OI across strikes
+        # Pattern 1: Increasing volume (most bullish/bearish)
+        has_increasing_volume = (len(volumes) == 3 and
+                                volumes[0] < volumes[1] < volumes[2] and
+                                volumes[2] > 0)
+
+        # Pattern 2: Increasing OI (shows accumulation)
+        has_increasing_oi = (len(open_interests) == 3 and
+                           open_interests[0] < open_interests[1] < open_interests[2] and
+                           open_interests[2] > 0)
+
+        # Pattern 3: High consistent volume/OI (at least 100 contracts each)
+        has_high_activity = avg_volume >= 100 or avg_oi >= 500
+
+        # Calculate flow score (0-100)
+        flow_score = 0
+        details_parts = []
+
+        if has_increasing_volume:
+            flow_score += 40
+            details_parts.append(f"🔥 3-legs pattern: Volume increasing across strikes ({volumes[0]:.0f} → {volumes[1]:.0f} → {volumes[2]:.0f})")
+
+        if has_increasing_oi:
+            flow_score += 30
+            details_parts.append(f"📊 OI increasing: {open_interests[0]:.0f} → {open_interests[1]:.0f} → {open_interests[2]:.0f}")
+
+        if has_high_activity:
+            flow_score += 20
+            details_parts.append(f"💪 High activity: Avg vol {avg_volume:.0f}, Avg OI {avg_oi:.0f}")
+
+        # Bonus: Check if volume > OI (fresh positioning vs existing positions)
+        if total_volume > total_oi * 0.5:
+            flow_score += 10
+            details_parts.append("⚡ Fresh positioning (high volume vs OI)")
+
+        has_pattern = has_increasing_volume or has_increasing_oi
+
+        if not details_parts:
+            details_parts.append(f"Moderate activity at strikes: {strikes[0]:.1f}, {strikes[1]:.1f}, {strikes[2]:.1f}")
+
+        return {
+            'flow_score': min(flow_score, 100),
+            'has_pattern': has_pattern,
+            'details': '\n'.join(details_parts),
+            'avg_volume': avg_volume,
+            'avg_oi': avg_oi,
+            'total_volume': total_volume,
+            'total_oi': total_oi,
+            'strikes_analyzed': strikes
+        }
+
+    except Exception as e:
+        print(f"⚠️  Error analyzing options flow for {ticker}: {e}")
+        return {
+            'flow_score': 0,
+            'has_pattern': False,
+            'details': f'Error: {str(e)}',
+            'avg_volume': 0,
+            'avg_oi': 0,
+            'total_volume': 0,
+            'total_oi': 0
+        }
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
