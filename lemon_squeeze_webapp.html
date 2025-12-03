@@ -1369,6 +1369,9 @@
             <button class="tab-button" onclick="switchTab('usuals')">
                 ⭐ Usuals
             </button>
+            <button class="tab-button" onclick="switchTab('lemonai')">
+                🤖 LemonAI
+            </button>
             <button class="tab-button" onclick="switchTab('howto')">
                 📚 How to Use
             </button>
@@ -1683,7 +1686,55 @@
                 </div>
             </div>
         </div>
-        
+
+        <!-- LemonAI Tab -->
+        <div id="lemonaiTab" class="tab-content">
+            <div class="content">
+                <div class="settings-panel">
+                    <h2>🤖 LemonAI - AI-Powered Options Recommendations</h2>
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 25px; border-radius: 15px; color: white; margin-bottom: 20px;">
+                        <p style="font-size: 1.3em; font-weight: bold; margin-bottom: 15px;">
+                            🧠 Intelligent Options Analysis
+                        </p>
+                        <p style="font-size: 1.1em; line-height: 1.6; margin-bottom: 10px;">
+                            LemonAI analyzes patterns, volume, news sentiment, and market conditions to suggest high-probability options trades.
+                        </p>
+                        <p style="font-size: 0.95em; opacity: 0.9;">
+                            ⚠️ <strong>Educational Tool Only:</strong> This is NOT financial advice. LemonAI uses technical analysis and heuristics.
+                            Always do your own research and consult a financial advisor before trading options.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="scan-section">
+                    <button id="lemonaiButton" class="scan-button" onclick="startLemonAIScan()">
+                        🤖 GENERATE AI RECOMMENDATIONS 🧠
+                    </button>
+                </div>
+
+                <div id="lemonaiLoading" class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>🧠 AI is analyzing patterns, news, and market conditions...</p>
+                    <p style="font-size: 0.9em; color: #999; margin-top: 10px;">This may take a moment</p>
+                </div>
+
+                <div id="lemonaiResults"></div>
+
+                <div style="background: #fff3cd; border: 2px solid #ffc107; padding: 20px; border-radius: 12px; margin-top: 30px;">
+                    <h3 style="color: #856404; margin-top: 0;">⚠️ Important Disclaimer</h3>
+                    <p style="color: #856404; line-height: 1.6;">
+                        LemonAI is an <strong>educational tool</strong> that uses technical analysis to suggest potential options trades.
+                        The AI considers patterns, volume, news sentiment, and market conditions, but <strong>CANNOT predict the future</strong>.<br><br>
+
+                        Options trading carries significant risk and is not suitable for all investors. You can lose your entire investment.
+                        This tool is for educational purposes only and does not constitute financial advice.<br><br>
+
+                        Always conduct your own research, understand the risks, and consult with a licensed financial advisor before making any trades.
+                    </p>
+                </div>
+            </div>
+        </div>
+
         <!-- How to Use Tab -->
         <div id="howtoTab" class="tab-content">
             <div class="content">
@@ -4572,7 +4623,188 @@
                 setTimeout(() => createChart(`chart-${crypto.ticker}-crypto-${idx}`, crypto.fullTicker, 'crypto'), 200 + (idx * 100));
             });
         }
-        
+
+        // ===== LEMONAI OPTIONS ANALYZER =====
+        async function startLemonAIScan() {
+            if (isScanning) return;
+
+            isScanning = true;
+            document.getElementById('lemonaiButton').disabled = true;
+            document.getElementById('lemonaiButton').textContent = '⏳ ANALYZING...';
+            document.getElementById('lemonaiLoading').classList.add('active');
+            document.getElementById('lemonaiResults').classList.remove('active');
+
+            try {
+                const response = await fetch('/api/lemonai-analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({})
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayLemonAIResults(data.recommendations);
+                } else {
+                    alert('Error: ' + data.error);
+                }
+
+            } catch (error) {
+                alert('Error analyzing: ' + error.message);
+                console.error('LemonAI error:', error);
+            } finally {
+                isScanning = false;
+                document.getElementById('lemonaiButton').disabled = false;
+                document.getElementById('lemonaiButton').textContent = '🤖 GENERATE AI RECOMMENDATIONS 🧠';
+                document.getElementById('lemonaiLoading').classList.remove('active');
+            }
+        }
+
+        function displayLemonAIResults(recommendations) {
+            const resultsDiv = document.getElementById('lemonaiResults');
+            resultsDiv.classList.add('active');
+
+            if (recommendations.length === 0) {
+                resultsDiv.innerHTML = `
+                    <div class="no-results">
+                        <h3>🤖 No Recommendations Available</h3>
+                        <p style="font-size: 1.2em; color: #666; margin: 20px 0;">
+                            LemonAI couldn't find any high-confidence setups at this time.
+                        </p>
+                        <p style="color: #999;">
+                            💡 Try running other scans first (Daily, Weekly, Squeeze, Usuals) to populate data,
+                            then come back to LemonAI for analysis.
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+
+            const avgConfidence = recommendations.reduce((sum, r) => sum + r.confidence, 0) / recommendations.length;
+
+            let html = `
+                <div class="results-header">
+                    <h2>🤖 AI Options Recommendations</h2>
+                    <p style="font-size: 1.2em; color: #666; margin: 10px 0;">
+                        ${new Date().toLocaleString()}
+                    </p>
+                    <div class="summary-stats">
+                        <div class="stat">
+                            <span class="stat-value">${recommendations.length}</span>
+                            <span class="stat-label">Recommendations</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">${avgConfidence.toFixed(0)}%</span>
+                            <span class="stat-label">Avg Confidence</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">${recommendations.filter(r => r.option_type === 'CALL').length}</span>
+                            <span class="stat-label">Calls</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">${recommendations.filter(r => r.option_type === 'PUT').length}</span>
+                            <span class="stat-label">Puts</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            recommendations.forEach((rec, idx) => {
+                const optionClass = rec.option_type === 'CALL' ? 'pattern-bullish' : 'pattern-bearish';
+                const optionEmoji = rec.option_type === 'CALL' ? '📈' : '📉';
+                const confidenceColor = rec.confidence >= 80 ? '#10b981' : rec.confidence >= 60 ? '#f59e0b' : '#ef4444';
+
+                html += `
+                    <div class="stock-card" style="border-left: 5px solid ${confidenceColor};">
+                        <div class="stock-header">
+                            <div class="header-left">
+                                <button class="favorite-btn" onclick="addToFavorites('${rec.ticker}', '${rec.company}', 'lemonai')" title="Add to favorites">
+                                    ⭐
+                                </button>
+                                <div>
+                                    <div class="stock-ticker">#${idx + 1}. ${rec.ticker}</div>
+                                    <div class="stock-company">${rec.company}</div>
+                                </div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div class="badge ${optionClass}" style="font-size: 1.2em; padding: 10px 20px;">
+                                    ${optionEmoji} ${rec.option_type}
+                                </div>
+                                <div style="font-size: 1.4em; font-weight: bold; color: ${confidenceColor}; margin-top: 10px;">
+                                    ${rec.confidence}% Confidence
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Option Details -->
+                        <div style="background: rgba(102, 126, 234, 0.1); padding: 20px; border-radius: 10px; margin: 20px 0;">
+                            <h3 style="color: #667eea; margin: 0 0 15px 0;">💎 Suggested Trade</h3>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                                <div>
+                                    <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">Current Price</div>
+                                    <div style="font-size: 1.4em; font-weight: bold;">$${rec.current_price.toFixed(2)}</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">Suggested Strike</div>
+                                    <div style="font-size: 1.4em; font-weight: bold; color: #667eea;">$${rec.strike_price.toFixed(2)}</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">${rec.option_type === 'CALL' ? 'Above' : 'Below'} Current</div>
+                                    <div style="font-size: 1.4em; font-weight: bold;">${Math.abs(((rec.strike_price - rec.current_price) / rec.current_price) * 100).toFixed(1)}%</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">Expiration</div>
+                                    <div style="font-size: 1.4em; font-weight: bold;">${rec.expiration}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- AI Analysis -->
+                        <div class="metrics-grid">
+                            <div class="metric-section">
+                                <h4>🧠 AI Analysis</h4>
+                                <div style="background: white; padding: 15px; border-radius: 8px; line-height: 1.6;">
+                                    ${rec.reasoning.split('\n').map(line => `<p style="margin: 8px 0;">• ${line}</p>`).join('')}
+                                </div>
+                            </div>
+
+                            <div class="metric-section">
+                                <h4>📊 Key Metrics</h4>
+                                <div class="metric-item">
+                                    <span class="metric-label">Pattern:</span>
+                                    <span class="metric-value">${rec.pattern || 'N/A'}</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">Volume Ratio:</span>
+                                    <span class="metric-value">${rec.volume_ratio.toFixed(2)}x</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">News Sentiment:</span>
+                                    <span class="metric-value" style="color: ${rec.news_sentiment === 'Positive' ? '#10b981' : rec.news_sentiment === 'Negative' ? '#ef4444' : '#666'};">
+                                        ${rec.news_sentiment}
+                                    </span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">Source Scanner:</span>
+                                    <span class="metric-value">${rec.source}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Risk Warning -->
+                        <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 8px; margin-top: 20px;">
+                            <strong style="color: #856404;">⚠️ Risk Warning:</strong>
+                            <span style="color: #856404;">Options can expire worthless. Only trade with risk capital you can afford to lose.</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            resultsDiv.innerHTML = html;
+        }
+
         // ===== VOLEMON AUTO-SCANNER =====
         let volemonInterval = null;
         let volemonCountdown = null;

@@ -1401,9 +1401,257 @@ def usuals_scan():
         scan_cache['usuals']['timestamp'] = datetime.now()
 
         return jsonify({'success': True, 'results': results})
-        
+
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/lemonai-analyze', methods=['POST'])
+def lemonai_analyze():
+    """LemonAI - AI-powered options recommendations"""
+    try:
+        print("\n🤖 LemonAI: Starting analysis...")
+
+        # Collect all stocks from cached scans
+        all_stocks = []
+
+        # From squeeze scanner
+        for stock in scan_cache['squeeze']['results']:
+            all_stocks.append({
+                'ticker': stock['ticker'],
+                'company': stock.get('company', stock['ticker']),
+                'current_price': stock['currentPrice'],
+                'pattern': 'Short Squeeze',
+                'direction': 'bullish',
+                'volume_ratio': stock['volumeRatio'],
+                'change': stock['dailyChange'],
+                'risk_score': stock['riskScore'],
+                'source': 'Short Squeeze',
+                'news': stock.get('news', [])
+            })
+
+        # From daily plays
+        for stock in scan_cache['daily']['results']:
+            all_stocks.append({
+                'ticker': stock['ticker'],
+                'company': stock.get('company', stock['ticker']),
+                'current_price': stock['currentPrice'],
+                'pattern': '3-1 Strat (Daily)',
+                'direction': stock['pattern']['direction'],
+                'volume_ratio': stock['volume'] / stock['avgVolume'] if stock.get('avgVolume', 0) > 0 else 1,
+                'change': stock.get('dailyChange', 0),
+                'risk_score': None,
+                'source': 'Daily Plays',
+                'news': stock.get('news', [])
+            })
+
+        # From weekly plays
+        for stock in scan_cache['weekly']['results']:
+            all_stocks.append({
+                'ticker': stock['ticker'],
+                'company': stock.get('company', stock['ticker']),
+                'current_price': stock['currentPrice'],
+                'pattern': '3-1 Strat (Weekly)',
+                'direction': stock['pattern']['direction'],
+                'volume_ratio': stock['volume'] / stock.get('avgVolume', 1) if stock.get('avgVolume', 0) > 0 else 1,
+                'change': 0,
+                'risk_score': None,
+                'source': 'Weekly Plays',
+                'news': stock.get('news', [])
+            })
+
+        # From usuals
+        for stock in scan_cache['usuals']['results']:
+            patterns = stock.get('patterns', {})
+            daily_pattern = patterns.get('daily', {})
+            if daily_pattern:
+                all_stocks.append({
+                    'ticker': stock['ticker'],
+                    'company': stock.get('company', stock['ticker']),
+                    'current_price': stock['price'],
+                    'pattern': daily_pattern.get('type', 'Pattern'),
+                    'direction': daily_pattern.get('direction', 'neutral'),
+                    'volume_ratio': stock['volume_ratio'],
+                    'change': stock['change'],
+                    'risk_score': None,
+                    'source': 'Usuals',
+                    'news': stock.get('news', [])
+                })
+
+        print(f"🤖 LemonAI: Found {len(all_stocks)} stocks to analyze")
+
+        if len(all_stocks) == 0:
+            return jsonify({
+                'success': True,
+                'recommendations': [],
+                'message': 'No scans have been run yet. Run other scanners first to generate recommendations.'
+            })
+
+        # Analyze each stock and calculate confidence score
+        recommendations = []
+
+        for stock in all_stocks:
+            try:
+                confidence, reasoning = calculate_ai_confidence(stock)
+
+                if confidence < 50:  # Skip low confidence trades
+                    continue
+
+                # Determine option type based on direction
+                if stock['direction'] == 'bullish':
+                    option_type = 'CALL'
+                    # Strike price: 2-5% above current price
+                    strike_distance = 0.03 if confidence >= 75 else 0.05
+                    strike_price = stock['current_price'] * (1 + strike_distance)
+                elif stock['direction'] == 'bearish':
+                    option_type = 'PUT'
+                    # Strike price: 2-5% below current price
+                    strike_distance = 0.03 if confidence >= 75 else 0.05
+                    strike_price = stock['current_price'] * (1 - strike_distance)
+                else:
+                    continue  # Skip neutral
+
+                # Round strike to nearest common strike (multiples of 0.5 or 1 or 5)
+                if strike_price < 20:
+                    strike_price = round(strike_price * 2) / 2  # Round to nearest 0.5
+                elif strike_price < 100:
+                    strike_price = round(strike_price)  # Round to nearest 1
+                else:
+                    strike_price = round(strike_price / 5) * 5  # Round to nearest 5
+
+                # Determine expiration based on pattern timeframe
+                if 'Weekly' in stock['pattern']:
+                    expiration = '3-4 weeks'
+                elif 'Daily' in stock['pattern']:
+                    expiration = '1-2 weeks'
+                else:
+                    expiration = '2-3 weeks'
+
+                # Analyze news sentiment
+                news_sentiment = analyze_news_sentiment(stock['news'])
+
+                recommendations.append({
+                    'ticker': stock['ticker'],
+                    'company': stock['company'],
+                    'current_price': stock['current_price'],
+                    'option_type': option_type,
+                    'strike_price': strike_price,
+                    'expiration': expiration,
+                    'confidence': confidence,
+                    'reasoning': reasoning,
+                    'pattern': stock['pattern'],
+                    'volume_ratio': stock['volume_ratio'],
+                    'news_sentiment': news_sentiment,
+                    'source': stock['source']
+                })
+
+            except Exception as e:
+                print(f"⚠️  Error analyzing {stock['ticker']}: {e}")
+                continue
+
+        # Sort by confidence score (highest first) and return top 10
+        recommendations.sort(key=lambda x: x['confidence'], reverse=True)
+        top_recommendations = recommendations[:10]
+
+        print(f"✅ LemonAI: Generated {len(top_recommendations)} recommendations\n")
+
+        return jsonify({
+            'success': True,
+            'recommendations': top_recommendations
+        })
+
+    except Exception as e:
+        print(f"❌ LemonAI error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+def calculate_ai_confidence(stock):
+    """Calculate confidence score for a trade based on multiple factors"""
+    confidence = 50  # Base confidence
+    reasoning_parts = []
+
+    # 1. Pattern strength (max +20)
+    if stock['pattern'] == 'Short Squeeze':
+        if stock['risk_score'] and stock['risk_score'] >= 80:
+            confidence += 20
+            reasoning_parts.append(f"High risk score ({stock['risk_score']}/100) indicates strong squeeze potential")
+        elif stock['risk_score'] and stock['risk_score'] >= 70:
+            confidence += 15
+            reasoning_parts.append(f"Good risk score ({stock['risk_score']}/100)")
+        else:
+            confidence += 10
+            reasoning_parts.append("Moderate squeeze setup")
+    elif '3-1 Strat' in stock['pattern']:
+        confidence += 15
+        reasoning_parts.append(f"Strong {stock['pattern']} pattern detected")
+    else:
+        confidence += 10
+        reasoning_parts.append(f"{stock['pattern']} pattern identified")
+
+    # 2. Direction strength (max +15)
+    if stock['direction'] == 'bullish' and stock['change'] > 0:
+        confidence += 15
+        reasoning_parts.append(f"Bullish momentum with +{stock['change']:.1f}% price change")
+    elif stock['direction'] == 'bearish' and stock['change'] < 0:
+        confidence += 15
+        reasoning_parts.append(f"Bearish momentum with {stock['change']:.1f}% price change")
+    elif stock['direction'] in ['bullish', 'bearish']:
+        confidence += 8
+        reasoning_parts.append(f"Clear {stock['direction']} direction")
+
+    # 3. Volume confirmation (max +15)
+    if stock['volume_ratio'] >= 2.0:
+        confidence += 15
+        reasoning_parts.append(f"Very high volume ({stock['volume_ratio']:.1f}x average)")
+    elif stock['volume_ratio'] >= 1.5:
+        confidence += 10
+        reasoning_parts.append(f"High volume ({stock['volume_ratio']:.1f}x average)")
+    elif stock['volume_ratio'] >= 1.0:
+        confidence += 5
+        reasoning_parts.append("Average volume")
+
+    # 4. News sentiment (max +10)
+    news_sentiment = analyze_news_sentiment(stock['news'])
+    if news_sentiment == 'Positive' and stock['direction'] == 'bullish':
+        confidence += 10
+        reasoning_parts.append("Positive news supports bullish outlook")
+    elif news_sentiment == 'Negative' and stock['direction'] == 'bearish':
+        confidence += 10
+        reasoning_parts.append("Negative news supports bearish outlook")
+    elif news_sentiment != 'Neutral':
+        confidence += 5
+        reasoning_parts.append(f"{news_sentiment} news sentiment")
+
+    # Cap confidence at 95 (never 100%)
+    confidence = min(confidence, 95)
+
+    reasoning = '\n'.join(reasoning_parts)
+    return confidence, reasoning
+
+def analyze_news_sentiment(news_articles):
+    """Analyze news sentiment based on keywords"""
+    if not news_articles or len(news_articles) == 0:
+        return 'Neutral'
+
+    positive_keywords = ['surge', 'soar', 'beat', 'profit', 'growth', 'upgrade', 'bullish', 'rally', 'gain', 'win', 'success', 'breakthrough', 'record', 'high']
+    negative_keywords = ['plunge', 'fall', 'loss', 'miss', 'downgrade', 'bearish', 'drop', 'decline', 'crash', 'fail', 'warning', 'concern', 'risk']
+
+    positive_count = 0
+    negative_count = 0
+
+    for article in news_articles:
+        title = article.get('title', '').lower()
+        for keyword in positive_keywords:
+            if keyword in title:
+                positive_count += 1
+        for keyword in negative_keywords:
+            if keyword in title:
+                negative_count += 1
+
+    if positive_count > negative_count:
+        return 'Positive'
+    elif negative_count > positive_count:
+        return 'Negative'
+    else:
+        return 'Neutral'
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
