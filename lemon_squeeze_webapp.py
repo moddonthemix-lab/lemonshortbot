@@ -2054,6 +2054,148 @@ def lemonai_analyze():
         print(f"❌ LemonAI error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/lemonai-stats', methods=['GET'])
+def lemonai_stats():
+    """Get win/loss statistics for LemonAI recommendations"""
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+
+        # Get overall statistics (last 30 days, checked at 7 days)
+        c.execute('''
+            SELECT
+                COUNT(*) as total_trades,
+                SUM(CASE WHEN o.was_profitable = 1 THEN 1 ELSE 0 END) as wins,
+                SUM(CASE WHEN o.was_profitable = 0 THEN 1 ELSE 0 END) as losses,
+                AVG(CASE WHEN o.was_profitable = 1 THEN o.profit_pct ELSE 0 END) as avg_win_pct,
+                AVG(CASE WHEN o.was_profitable = 0 THEN o.profit_pct ELSE 0 END) as avg_loss_pct,
+                AVG(r.confidence) as avg_confidence
+            FROM outcomes o
+            JOIN recommendations r ON o.recommendation_id = r.id
+            WHERE o.days_after = 7
+              AND r.recommendation_date >= datetime('now', '-30 days')
+        ''')
+
+        overall = c.fetchone()
+        total_trades = overall[0] or 0
+        wins = overall[1] or 0
+        losses = overall[2] or 0
+        avg_win_pct = overall[3] or 0
+        avg_loss_pct = overall[4] or 0
+        avg_confidence = overall[5] or 0
+
+        win_rate = (wins / total_trades * 100) if total_trades > 0 else 0
+
+        # Get stats by pattern
+        c.execute('''
+            SELECT
+                r.pattern,
+                COUNT(*) as total,
+                SUM(CASE WHEN o.was_profitable = 1 THEN 1 ELSE 0 END) as pattern_wins,
+                AVG(r.confidence) as avg_conf
+            FROM outcomes o
+            JOIN recommendations r ON o.recommendation_id = r.id
+            WHERE o.days_after = 7
+              AND r.recommendation_date >= datetime('now', '-30 days')
+            GROUP BY r.pattern
+            ORDER BY pattern_wins DESC
+        ''')
+
+        patterns_stats = []
+        for row in c.fetchall():
+            pattern, total, pattern_wins, avg_conf = row
+            pattern_win_rate = (pattern_wins / total * 100) if total > 0 else 0
+            patterns_stats.append({
+                'pattern': pattern,
+                'total': total,
+                'wins': pattern_wins,
+                'losses': total - pattern_wins,
+                'win_rate': round(pattern_win_rate, 1),
+                'avg_confidence': round(avg_conf, 1)
+            })
+
+        # Get stats by timeframe (1d, 3d, 5d, 7d)
+        timeframe_stats = []
+        for days in [1, 3, 5, 7]:
+            c.execute('''
+                SELECT
+                    COUNT(*) as total,
+                    SUM(CASE WHEN was_profitable = 1 THEN 1 ELSE 0 END) as tf_wins
+                FROM outcomes
+                WHERE days_after = ?
+                  AND recommendation_id IN (
+                      SELECT id FROM recommendations
+                      WHERE recommendation_date >= datetime('now', '-30 days')
+                  )
+            ''', (days,))
+
+            row = c.fetchone()
+            total = row[0] or 0
+            tf_wins = row[1] or 0
+            tf_win_rate = (tf_wins / total * 100) if total > 0 else 0
+
+            timeframe_stats.append({
+                'timeframe': f'{days}d',
+                'total': total,
+                'wins': tf_wins,
+                'losses': total - tf_wins,
+                'win_rate': round(tf_win_rate, 1)
+            })
+
+        # Get recent checked trades (last 10)
+        c.execute('''
+            SELECT
+                r.ticker,
+                r.option_type,
+                r.strike_price,
+                r.confidence,
+                o.days_after,
+                o.was_profitable,
+                o.profit_pct,
+                o.check_date
+            FROM outcomes o
+            JOIN recommendations r ON o.recommendation_id = r.id
+            WHERE o.days_after = 7
+            ORDER BY o.check_date DESC
+            LIMIT 10
+        ''')
+
+        recent_trades = []
+        for row in c.fetchall():
+            ticker, opt_type, strike, conf, days, profitable, profit_pct, check_date = row
+            recent_trades.append({
+                'ticker': ticker,
+                'option_type': opt_type,
+                'strike': round(strike, 2),
+                'confidence': conf,
+                'outcome': 'WIN' if profitable else 'LOSS',
+                'profit_pct': round(profit_pct, 2),
+                'checked_at': check_date
+            })
+
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'overall': {
+                'total_trades': total_trades,
+                'wins': wins,
+                'losses': losses,
+                'win_rate': round(win_rate, 1),
+                'avg_win_pct': round(avg_win_pct, 2),
+                'avg_loss_pct': round(avg_loss_pct, 2),
+                'avg_confidence': round(avg_confidence, 1)
+            },
+            'by_pattern': patterns_stats,
+            'by_timeframe': timeframe_stats,
+            'recent_trades': recent_trades,
+            'last_updated': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        print(f"❌ Stats error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 def auto_run_scans_for_lemonai():
     """Auto-run scans to populate data for LemonAI recommendations - ALWAYS finds plays"""
     try:
@@ -2955,6 +3097,28 @@ def analyze_options_flow(ticker, current_price, option_type, options_data):
             'total_volume': 0,
             'total_oi': 0
         }
+
+# Background scheduler for daily backtest checks
+import threading
+import time as time_module
+
+def run_daily_backtest():
+    """Background thread that runs backtest every 24 hours"""
+    while True:
+        try:
+            print("\n🔄 Running daily backtest check...")
+            backtest_recommendations()
+            print("✅ Daily backtest completed\n")
+        except Exception as e:
+            print(f"❌ Daily backtest error: {e}")
+
+        # Sleep for 24 hours (86400 seconds)
+        time_module.sleep(86400)
+
+# Start background thread for daily backtest
+backtest_thread = threading.Thread(target=run_daily_backtest, daemon=True)
+backtest_thread.start()
+print("✅ Daily backtest scheduler started (runs every 24 hours)")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
