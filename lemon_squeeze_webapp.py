@@ -1847,13 +1847,27 @@ def lemonai_analyze():
 
         # Analyze each unique ticker across all timeframes
         ticker_mtf_data = {}
-        for ticker in unique_tickers:
-            print(f"  📊 Analyzing {ticker} across 4 timeframes...")
-            mtf_result = analyze_multiple_timeframes(ticker)
-            ticker_mtf_data[ticker] = mtf_result
+        try:
+            for ticker in unique_tickers:
+                try:
+                    print(f"  📊 Analyzing {ticker} across 4 timeframes...")
+                    mtf_result = analyze_multiple_timeframes(ticker)
+                    ticker_mtf_data[ticker] = mtf_result
 
-            if mtf_result['confirmation_count'] > 0:
-                print(f"    ✅ {ticker}: {mtf_result['details']} - {mtf_result['strongest_direction']}")
+                    if mtf_result['confirmation_count'] > 0:
+                        print(f"    ✅ {ticker}: {mtf_result['details']} - {mtf_result['strongest_direction']}")
+                except Exception as mtf_error:
+                    print(f"    ⚠️  MTF analysis failed for {ticker}: {mtf_error}")
+                    # Use default (no confirmation) if analysis fails
+                    ticker_mtf_data[ticker] = {
+                        'confirmation_count': 0,
+                        'strongest_direction': 'neutral',
+                        'details': f'Analysis error: {str(mtf_error)[:50]}',
+                        'timeframes_analyzed': []
+                    }
+        except Exception as mtf_global_error:
+            print(f"⚠️  Multi-timeframe analysis failed globally: {mtf_global_error}")
+            # Continue without MTF data - better to show results than fail
 
         # Add multi-timeframe data to each stock
         for stock in all_stocks:
@@ -1923,14 +1937,10 @@ def lemonai_analyze():
                     options_data
                 )
 
-                # Check contract quality and liquidity (CRITICAL - prevents bad fills)
+                # Check contract quality and liquidity
+                # NOTE: check_contract_quality now NEVER returns is_tradeable=False (always shows results)
                 if contract_details:
                     quality_score, quality_issues, is_tradeable = check_contract_quality(contract_details)
-
-                    # Skip untradeable contracts (illiquid, wide spreads, etc.)
-                    if not is_tradeable:
-                        print(f"⚠️  Skipping {stock['ticker']} {option_type} ${strike_price:.2f}: {', '.join(quality_issues)}")
-                        continue
 
                     # Adjust confidence based on contract quality
                     confidence += quality_score
@@ -1941,9 +1951,12 @@ def lemonai_analyze():
                         reasoning_parts.append(issue)
                     reasoning = '\n'.join(reasoning_parts)
                 else:
-                    # No contract data available - skip this recommendation
-                    print(f"⚠️  Skipping {stock['ticker']} {option_type} ${strike_price:.2f}: No contract data")
-                    continue
+                    # No contract data available - still include but warn heavily
+                    print(f"⚠️  {stock['ticker']}: No contract data, using defaults")
+                    confidence -= 20  # Penalize for no contract data
+                    reasoning_parts = reasoning.split('\n')
+                    reasoning_parts.append("⚠️ No contract pricing data available")
+                    reasoning = '\n'.join(reasoning_parts)
 
                 # Don't filter by confidence here - we'll take top N after sorting
                 # This ensures we ALWAYS have 5-15 results to show
@@ -2045,11 +2058,17 @@ def auto_run_scans_for_lemonai():
     """Auto-run scans to populate data for LemonAI recommendations - ALWAYS finds plays"""
     try:
         print("🔄 Auto-running comprehensive scan for LemonAI...")
-        # Expanded list to ensure we always have plays
+        # EXPANDED list to ensure we ALWAYS have plays (30+ stocks)
         popular_tickers = [
             'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD',
-            'SPY', 'QQQ', 'NFLX', 'DIS', 'PYPL', 'SQ', 'UBER', 'BABA',
-            'F', 'GM', 'BA', 'JPM'
+            'SPY', 'QQQ', 'IWM', 'DIA',
+            'NFLX', 'DIS', 'PYPL', 'SQ', 'UBER', 'BABA', 'SNAP', 'ROKU',
+            'F', 'GM', 'BA', 'JPM', 'GS', 'MS',
+            'XOM', 'CVX', 'COP',
+            'PFE', 'JNJ', 'MRNA',
+            'WMT', 'TGT', 'COST',
+            'INTC', 'MU', 'QCOM',
+            'SOFI', 'PLTR', 'RIVN'
         ]
 
         daily_results = []
@@ -2116,8 +2135,9 @@ def auto_run_scans_for_lemonai():
                                     }
                                 }
 
-                    # Include stock if it has ANY pattern OR significant price movement
-                    if pattern_found or abs(daily_change) >= 1.0:
+                    # Include stock if it has ANY pattern OR even minimal price movement
+                    # Lowered threshold to 0.25% to ensure we ALWAYS have results
+                    if pattern_found or abs(daily_change) >= 0.25:
                         news = fetch_news(stock_data, ticker)
 
                         # If no pattern found but has momentum, create a momentum-based pattern
@@ -2620,24 +2640,28 @@ def check_contract_quality(contract_details):
             score += 20
             # Excellent spread - no issue to report
         elif spread_pct < 10:
-            score += 10
-            # Good spread - no issue to report
+            score += 15
+            # Very good spread - no issue to report
         elif spread_pct < 20:
-            score += 0
-            issues.append(f"⚠️ Moderate spread ({spread_pct:.1f}% - expect some slippage)")
+            score += 5
+            # Good spread - no issue to report
         elif spread_pct < 35:
-            score -= 15
-            issues.append(f"🔴 Wide spread ({spread_pct:.1f}% - hard to profit)")
+            score += 0
+            issues.append(f"⚠️ Moderate spread ({spread_pct:.1f}%)")
+        elif spread_pct < 50:
+            score -= 10
+            issues.append(f"⚠️ Wide spread ({spread_pct:.1f}%)")
         else:
-            score -= 30
-            issues.append(f"🚨 Very wide spread ({spread_pct:.1f}% - AVOID)")
-            return score, issues, False  # Not tradeable
+            # Very wide spread - still tradeable but penalize heavily
+            score -= 25
+            issues.append(f"🔴 Very wide spread ({spread_pct:.1f}% - use limit orders)")
     else:
-        score -= 30
-        issues.append("🚨 No bid or ask available - AVOID")
-        return score, issues, False
+        # No bid/ask - likely stale data, but don't reject entirely
+        score -= 15
+        issues.append(f"⚠️ No bid/ask data available")
 
     # 2. VOLUME CHECK (can you actually trade it today?)
+    # MUCH MORE LENIENT - accept even low volume contracts
     if volume >= 100:
         score += 15
         # Excellent volume - no issue
@@ -2646,16 +2670,20 @@ def check_contract_quality(contract_details):
         # Good volume - no issue
     elif volume >= 20:
         score += 5
-        issues.append(f"⚠️ Low volume ({volume} contracts - may have trouble filling)")
-    elif volume >= 10:
+        # Decent volume - no issue
+    elif volume >= 5:
+        score += 0
+        issues.append(f"⚠️ Low volume ({volume} contracts)")
+    elif volume >= 1:
         score -= 10
-        issues.append(f"🔴 Very low volume ({volume} contracts - difficult to fill)")
+        issues.append(f"⚠️ Very low volume ({volume} contracts - use limit orders)")
     else:
-        score -= 20
-        issues.append(f"🚨 Minimal volume ({volume} contracts - AVOID)")
-        return score, issues, False  # Not tradeable
+        # Zero volume - likely no trades today but still show it
+        score -= 15
+        issues.append(f"⚠️ No volume today ({volume} contracts)")
 
     # 3. OPEN INTEREST CHECK (is this contract actively traded?)
+    # MUCH MORE LENIENT - accept even low OI contracts
     if oi >= 500:
         score += 15
         # Excellent OI - no issue
@@ -2664,16 +2692,20 @@ def check_contract_quality(contract_details):
         # Good OI - no issue
     elif oi >= 50:
         score += 5
-        issues.append(f"⚠️ Moderate OI ({oi} - less liquid)")
-    elif oi >= 20:
+        # Decent OI - no issue
+    elif oi >= 10:
+        score += 0
+        issues.append(f"⚠️ Low OI ({oi})")
+    elif oi >= 1:
         score -= 10
-        issues.append(f"🔴 Low OI ({oi} - may have exit problems)")
+        issues.append(f"⚠️ Very low OI ({oi})")
     else:
-        score -= 20
-        issues.append(f"🚨 Very low OI ({oi} - AVOID)")
-        return score, issues, False  # Not tradeable
+        # Zero OI - brand new contract
+        score -= 15
+        issues.append(f"⚠️ New contract (OI: {oi})")
 
-    # Contract passes minimum requirements
+    # ALWAYS TRADEABLE - just penalize score
+    # This ensures we ALWAYS show results
     is_tradeable = True
 
     # If no issues were added, add a positive note
