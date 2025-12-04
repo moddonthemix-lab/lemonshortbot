@@ -4732,23 +4732,23 @@
             // Compact table view with all contract details
             html += `
                 <div style="overflow-x: auto; margin: 20px 0;">
-                    <table style="width: 100%; border-collapse: collapse; font-size: 0.85em; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.95em; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                         <thead>
                             <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-                                <th style="padding: 12px 8px; text-align: left; font-weight: bold; border-bottom: 2px solid #ddd;">#</th>
-                                <th style="padding: 12px 8px; text-align: left; font-weight: bold; border-bottom: 2px solid #ddd;">SYM</th>
-                                <th style="padding: 12px 8px; text-align: left; font-weight: bold; border-bottom: 2px solid #ddd;">MARKET</th>
-                                <th style="padding: 12px 8px; text-align: left; font-weight: bold; border-bottom: 2px solid #ddd;">CP</th>
-                                <th style="padding: 12px 8px; text-align: right; font-weight: bold; border-bottom: 2px solid #ddd;">CONF</th>
-                                <th style="padding: 12px 8px; text-align: right; font-weight: bold; border-bottom: 2px solid #ddd;">SPOT</th>
-                                <th style="padding: 12px 8px; text-align: right; font-weight: bold; border-bottom: 2px solid #ddd;">BID/ASK</th>
-                                <th style="padding: 12px 8px; text-align: right; font-weight: bold; border-bottom: 2px solid #ddd;">STRK</th>
-                                <th style="padding: 12px 8px; text-align: left; font-weight: bold; border-bottom: 2px solid #ddd;">EXP</th>
-                                <th style="padding: 12px 8px; text-align: right; font-weight: bold; border-bottom: 2px solid #ddd;">VOL</th>
-                                <th style="padding: 12px 8px; text-align: right; font-weight: bold; border-bottom: 2px solid #ddd;">OI</th>
-                                <th style="padding: 12px 8px; text-align: right; font-weight: bold; border-bottom: 2px solid #ddd;">PREMS</th>
-                                <th style="padding: 12px 8px; text-align: right; font-weight: bold; border-bottom: 2px solid #ddd;">CHG%</th>
-                                <th style="padding: 12px 8px; text-align: left; font-weight: bold; border-bottom: 2px solid #ddd;">FLOW</th>
+                                <th style="padding: 16px 10px; text-align: left; font-weight: bold; font-size: 0.95em; border-bottom: 2px solid #ddd;">#</th>
+                                <th style="padding: 16px 10px; text-align: left; font-weight: bold; font-size: 0.95em; border-bottom: 2px solid #ddd;">SYM</th>
+                                <th style="padding: 16px 10px; text-align: left; font-weight: bold; font-size: 0.95em; border-bottom: 2px solid #ddd;">MARKET</th>
+                                <th style="padding: 16px 10px; text-align: left; font-weight: bold; font-size: 0.95em; border-bottom: 2px solid #ddd;">CP</th>
+                                <th style="padding: 16px 10px; text-align: right; font-weight: bold; font-size: 0.95em; border-bottom: 2px solid #ddd;">CONF</th>
+                                <th style="padding: 16px 10px; text-align: right; font-weight: bold; font-size: 0.95em; border-bottom: 2px solid #ddd;">SPOT</th>
+                                <th style="padding: 16px 10px; text-align: right; font-weight: bold; font-size: 0.95em; border-bottom: 2px solid #ddd;">BID/ASK</th>
+                                <th style="padding: 16px 10px; text-align: right; font-weight: bold; font-size: 0.95em; border-bottom: 2px solid #ddd;">STRK</th>
+                                <th style="padding: 16px 10px; text-align: left; font-weight: bold; font-size: 0.95em; border-bottom: 2px solid #ddd;">EXP</th>
+                                <th style="padding: 16px 10px; text-align: right; font-weight: bold; font-size: 0.95em; border-bottom: 2px solid #ddd;">VOL</th>
+                                <th style="padding: 16px 10px; text-align: right; font-weight: bold; font-size: 0.95em; border-bottom: 2px solid #ddd;">OI</th>
+                                <th style="padding: 16px 10px; text-align: right; font-weight: bold; font-size: 0.95em; border-bottom: 2px solid #ddd;">PREMS</th>
+                                <th style="padding: 16px 10px; text-align: right; font-weight: bold; font-size: 0.95em; border-bottom: 2px solid #ddd;">CHG%</th>
+                                <th style="padding: 16px 10px; text-align: left; font-weight: bold; font-size: 0.95em; border-bottom: 2px solid #ddd;">FLOW</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -4763,28 +4763,57 @@
 
                 html += `
                     <tr style="background: ${rowBg}; border-bottom: 1px solid #e5e5e5;">
-                        <td style="padding: 10px 8px;">${idx + 1}</td>
-                        <td style="padding: 10px 8px; font-weight: bold; color: #667eea;">${rec.ticker}</td>
-                        <td style="padding: 10px 8px; color: ${marketColor}; font-weight: 600;">${marketText}</td>
-                        <td style="padding: 10px 8px; font-weight: bold;">${rec.option_type}</td>
-                        <td style="padding: 10px 8px; text-align: right; font-weight: bold; color: ${confidenceColor};">${rec.confidence.toFixed(1)}%</td>
-                        <td style="padding: 10px 8px; text-align: right;">$${rec.current_price.toFixed(2)}</td>
-                        <td style="padding: 10px 8px; text-align: right; font-size: 0.9em;">${contract.bid ? contract.bid.toFixed(2) : '0.00'} / ${contract.ask ? contract.ask.toFixed(2) : '0.00'}</td>
-                        <td style="padding: 10px 8px; text-align: right; font-weight: bold; color: #667eea;">${rec.strike_price.toFixed(2)}</td>
-                        <td style="padding: 10px 8px;">${contract.expiration || rec.expiration}</td>
-                        <td style="padding: 10px 8px; text-align: right;">${contract.volume ? contract.volume.toLocaleString() : '0'}</td>
-                        <td style="padding: 10px 8px; text-align: right;">${contract.open_interest ? contract.open_interest.toLocaleString() : '0'}</td>
-                        <td style="padding: 10px 8px; text-align: right;">${contract.premium_value ? (contract.premium_value / 1000).toFixed(2) + 'K' : 'N/A'}</td>
-                        <td style="padding: 10px 8px; text-align: right; color: ${contract.percent_change >= 0 ? '#10b981' : '#ef4444'};">${contract.percent_change ? contract.percent_change.toFixed(1) + '%' : '0.0%'}</td>
-                        <td style="padding: 10px 8px;">
-                            ${rec.options_flow && rec.options_flow.has_pattern ? '<span style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.85em;">🔥 3-LEGS</span>' :
-                              rec.options_flow && rec.options_flow.flow_score >= 40 ? '<span style="background: #f59e0b; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.85em;">⚡ Active</span>' :
-                              '<span style="color: #999; font-size: 0.85em;">-</span>'}
+                        <td style="padding: 14px 10px; font-size: 1em;">${idx + 1}</td>
+                        <td style="padding: 14px 10px; font-weight: bold; color: #667eea; font-size: 1.1em;">${rec.ticker}</td>
+                        <td style="padding: 14px 10px; color: ${marketColor}; font-weight: 600; font-size: 1em;">${marketText}</td>
+                        <td style="padding: 14px 10px; font-weight: bold; font-size: 1em;">${rec.option_type}</td>
+                        <td style="padding: 14px 10px; text-align: right; font-weight: bold; color: ${confidenceColor}; font-size: 1.05em;">${rec.confidence.toFixed(1)}%</td>
+                        <td style="padding: 14px 10px; text-align: right; font-size: 1em;">$${rec.current_price.toFixed(2)}</td>
+                        <td style="padding: 14px 10px; text-align: right; font-size: 0.95em;">${contract.bid ? contract.bid.toFixed(2) : '0.00'} / ${contract.ask ? contract.ask.toFixed(2) : '0.00'}</td>
+                        <td style="padding: 14px 10px; text-align: right; font-weight: bold; color: #667eea; font-size: 1.05em;">${rec.strike_price.toFixed(2)}</td>
+                        <td style="padding: 14px 10px; font-size: 0.95em;">${contract.expiration || rec.expiration}</td>
+                        <td style="padding: 14px 10px; text-align: right; font-size: 0.95em;">${contract.volume ? contract.volume.toLocaleString() : '0'}</td>
+                        <td style="padding: 14px 10px; text-align: right; font-size: 0.95em;">${contract.open_interest ? contract.open_interest.toLocaleString() : '0'}</td>
+                        <td style="padding: 14px 10px; text-align: right; font-size: 0.95em;">${contract.premium_value ? (contract.premium_value / 1000).toFixed(2) + 'K' : 'N/A'}</td>
+                        <td style="padding: 14px 10px; text-align: right; color: ${contract.percent_change >= 0 ? '#10b981' : '#ef4444'}; font-weight: 600; font-size: 1em;">${contract.percent_change ? contract.percent_change.toFixed(1) + '%' : '0.0%'}</td>
+                        <td style="padding: 14px 10px;">
+                            ${rec.options_flow && rec.options_flow.has_pattern ? '<span style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 5px 10px; border-radius: 4px; font-size: 0.9em; font-weight: 600;">🔥 3-LEGS</span>' :
+                              rec.options_flow && rec.options_flow.flow_score >= 40 ? '<span style="background: #f59e0b; color: white; padding: 5px 10px; border-radius: 4px; font-size: 0.9em; font-weight: 600;">⚡ Active</span>' :
+                              '<span style="color: #999; font-size: 0.9em;">-</span>'}
                         </td>
                     </tr>
                     <tr style="background: ${rowBg};">
-                        <td colspan="14" style="padding: 8px 8px 15px 8px; font-size: 0.9em; color: #666; border-bottom: 2px solid #ddd;">
-                            <strong>Pattern:</strong> ${rec.pattern} &nbsp;|&nbsp; <strong>Source:</strong> ${rec.source} &nbsp;|&nbsp; <strong>Reasoning:</strong> ${rec.reasoning.split('\n')[0]}
+                        <td colspan="14" style="padding: 12px 10px 20px 10px; border-bottom: 2px solid #ddd;">
+                            <!-- Pattern & Reasoning -->
+                            <div style="margin-bottom: 12px;">
+                                <div style="font-size: 0.95em; color: #374151; line-height: 1.6;">
+                                    <strong style="color: #667eea;">Pattern:</strong> ${rec.pattern} &nbsp;|&nbsp;
+                                    <strong style="color: #667eea;">Source:</strong> ${rec.source}
+                                </div>
+                                <div style="font-size: 0.9em; color: #666; margin-top: 6px; line-height: 1.5;">
+                                    <strong>AI Analysis:</strong> ${rec.reasoning.split('\n').slice(0, 2).join(' • ')}
+                                </div>
+                            </div>
+
+                            <!-- News Section -->
+                            ${rec.news && rec.news.length > 0 ? `
+                                <div style="background: rgba(245, 158, 11, 0.08); border-left: 3px solid #f59e0b; padding: 10px 12px; border-radius: 4px;">
+                                    <div style="font-weight: bold; color: #f59e0b; margin-bottom: 8px; font-size: 0.9em;">📰 Latest News</div>
+                                    ${rec.news.slice(0, 3).map(item => {
+                                        const publishedDate = item.published ? new Date(item.published * 1000).toLocaleDateString() : 'Recently';
+                                        return `
+                                            <div style="margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(245, 158, 11, 0.2);">
+                                                <a href="${item.link}" target="_blank" style="color: #374151; text-decoration: none; font-size: 0.9em; font-weight: 500; display: block; margin-bottom: 3px;">
+                                                    📌 ${item.title}
+                                                </a>
+                                                <span style="font-size: 0.8em; color: #666;">
+                                                    ${item.publisher} • ${publishedDate}
+                                                </span>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            ` : '<div style="font-size: 0.85em; color: #999; font-style: italic;">No recent news available</div>'}
                         </td>
                     </tr>
                 `;
