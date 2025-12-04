@@ -3101,6 +3101,8 @@ def analyze_options_flow(ticker, current_price, option_type, options_data):
 # Background scheduler for daily backtest checks
 import threading
 import time as time_module
+from datetime import datetime, time as dt_time
+import pytz
 
 def run_daily_backtest():
     """Background thread that runs backtest every 24 hours"""
@@ -3115,10 +3117,128 @@ def run_daily_backtest():
         # Sleep for 24 hours (86400 seconds)
         time_module.sleep(86400)
 
+def is_market_open():
+    """Check if US stock market is currently open"""
+    try:
+        # Get current time in Eastern Time
+        eastern = pytz.timezone('US/Eastern')
+        now_et = datetime.now(eastern)
+
+        # Check if weekend
+        if now_et.weekday() >= 5:  # Saturday = 5, Sunday = 6
+            return False
+
+        # Market hours: 9:30 AM - 4:00 PM ET
+        market_open = dt_time(9, 30)
+        market_close = dt_time(16, 0)
+        current_time = now_et.time()
+
+        return market_open <= current_time <= market_close
+    except Exception as e:
+        print(f"Error checking market hours: {e}")
+        return False
+
+def wait_until_market_open():
+    """Wait until market opens (9:30 AM ET)"""
+    while True:
+        try:
+            eastern = pytz.timezone('US/Eastern')
+            now_et = datetime.now(eastern)
+
+            # If weekend, sleep until Monday
+            if now_et.weekday() >= 5:
+                # Calculate seconds until Monday 9:30 AM
+                days_until_monday = (7 - now_et.weekday()) % 7
+                if days_until_monday == 0:
+                    days_until_monday = 1
+                monday_open = now_et.replace(hour=9, minute=30, second=0, microsecond=0) + timedelta(days=days_until_monday)
+                sleep_seconds = (monday_open - now_et).total_seconds()
+                print(f"📅 Weekend detected. Sleeping until Monday market open ({sleep_seconds/3600:.1f} hours)")
+                time_module.sleep(sleep_seconds)
+                continue
+
+            # Check current time vs market open
+            market_open_time = now_et.replace(hour=9, minute=30, second=0, microsecond=0)
+
+            if now_et < market_open_time:
+                # Before market open today
+                sleep_seconds = (market_open_time - now_et).total_seconds()
+                print(f"⏰ Market opens in {sleep_seconds/60:.0f} minutes. Waiting...")
+                time_module.sleep(sleep_seconds + 5)  # +5 seconds buffer
+                return  # Market is now open!
+            elif now_et.time() > dt_time(16, 0):
+                # After market close today, wait until tomorrow
+                tomorrow_open = (now_et + timedelta(days=1)).replace(hour=9, minute=30, second=0, microsecond=0)
+                sleep_seconds = (tomorrow_open - now_et).total_seconds()
+                print(f"🌙 Market closed. Sleeping until tomorrow's open ({sleep_seconds/3600:.1f} hours)")
+                time_module.sleep(sleep_seconds)
+                continue
+            else:
+                # Market is open right now!
+                return
+
+        except Exception as e:
+            print(f"Error in wait_until_market_open: {e}")
+            time_module.sleep(60)  # Sleep 1 minute and retry
+
+def run_market_open_scan():
+    """Automatically run LemonAI scan when market opens"""
+    while True:
+        try:
+            # Wait until market opens
+            wait_until_market_open()
+
+            print("\n🔔 MARKET OPEN! Running automatic LemonAI scan...")
+
+            # Run the auto-scan to populate data
+            auto_run_scans_for_lemonai()
+
+            print("✅ Market open scan completed!")
+
+            # Sleep until next market open (will handle overnight + weekends)
+            time_module.sleep(60)  # Short sleep, will re-check in wait_until_market_open
+
+        except Exception as e:
+            print(f"❌ Market open scan error: {e}")
+            time_module.sleep(300)  # Sleep 5 minutes on error
+
+def run_options_flow_monitor():
+    """Continuously monitor options flows during market hours and update recommendations"""
+    print("👁️  Options flow monitor started")
+
+    while True:
+        try:
+            if is_market_open():
+                print("\n📊 Monitoring options flows...")
+
+                # Re-scan for new opportunities every 15 minutes during market hours
+                auto_run_scans_for_lemonai()
+
+                print("✅ Options flow scan completed. Next scan in 15 minutes.")
+                time_module.sleep(900)  # 15 minutes
+            else:
+                # Market closed - check every 5 minutes
+                print("💤 Market closed. Monitor sleeping...")
+                time_module.sleep(300)  # 5 minutes
+
+        except Exception as e:
+            print(f"❌ Options flow monitor error: {e}")
+            time_module.sleep(600)  # Sleep 10 minutes on error
+
 # Start background thread for daily backtest
 backtest_thread = threading.Thread(target=run_daily_backtest, daemon=True)
 backtest_thread.start()
 print("✅ Daily backtest scheduler started (runs every 24 hours)")
+
+# Start background thread for market open scanning
+market_open_thread = threading.Thread(target=run_market_open_scan, daemon=True)
+market_open_thread.start()
+print("✅ Market open scanner started (auto-runs at 9:30 AM ET)")
+
+# Start background thread for continuous options flow monitoring
+options_monitor_thread = threading.Thread(target=run_options_flow_monitor, daemon=True)
+options_monitor_thread.start()
+print("✅ Options flow monitor started (scans every 15 min during market hours)")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))

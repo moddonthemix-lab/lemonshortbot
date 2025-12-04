@@ -1711,7 +1711,10 @@
                         🔄 REFRESH RECOMMENDATIONS NOW
                     </button>
                     <p style="text-align: center; color: #666; margin-top: 15px; font-size: 0.95em;">
-                        💡 Plays auto-load when you open this tab and refresh weekly
+                        🔔 <strong>Auto-Scanning Active:</strong> Scans at market open (9:30 AM ET) + every 15 min during market hours
+                    </p>
+                    <p style="text-align: center; color: #10b981; margin-top: 5px; font-size: 0.9em; font-weight: bold;">
+                        👁️ Real-time monitoring: New plays appear automatically when detected!
                     </p>
                 </div>
 
@@ -3717,11 +3720,118 @@
                 if (document.getElementById('lemonaiResults').innerHTML === '') {
                     startLemonAIScan();
                 }
+                // Start auto-refresh for real-time updates
+                startLemonAIAutoRefresh();
             } else if (tab === 'howto') {
-                document.getElementById('howtoTab').classList.add('active');
+                document.getElementById('lemonaiTab').classList.remove('active');
+                // Stop auto-refresh when leaving LemonAI tab
+                stopLemonAIAutoRefresh();
+            }
+            if (tab !== 'lemonai') {
+                // Stop auto-refresh when switching to any other tab
+                stopLemonAIAutoRefresh();
             }
         }
-        
+
+        // Auto-refresh system for LemonAI (checks for new plays every 5 minutes during market hours)
+        let autoRefreshInterval = null;
+        let lastRecommendationCount = 0;
+
+        function startLemonAIAutoRefresh() {
+            // Clear any existing interval
+            stopLemonAIAutoRefresh();
+
+            console.log("🔄 Starting LemonAI auto-refresh (checks every 5 minutes)");
+
+            // Check immediately
+            checkForNewRecommendations();
+
+            // Then check every 5 minutes
+            autoRefreshInterval = setInterval(() => {
+                checkForNewRecommendations();
+            }, 300000); // 5 minutes
+        }
+
+        function stopLemonAIAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+                console.log("⏸️  LemonAI auto-refresh stopped");
+            }
+        }
+
+        async function checkForNewRecommendations() {
+            try {
+                // Only check if LemonAI tab is active
+                if (!document.getElementById('lemonaiTab').classList.contains('active')) {
+                    return;
+                }
+
+                console.log("🔍 Checking for new recommendations...");
+
+                const response = await fetch('/api/lemonai-analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({})
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.recommendations) {
+                    const newCount = data.recommendations.length;
+
+                    // If count changed or this is first check, update display
+                    if (lastRecommendationCount === 0 || newCount !== lastRecommendationCount) {
+                        console.log(`📊 Found ${newCount} recommendations (was ${lastRecommendationCount})`);
+
+                        // Show notification if new plays appeared
+                        if (lastRecommendationCount > 0 && newCount > lastRecommendationCount) {
+                            showNewPlaysNotification(newCount - lastRecommendationCount);
+                        }
+
+                        lastRecommendationCount = newCount;
+                        displayLemonAIResults(data.recommendations, data.cached, data.cache_age_minutes);
+                        loadLemonAIStats(); // Also refresh stats
+                    } else {
+                        console.log("✓ No new recommendations");
+                    }
+                }
+            } catch (error) {
+                console.error("Error checking for new recommendations:", error);
+            }
+        }
+
+        function showNewPlaysNotification(newPlaysCount) {
+            // Show a subtle notification at the top
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                color: white;
+                padding: 15px 25px;
+                border-radius: 10px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                font-weight: bold;
+                z-index: 10000;
+                animation: slideIn 0.3s ease-out;
+            `;
+            notification.textContent = `🔥 ${newPlaysCount} NEW PLAY${newPlaysCount > 1 ? 'S' : ''} DETECTED!`;
+
+            document.body.appendChild(notification);
+
+            // Remove after 5 seconds
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease-in';
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 300);
+            }, 5000);
+        }
+
         // Short Squeeze Scanner
         async function startSqueezeScan() {
             if (isScanning) return;
