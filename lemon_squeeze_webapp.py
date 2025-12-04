@@ -503,6 +503,156 @@ def check_strat_31(hist):
     
     return False, None
 
+def analyze_multiple_timeframes(ticker):
+    """
+    Analyze a ticker across 4 timeframes: 1h, 4h, daily, weekly
+    Returns confirmation count and details for each timeframe
+
+    Args:
+        ticker: stock symbol to analyze
+
+    Returns:
+        dict with:
+            - confirmations: list of dicts with timeframe results
+            - confirmation_count: how many timeframes show patterns
+            - strongest_direction: bullish/bearish/neutral based on majority
+            - details: summary string
+    """
+    timeframes = ['1h', '4h', 'daily', 'weekly']
+    confirmations = []
+    bullish_count = 0
+    bearish_count = 0
+
+    try:
+        # Fetch the stock data
+        stock_data, hist, info = safe_yf_ticker(ticker)
+        if not stock_data or hist is None or len(hist) < 3:
+            return {
+                'confirmations': [],
+                'confirmation_count': 0,
+                'strongest_direction': 'neutral',
+                'details': 'Insufficient data',
+                'timeframes_analyzed': []
+            }
+
+        for tf in timeframes:
+            try:
+                # Resample data based on timeframe
+                if tf == '1h':
+                    # Use hourly data (last 30 days)
+                    hist_tf = stock_data.history(period='30d', interval='1h')
+                elif tf == '4h':
+                    # Use 4-hour data (last 60 days)
+                    hist_tf = stock_data.history(period='60d', interval='1h')
+                    # Resample to 4h
+                    if len(hist_tf) >= 12:
+                        hist_tf = hist_tf.resample('4H').agg({
+                            'Open': 'first',
+                            'High': 'max',
+                            'Low': 'min',
+                            'Close': 'last',
+                            'Volume': 'sum'
+                        }).dropna()
+                elif tf == 'daily':
+                    hist_tf = hist  # Already daily
+                elif tf == 'weekly':
+                    # Resample daily to weekly
+                    hist_tf = hist.resample('W').agg({
+                        'Open': 'first',
+                        'High': 'max',
+                        'Low': 'min',
+                        'Close': 'last',
+                        'Volume': 'sum'
+                    }).dropna()
+
+                # Skip if not enough data
+                if hist_tf is None or len(hist_tf) < 3:
+                    continue
+
+                # Check for patterns on this timeframe
+                pattern_found = None
+                pattern_type = None
+                direction = 'neutral'
+
+                # Check 3-1 Strat
+                has_31_pattern, pattern_data = check_strat_31(hist_tf)
+                if has_31_pattern:
+                    pattern_type = '3-1 Strat'
+                    direction = pattern_data['direction']
+                    pattern_found = True
+                else:
+                    # Check Inside Bar
+                    current = hist_tf.iloc[-1]
+                    previous = hist_tf.iloc[-2]
+                    is_inside = (current['High'] < previous['High'] and
+                               current['Low'] > previous['Low'])
+
+                    if is_inside:
+                        pattern_type = 'Inside Bar (1)'
+                        direction = 'bullish' if current['Close'] > previous['Close'] else 'bearish'
+                        pattern_found = True
+                    else:
+                        # Check Outside Bar
+                        is_outside = (current['High'] > previous['High'] and
+                                    current['Low'] < previous['Low'])
+                        if is_outside:
+                            pattern_type = 'Outside Bar (3)'
+                            direction = 'bullish' if current['Close'] > previous['Close'] else 'bearish'
+                            pattern_found = True
+
+                # Record this timeframe's result
+                if pattern_found:
+                    confirmations.append({
+                        'timeframe': tf,
+                        'pattern': pattern_type,
+                        'direction': direction
+                    })
+
+                    if direction == 'bullish':
+                        bullish_count += 1
+                    elif direction == 'bearish':
+                        bearish_count += 1
+
+            except Exception as e:
+                print(f"⚠️  Error analyzing {ticker} on {tf} timeframe: {e}")
+                continue
+
+        # Determine strongest direction based on majority
+        if bullish_count > bearish_count:
+            strongest_direction = 'bullish'
+        elif bearish_count > bullish_count:
+            strongest_direction = 'bearish'
+        else:
+            strongest_direction = 'neutral'
+
+        # Create details string
+        confirmation_count = len(confirmations)
+        if confirmation_count == 0:
+            details = 'No patterns detected'
+        else:
+            tf_list = [c['timeframe'] for c in confirmations]
+            details = f"{confirmation_count}/4 timeframes confirmed ({', '.join(tf_list)})"
+
+        return {
+            'confirmations': confirmations,
+            'confirmation_count': confirmation_count,
+            'strongest_direction': strongest_direction,
+            'details': details,
+            'timeframes_analyzed': [c['timeframe'] for c in confirmations],
+            'bullish_count': bullish_count,
+            'bearish_count': bearish_count
+        }
+
+    except Exception as e:
+        print(f"⚠️  Error in multi-timeframe analysis for {ticker}: {e}")
+        return {
+            'confirmations': [],
+            'confirmation_count': 0,
+            'strongest_direction': 'neutral',
+            'details': f'Analysis error: {str(e)}',
+            'timeframes_analyzed': []
+        }
+
 # COMBINED STOCK LIST FOR WEEKLY/HOURLY PLAYS
 def get_combined_weekly_hourly_list():
     """
@@ -1688,45 +1838,32 @@ def lemonai_analyze():
                 'message': 'No scans have been run yet. Run other scanners first to generate recommendations.'
             })
 
-        # MULTIPLE TIMEFRAME CONFIRMATION - Check for stocks appearing in both daily AND weekly
-        # This is a STRONG signal that both short-term and longer-term are aligned
-        ticker_timeframes = {}
+        # MULTIPLE TIMEFRAME CONFIRMATION - Analyze across 1h, 4h, daily, weekly
+        # The more timeframes that confirm, the stronger the signal
+        print("🔍 Running multi-timeframe analysis (1h, 4h, daily, weekly)...")
+
+        # Get unique tickers
+        unique_tickers = list(set([stock['ticker'] for stock in all_stocks]))
+
+        # Analyze each unique ticker across all timeframes
+        ticker_mtf_data = {}
+        for ticker in unique_tickers:
+            print(f"  📊 Analyzing {ticker} across 4 timeframes...")
+            mtf_result = analyze_multiple_timeframes(ticker)
+            ticker_mtf_data[ticker] = mtf_result
+
+            if mtf_result['confirmation_count'] > 0:
+                print(f"    ✅ {ticker}: {mtf_result['details']} - {mtf_result['strongest_direction']}")
+
+        # Add multi-timeframe data to each stock
         for stock in all_stocks:
             ticker = stock['ticker']
-            if ticker not in ticker_timeframes:
-                ticker_timeframes[ticker] = {'timeframes': [], 'directions': []}
-
-            # Determine timeframe from source or pattern
-            if 'Weekly' in stock['pattern'] or stock['source'] == 'Weekly Plays':
-                timeframe = 'weekly'
-            elif 'Daily' in stock['pattern'] or stock['source'] == 'Daily Plays':
-                timeframe = 'daily'
-            else:
-                timeframe = 'other'
-
-            ticker_timeframes[ticker]['timeframes'].append(timeframe)
-            ticker_timeframes[ticker]['directions'].append(stock['direction'])
-
-        # Mark stocks with multiple timeframe confirmation
-        for stock in all_stocks:
-            ticker = stock['ticker']
-            tf_data = ticker_timeframes[ticker]
-
-            # Check if ticker appears in both daily AND weekly with SAME direction
-            has_daily = 'daily' in tf_data['timeframes']
-            has_weekly = 'weekly' in tf_data['timeframes']
-            directions = tf_data['directions']
-
-            # Multiple timeframe confirmation: same direction across timeframes
-            if has_daily and has_weekly:
-                # Check if all directions agree (all bullish or all bearish)
-                if all(d == directions[0] for d in directions):
-                    stock['multi_timeframe_confirmation'] = True
-                    print(f"🎯 {ticker}: Multiple timeframe confirmation ({directions[0]} on both daily & weekly)")
-                else:
-                    stock['multi_timeframe_confirmation'] = False
-            else:
-                stock['multi_timeframe_confirmation'] = False
+            stock['multi_timeframe_data'] = ticker_mtf_data.get(ticker, {
+                'confirmation_count': 0,
+                'strongest_direction': 'neutral',
+                'details': 'No analysis available',
+                'timeframes_analyzed': []
+            })
 
         # Analyze each stock and calculate confidence score
         recommendations = []
@@ -1808,9 +1945,8 @@ def lemonai_analyze():
                     print(f"⚠️  Skipping {stock['ticker']} {option_type} ${strike_price:.2f}: No contract data")
                     continue
 
-                # Include all plays with confidence >= 35 (after quality adjustment)
-                if confidence < 35:
-                    continue
+                # Don't filter by confidence here - we'll take top N after sorting
+                # This ensures we ALWAYS have 5-15 results to show
 
                 # Determine expiration based on pattern timeframe
                 if 'Weekly' in stock['pattern']:
@@ -1849,19 +1985,31 @@ def lemonai_analyze():
         # Sort by confidence score (highest first)
         recommendations.sort(key=lambda x: x['confidence'], reverse=True)
 
-        # Always return at least 10 recommendations if available, up to 15
+        # ALWAYS SHOW 5-15 RESULTS (user requirement)
+        # Prioritize high confidence, but ensure we show at least 5 plays
         if len(recommendations) >= 15:
+            # Take top 15 if we have that many
             top_recommendations = recommendations[:15]
-        elif len(recommendations) >= 10:
-            top_recommendations = recommendations[:10]
+            print(f"✅ LemonAI: Showing top 15 plays (from {len(recommendations)} total)")
+        elif len(recommendations) >= 5:
+            # Take top 10 if we have 5-14, but cap at available count
+            top_recommendations = recommendations[:min(10, len(recommendations))]
+            print(f"✅ LemonAI: Showing {len(top_recommendations)} plays (from {len(recommendations)} total)")
         elif len(recommendations) > 0:
-            # Return whatever we have to ensure plays are always shown
+            # Less than 5 available - show what we have and warn
             top_recommendations = recommendations
-            print(f"⚠️  Only {len(recommendations)} plays found - showing all")
+            print(f"⚠️  WARNING: Only {len(recommendations)} plays available (minimum 5 recommended)")
         else:
-            # Absolute fallback - should never happen with our relaxed filters
+            # Absolute fallback - no plays found at all
             top_recommendations = []
-            print("⚠️  No recommendations generated - all stocks filtered out")
+            print("❌ No tradeable recommendations - all stocks filtered out (liquidity/data issues)")
+
+        # Filter out very low confidence plays (< 25%) only if we have enough alternatives
+        if len(top_recommendations) > 5:
+            high_quality = [r for r in top_recommendations if r['confidence'] >= 25]
+            if len(high_quality) >= 5:
+                top_recommendations = high_quality
+                print(f"  Filtered to {len(top_recommendations)} high-quality plays (confidence >= 25%)")
 
         # Save recommendations to database for tracking and learning
         if len(top_recommendations) > 0:
@@ -2409,10 +2557,30 @@ def calculate_ai_confidence(stock):
             confidence += 5
             reasoning_parts.append(f"Options activity detected ({flow_score}/100)")
 
-    # 7. Multiple timeframe confirmation (max +25) - STRONG SIGNAL
-    if stock.get('multi_timeframe_confirmation', False):
-        confidence += 25
-        reasoning_parts.append(f"🎯 Multiple timeframe confirmation: {stock['direction']} on BOTH daily & weekly (high conviction)")
+    # 7. Multiple timeframe confirmation (max +40) - EXTREMELY STRONG SIGNAL
+    # Checks 1h, 4h, daily, weekly - the more that confirm, the stronger the signal
+    mtf_data = stock.get('multi_timeframe_data', {})
+    confirmation_count = mtf_data.get('confirmation_count', 0)
+
+    if confirmation_count >= 4:
+        # All 4 timeframes confirm same direction = GOLDEN SETUP
+        confidence += 40
+        timeframes = ', '.join(mtf_data.get('timeframes_analyzed', []))
+        reasoning_parts.append(f"🔥🔥🔥 GOLDEN: All 4 timeframes confirm {stock['direction']} ({timeframes}) - EXTREMELY HIGH CONVICTION")
+    elif confirmation_count == 3:
+        # 3 out of 4 timeframes = very strong
+        confidence += 30
+        timeframes = ', '.join(mtf_data.get('timeframes_analyzed', []))
+        reasoning_parts.append(f"🔥🔥 STRONG: 3/4 timeframes confirm {stock['direction']} ({timeframes}) - HIGH CONVICTION")
+    elif confirmation_count == 2:
+        # 2 out of 4 timeframes = good
+        confidence += 20
+        timeframes = ', '.join(mtf_data.get('timeframes_analyzed', []))
+        reasoning_parts.append(f"🔥 GOOD: 2/4 timeframes confirm {stock['direction']} ({timeframes}) - SOLID SETUP")
+    elif confirmation_count == 1:
+        # Only 1 timeframe = standard (no bonus)
+        timeframes = ', '.join(mtf_data.get('timeframes_analyzed', []))
+        reasoning_parts.append(f"Single timeframe setup ({timeframes})")
 
     # Cap confidence at 95 (never 100%)
     confidence = min(confidence, 95)
