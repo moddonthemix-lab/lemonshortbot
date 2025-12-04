@@ -1715,6 +1715,53 @@
                     </p>
                 </div>
 
+                <!-- Win/Loss Statistics Panel -->
+                <div id="lemonaiStatsPanel" style="margin: 30px 0; display: none;">
+                    <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 20px; border-radius: 15px; color: white; margin-bottom: 20px;">
+                        <h3 style="margin: 0 0 20px 0; font-size: 1.5em;">📊 Performance Tracker (Last 30 Days)</h3>
+
+                        <!-- Overall Stats -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                            <div style="background: rgba(255,255,255,0.15); padding: 15px; border-radius: 10px; text-align: center;">
+                                <div style="font-size: 2em; font-weight: bold;" id="statsWinRate">--%</div>
+                                <div style="font-size: 0.9em; opacity: 0.9;">Win Rate</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.15); padding: 15px; border-radius: 10px; text-align: center;">
+                                <div style="font-size: 2em; font-weight: bold; color: #6ee7b7;" id="statsWins">--</div>
+                                <div style="font-size: 0.9em; opacity: 0.9;">Wins</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.15); padding: 15px; border-radius: 10px; text-align: center;">
+                                <div style="font-size: 2em; font-weight: bold; color: #fca5a5;" id="statsLosses">--</div>
+                                <div style="font-size: 0.9em; opacity: 0.9;">Losses</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.15); padding: 15px; border-radius: 10px; text-align: center;">
+                                <div style="font-size: 2em; font-weight: bold;" id="statsTotalTrades">--</div>
+                                <div style="font-size: 0.9em; opacity: 0.9;">Total Trades</div>
+                            </div>
+                        </div>
+
+                        <!-- Best Patterns -->
+                        <div id="statsByPattern" style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; margin-top: 15px;">
+                            <div style="font-weight: bold; margin-bottom: 10px; font-size: 1.1em;">🎯 Best Performing Patterns:</div>
+                            <div id="statsPatternList" style="font-size: 0.95em;">
+                                <div style="opacity: 0.7;">Loading pattern statistics...</div>
+                            </div>
+                        </div>
+
+                        <!-- Timeframe Performance -->
+                        <div id="statsByTimeframe" style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; margin-top: 15px;">
+                            <div style="font-weight: bold; margin-bottom: 10px; font-size: 1.1em;">⏰ Performance by Holding Period:</div>
+                            <div id="statsTimeframeList" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px;">
+                                <div style="opacity: 0.7;">Loading timeframe stats...</div>
+                            </div>
+                        </div>
+
+                        <div style="text-align: center; margin-top: 15px; font-size: 0.85em; opacity: 0.8;" id="statsLastUpdated">
+                            Last updated: --
+                        </div>
+                    </div>
+                </div>
+
                 <div id="lemonaiLoading" class="loading">
                     <div class="loading-spinner"></div>
                     <p>🧠 AI is analyzing patterns, news, and market conditions...</p>
@@ -3665,7 +3712,8 @@
                 document.getElementById('usualsTab').classList.add('active');
             } else if (tab === 'lemonai') {
                 document.getElementById('lemonaiTab').classList.add('active');
-                // Auto-load LemonAI recommendations when tab is opened
+                // Auto-load LemonAI recommendations and stats when tab is opened
+                loadLemonAIStats(); // Always load stats first
                 if (document.getElementById('lemonaiResults').innerHTML === '') {
                     startLemonAIScan();
                 }
@@ -4634,6 +4682,66 @@
         }
 
         // ===== LEMONAI OPTIONS ANALYZER =====
+        async function loadLemonAIStats() {
+            try {
+                const response = await fetch('/api/lemonai-stats', {
+                    method: 'GET'
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.overall.total_trades > 0) {
+                    // Show the stats panel
+                    document.getElementById('lemonaiStatsPanel').style.display = 'block';
+
+                    // Update overall stats
+                    const overall = data.overall;
+                    document.getElementById('statsWinRate').textContent = overall.win_rate + '%';
+                    document.getElementById('statsWins').textContent = overall.wins;
+                    document.getElementById('statsLosses').textContent = overall.losses;
+                    document.getElementById('statsTotalTrades').textContent = overall.total_trades;
+
+                    // Update pattern stats
+                    if (data.by_pattern && data.by_pattern.length > 0) {
+                        const patternHTML = data.by_pattern.map(p => `
+                            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                                <span>${p.pattern}</span>
+                                <span style="font-weight: bold;">
+                                    ${p.win_rate}%
+                                    <span style="opacity: 0.7; font-size: 0.9em;">(${p.wins}W/${p.losses}L)</span>
+                                </span>
+                            </div>
+                        `).join('');
+                        document.getElementById('statsPatternList').innerHTML = patternHTML;
+                    }
+
+                    // Update timeframe stats
+                    if (data.by_timeframe && data.by_timeframe.length > 0) {
+                        const timeframeHTML = data.by_timeframe.map(tf => `
+                            <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 1.3em; font-weight: bold;">${tf.win_rate}%</div>
+                                <div style="font-size: 0.85em; opacity: 0.9;">${tf.timeframe}</div>
+                                <div style="font-size: 0.75em; opacity: 0.7;">${tf.wins}W/${tf.losses}L</div>
+                            </div>
+                        `).join('');
+                        document.getElementById('statsTimeframeList').innerHTML = timeframeHTML;
+                    }
+
+                    // Update last updated time
+                    const lastUpdated = new Date(data.last_updated).toLocaleString();
+                    document.getElementById('statsLastUpdated').textContent = `Last updated: ${lastUpdated}`;
+                } else {
+                    // Hide stats panel if no data yet
+                    document.getElementById('lemonaiStatsPanel').style.display = 'none';
+                }
+
+            } catch (error) {
+                console.error('Error loading stats:', error);
+                // Don't show error to user, just hide the panel
+                document.getElementById('lemonaiStatsPanel').style.display = 'none';
+            }
+        }
+
         async function startLemonAIScan() {
             if (isScanning) return;
 
@@ -4656,6 +4764,8 @@
 
                 if (data.success) {
                     displayLemonAIResults(data.recommendations, data.cached, data.cache_age_days);
+                    // Load stats after generating recommendations
+                    loadLemonAIStats();
                 } else {
                     alert('Error: ' + data.error);
                 }
