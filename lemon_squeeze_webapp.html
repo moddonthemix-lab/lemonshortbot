@@ -4695,10 +4695,10 @@
             // Cache status message
             const cacheMessage = cached && cacheAge > 0
                 ? `<div style="background: #e7f3ff; border: 1px solid #2196F3; padding: 10px 15px; border-radius: 8px; margin: 10px 0; font-size: 0.95em;">
-                     📋 Showing weekly plays (generated ${cacheAge} day${cacheAge !== 1 ? 's' : ''} ago). Refreshes ${7 - cacheAge} day${(7 - cacheAge) !== 1 ? 's' : ''} from now.
+                     📋 Cached (${cacheAge} min ago). Auto-refreshes in ${59 - cacheAge} min.
                    </div>`
                 : `<div style="background: #e8f5e9; border: 1px solid #4CAF50; padding: 10px 15px; border-radius: 8px; margin: 10px 0; font-size: 0.95em;">
-                     ✨ Fresh plays generated today! These recommendations will be available for 7 days.
+                     ✨ Fresh analysis! Auto-refreshes every hour.
                    </div>`;
 
             let html = `
@@ -4729,129 +4729,76 @@
                 </div>
             `;
 
+            // Compact table view with all contract details
+            html += `
+                <div style="overflow-x: auto; margin: 20px 0;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.85em; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        <thead>
+                            <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                                <th style="padding: 12px 8px; text-align: left; font-weight: bold; border-bottom: 2px solid #ddd;">#</th>
+                                <th style="padding: 12px 8px; text-align: left; font-weight: bold; border-bottom: 2px solid #ddd;">SYM</th>
+                                <th style="padding: 12px 8px; text-align: left; font-weight: bold; border-bottom: 2px solid #ddd;">MARKET</th>
+                                <th style="padding: 12px 8px; text-align: left; font-weight: bold; border-bottom: 2px solid #ddd;">CP</th>
+                                <th style="padding: 12px 8px; text-align: right; font-weight: bold; border-bottom: 2px solid #ddd;">CONF</th>
+                                <th style="padding: 12px 8px; text-align: right; font-weight: bold; border-bottom: 2px solid #ddd;">SPOT</th>
+                                <th style="padding: 12px 8px; text-align: right; font-weight: bold; border-bottom: 2px solid #ddd;">BID/ASK</th>
+                                <th style="padding: 12px 8px; text-align: right; font-weight: bold; border-bottom: 2px solid #ddd;">STRK</th>
+                                <th style="padding: 12px 8px; text-align: left; font-weight: bold; border-bottom: 2px solid #ddd;">EXP</th>
+                                <th style="padding: 12px 8px; text-align: right; font-weight: bold; border-bottom: 2px solid #ddd;">VOL</th>
+                                <th style="padding: 12px 8px; text-align: right; font-weight: bold; border-bottom: 2px solid #ddd;">OI</th>
+                                <th style="padding: 12px 8px; text-align: right; font-weight: bold; border-bottom: 2px solid #ddd;">PREMS</th>
+                                <th style="padding: 12px 8px; text-align: right; font-weight: bold; border-bottom: 2px solid #ddd;">CHG%</th>
+                                <th style="padding: 12px 8px; text-align: left; font-weight: bold; border-bottom: 2px solid #ddd;">FLOW</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
             recommendations.forEach((rec, idx) => {
-                const optionClass = rec.option_type === 'CALL' ? 'pattern-bullish' : 'pattern-bearish';
-                const optionEmoji = rec.option_type === 'CALL' ? '📈' : '📉';
+                const marketColor = rec.direction === 'bullish' ? '#10b981' : '#ef4444';
+                const marketText = rec.direction === 'bullish' ? 'Bullish' : 'Bearish';
                 const confidenceColor = rec.confidence >= 80 ? '#10b981' : rec.confidence >= 60 ? '#f59e0b' : '#ef4444';
+                const contract = rec.contract_details || {};
+                const rowBg = idx % 2 === 0 ? '#fafafa' : 'white';
 
                 html += `
-                    <div class="stock-card" style="border-left: 5px solid ${confidenceColor};">
-                        <div class="stock-header">
-                            <div class="header-left">
-                                <button class="favorite-btn" onclick="addToFavorites('${rec.ticker}', '${rec.company}', 'lemonai')" title="Add to favorites">
-                                    ⭐
-                                </button>
-                                <div>
-                                    <div class="stock-ticker">#${idx + 1}. ${rec.ticker}</div>
-                                    <div class="stock-company">${rec.company}</div>
-                                </div>
-                            </div>
-                            <div style="text-align: right;">
-                                <div class="badge ${optionClass}" style="font-size: 1.2em; padding: 10px 20px;">
-                                    ${optionEmoji} ${rec.option_type}
-                                </div>
-                                <div style="font-size: 1.4em; font-weight: bold; color: ${confidenceColor}; margin-top: 10px;">
-                                    ${rec.confidence}% Confidence
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Option Details -->
-                        <div style="background: rgba(102, 126, 234, 0.1); padding: 20px; border-radius: 10px; margin: 20px 0;">
-                            <h3 style="color: #667eea; margin: 0 0 15px 0;">💎 Suggested Trade</h3>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                                <div>
-                                    <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">Current Price</div>
-                                    <div style="font-size: 1.4em; font-weight: bold;">$${rec.current_price.toFixed(2)}</div>
-                                </div>
-                                <div>
-                                    <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">Suggested Strike</div>
-                                    <div style="font-size: 1.4em; font-weight: bold; color: #667eea;">$${rec.strike_price.toFixed(2)}</div>
-                                </div>
-                                <div>
-                                    <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">${rec.option_type === 'CALL' ? 'Above' : 'Below'} Current</div>
-                                    <div style="font-size: 1.4em; font-weight: bold;">${Math.abs(((rec.strike_price - rec.current_price) / rec.current_price) * 100).toFixed(1)}%</div>
-                                </div>
-                                <div>
-                                    <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">Expiration</div>
-                                    <div style="font-size: 1.4em; font-weight: bold;">${rec.expiration}</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- AI Analysis -->
-                        <div class="metrics-grid">
-                            <div class="metric-section">
-                                <h4>🧠 AI Analysis</h4>
-                                <div style="background: white; padding: 15px; border-radius: 8px; line-height: 1.6;">
-                                    ${rec.reasoning.split('\n').map(line => `<p style="margin: 8px 0;">• ${line}</p>`).join('')}
-                                </div>
-                            </div>
-
-                            <div class="metric-section">
-                                <h4>📊 Key Metrics</h4>
-                                <div class="metric-item">
-                                    <span class="metric-label">Pattern:</span>
-                                    <span class="metric-value">${rec.pattern || 'N/A'}</span>
-                                </div>
-                                <div class="metric-item">
-                                    <span class="metric-label">Volume Ratio:</span>
-                                    <span class="metric-value">${rec.volume_ratio.toFixed(2)}x</span>
-                                </div>
-                                <div class="metric-item">
-                                    <span class="metric-label">News Sentiment:</span>
-                                    <span class="metric-value" style="color: ${rec.news_sentiment === 'Positive' ? '#10b981' : rec.news_sentiment === 'Negative' ? '#ef4444' : '#666'};">
-                                        ${rec.news_sentiment}
-                                    </span>
-                                </div>
-                                <div class="metric-item">
-                                    <span class="metric-label">Source Scanner:</span>
-                                    <span class="metric-value">${rec.source}</span>
-                                </div>
-                            </div>
-
-                            ${rec.options_flow && rec.options_flow.flow_score > 0 ? `
-                                <div class="metric-section">
-                                    <h4>🔥 Options Flow Analysis</h4>
-                                    <div style="background: ${rec.options_flow.has_pattern ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#f3f4f6'}; color: ${rec.options_flow.has_pattern ? 'white' : '#374151'}; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
-                                        <div style="font-size: 1.1em; font-weight: bold; margin-bottom: 5px;">
-                                            ${rec.options_flow.has_pattern ? '🎯 3-LEGS PATTERN DETECTED!' : '📊 Options Activity'}
-                                        </div>
-                                        <div style="font-size: 0.95em; opacity: 0.9;">
-                                            Flow Score: ${rec.options_flow.flow_score}/100
-                                        </div>
-                                    </div>
-                                    <div class="metric-item">
-                                        <span class="metric-label">Avg Volume:</span>
-                                        <span class="metric-value">${Math.round(rec.options_flow.avg_volume).toLocaleString()} contracts</span>
-                                    </div>
-                                    <div class="metric-item">
-                                        <span class="metric-label">Avg Open Interest:</span>
-                                        <span class="metric-value">${Math.round(rec.options_flow.avg_oi).toLocaleString()} contracts</span>
-                                    </div>
-                                    <div class="metric-item">
-                                        <span class="metric-label">Total Volume:</span>
-                                        <span class="metric-value">${Math.round(rec.options_flow.total_volume).toLocaleString()}</span>
-                                    </div>
-                                    <div class="metric-item">
-                                        <span class="metric-label">Total OI:</span>
-                                        <span class="metric-value">${Math.round(rec.options_flow.total_oi).toLocaleString()}</span>
-                                    </div>
-                                    <div style="background: white; padding: 12px; border-radius: 8px; margin-top: 10px; line-height: 1.5; font-size: 0.95em;">
-                                        ${rec.options_flow.details.split('\n').map(line => `<div style="margin: 5px 0;">${line}</div>`).join('')}
-                                    </div>
-                                </div>
-                            ` : ''}
-                        </div>
-
-                        <!-- Risk Warning -->
-                        <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 8px; margin-top: 20px;">
-                            <strong style="color: #856404;">⚠️ Risk Warning:</strong>
-                            <span style="color: #856404;">Options can expire worthless. Only trade with risk capital you can afford to lose.</span>
-                        </div>
-                    </div>
+                    <tr style="background: ${rowBg}; border-bottom: 1px solid #e5e5e5;">
+                        <td style="padding: 10px 8px;">${idx + 1}</td>
+                        <td style="padding: 10px 8px; font-weight: bold; color: #667eea;">${rec.ticker}</td>
+                        <td style="padding: 10px 8px; color: ${marketColor}; font-weight: 600;">${marketText}</td>
+                        <td style="padding: 10px 8px; font-weight: bold;">${rec.option_type}</td>
+                        <td style="padding: 10px 8px; text-align: right; font-weight: bold; color: ${confidenceColor};">${rec.confidence.toFixed(1)}%</td>
+                        <td style="padding: 10px 8px; text-align: right;">$${rec.current_price.toFixed(2)}</td>
+                        <td style="padding: 10px 8px; text-align: right; font-size: 0.9em;">${contract.bid ? contract.bid.toFixed(2) : '0.00'} / ${contract.ask ? contract.ask.toFixed(2) : '0.00'}</td>
+                        <td style="padding: 10px 8px; text-align: right; font-weight: bold; color: #667eea;">${rec.strike_price.toFixed(2)}</td>
+                        <td style="padding: 10px 8px;">${contract.expiration || rec.expiration}</td>
+                        <td style="padding: 10px 8px; text-align: right;">${contract.volume ? contract.volume.toLocaleString() : '0'}</td>
+                        <td style="padding: 10px 8px; text-align: right;">${contract.open_interest ? contract.open_interest.toLocaleString() : '0'}</td>
+                        <td style="padding: 10px 8px; text-align: right;">${contract.premium_value ? (contract.premium_value / 1000).toFixed(2) + 'K' : 'N/A'}</td>
+                        <td style="padding: 10px 8px; text-align: right; color: ${contract.percent_change >= 0 ? '#10b981' : '#ef4444'};">${contract.percent_change ? contract.percent_change.toFixed(1) + '%' : '0.0%'}</td>
+                        <td style="padding: 10px 8px;">
+                            ${rec.options_flow && rec.options_flow.has_pattern ? '<span style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.85em;">🔥 3-LEGS</span>' :
+                              rec.options_flow && rec.options_flow.flow_score >= 40 ? '<span style="background: #f59e0b; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.85em;">⚡ Active</span>' :
+                              '<span style="color: #999; font-size: 0.85em;">-</span>'}
+                        </td>
+                    </tr>
+                    <tr style="background: ${rowBg};">
+                        <td colspan="14" style="padding: 8px 8px 15px 8px; font-size: 0.9em; color: #666; border-bottom: 2px solid #ddd;">
+                            <strong>Pattern:</strong> ${rec.pattern} &nbsp;|&nbsp; <strong>Source:</strong> ${rec.source} &nbsp;|&nbsp; <strong>Reasoning:</strong> ${rec.reasoning.split('\n')[0]}
+                        </td>
+                    </tr>
                 `;
             });
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+                <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                    <strong style="color: #856404;">⚠️ Risk Warning:</strong>
+                    <span style="color: #856404;">Options trading involves substantial risk. Only trade with capital you can afford to lose. Auto-refreshes hourly with latest options data.</span>
+                </div>
+            `;
 
             resultsDiv.innerHTML = html;
         }

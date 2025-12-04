@@ -259,6 +259,44 @@ def init_database():
     except:
         pass
 
+    # Add contract detail columns
+    try:
+        c.execute("ALTER TABLE recommendations ADD COLUMN contract_premium REAL DEFAULT 0")
+    except:
+        pass
+    try:
+        c.execute("ALTER TABLE recommendations ADD COLUMN contract_bid REAL DEFAULT 0")
+    except:
+        pass
+    try:
+        c.execute("ALTER TABLE recommendations ADD COLUMN contract_ask REAL DEFAULT 0")
+    except:
+        pass
+    try:
+        c.execute("ALTER TABLE recommendations ADD COLUMN contract_bid_ask_spread REAL DEFAULT 0")
+    except:
+        pass
+    try:
+        c.execute("ALTER TABLE recommendations ADD COLUMN contract_volume INTEGER DEFAULT 0")
+    except:
+        pass
+    try:
+        c.execute("ALTER TABLE recommendations ADD COLUMN contract_oi INTEGER DEFAULT 0")
+    except:
+        pass
+    try:
+        c.execute("ALTER TABLE recommendations ADD COLUMN contract_premium_value REAL DEFAULT 0")
+    except:
+        pass
+    try:
+        c.execute("ALTER TABLE recommendations ADD COLUMN contract_percent_change REAL DEFAULT 0")
+    except:
+        pass
+    try:
+        c.execute("ALTER TABLE recommendations ADD COLUMN contract_implied_vol REAL DEFAULT 0")
+    except:
+        pass
+
     # Outcomes table - tracks what actually happened
     c.execute('''CREATE TABLE IF NOT EXISTS outcomes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1517,21 +1555,21 @@ def usuals_scan():
 
 @app.route('/api/lemonai-analyze', methods=['POST'])
 def lemonai_analyze():
-    """LemonAI - AI-powered options recommendations (auto-refreshes weekly)"""
+    """LemonAI - AI-powered options recommendations (auto-refreshes hourly)"""
     try:
         print("\n🤖 LemonAI: Starting analysis...")
 
-        # Check if we have cached recommendations less than 7 days old
+        # Check if we have cached recommendations less than 59 minutes old
         lemonai_cache = scan_cache['lemonai']
         if lemonai_cache['timestamp']:
-            age_days = (datetime.now() - lemonai_cache['timestamp']).days
-            if age_days < 7 and len(lemonai_cache['results']) > 0:
-                print(f"✅ LemonAI: Returning cached recommendations ({age_days} days old)")
+            age_minutes = (datetime.now() - lemonai_cache['timestamp']).total_seconds() / 60
+            if age_minutes < 59 and len(lemonai_cache['results']) > 0:
+                print(f"✅ LemonAI: Returning cached recommendations ({int(age_minutes)} minutes old)")
                 return jsonify({
                     'success': True,
                     'recommendations': lemonai_cache['results'],
                     'cached': True,
-                    'cache_age_days': age_days
+                    'cache_age_minutes': int(age_minutes)
                 })
 
         print("🔄 LemonAI: Generating fresh recommendations...")
@@ -1593,12 +1631,13 @@ def lemonai_analyze():
                 'news': stock.get('news', [])
             })
 
-        # From usuals
+        # From usuals - Top 5 by volume ratio and price change
+        usuals_with_patterns = []
         for stock in scan_cache['usuals']['results']:
             patterns = stock.get('patterns', {})
             daily_pattern = patterns.get('daily', {})
-            if daily_pattern:
-                all_stocks.append({
+            if daily_pattern and daily_pattern.get('direction') in ['bullish', 'bearish']:
+                usuals_with_patterns.append({
                     'ticker': stock['ticker'],
                     'company': stock.get('company', stock['ticker']),
                     'current_price': stock['price'],
@@ -1607,11 +1646,21 @@ def lemonai_analyze():
                     'volume_ratio': stock['volume_ratio'],
                     'change': stock['change'],
                     'risk_score': None,
-                    'source': 'Usuals',
-                    'news': stock.get('news', [])
+                    'source': 'Usuals (Top 5)',
+                    'news': stock.get('news', []),
+                    'score': abs(stock['change']) * stock['volume_ratio']  # Combine change and volume for ranking
                 })
 
-        print(f"🤖 LemonAI: Found {len(all_stocks)} stocks to analyze")
+        # Sort usuals by score and take top 5
+        usuals_with_patterns.sort(key=lambda x: x['score'], reverse=True)
+        top_5_usuals = usuals_with_patterns[:5]
+
+        # Remove the temporary score field and add to all_stocks
+        for usual in top_5_usuals:
+            usual.pop('score', None)
+            all_stocks.append(usual)
+
+        print(f"🤖 LemonAI: Found {len(all_stocks)} stocks to analyze (including top 5 usuals)")
 
         if len(all_stocks) == 0:
             return jsonify({
@@ -1684,6 +1733,14 @@ def lemonai_analyze():
                 # Analyze news sentiment
                 news_sentiment = analyze_news_sentiment(stock['news'])
 
+                # Get detailed contract information for the recommended strike
+                contract_details = get_contract_details(
+                    stock['ticker'],
+                    strike_price,
+                    option_type,
+                    options_data
+                )
+
                 recommendations.append({
                     'ticker': stock['ticker'],
                     'company': stock['company'],
@@ -1699,16 +1756,17 @@ def lemonai_analyze():
                     'news_sentiment': news_sentiment,
                     'news': stock.get('news', []),
                     'source': stock['source'],
-                    'options_flow': options_flow_result
+                    'options_flow': options_flow_result,
+                    'contract_details': contract_details
                 })
 
             except Exception as e:
                 print(f"⚠️  Error analyzing {stock['ticker']}: {e}")
                 continue
 
-        # Sort by confidence score (highest first) and return top 10
+        # Sort by confidence score (highest first) and return top 15
         recommendations.sort(key=lambda x: x['confidence'], reverse=True)
-        top_recommendations = recommendations[:10]
+        top_recommendations = recommendations[:15]
 
         # Save recommendations to database for tracking and learning
         print("💾 Saving recommendations to database...")
@@ -1722,17 +1780,17 @@ def lemonai_analyze():
         except Exception as backtest_error:
             print(f"⚠️  Backtest error (non-critical): {backtest_error}")
 
-        # Cache the recommendations for 7 days
+        # Cache the recommendations for 59 minutes
         scan_cache['lemonai']['results'] = top_recommendations
         scan_cache['lemonai']['timestamp'] = datetime.now()
 
-        print(f"✅ LemonAI: Generated {len(top_recommendations)} recommendations (cached for 7 days)\n")
+        print(f"✅ LemonAI: Generated {len(top_recommendations)} recommendations (cached for 59 minutes)\n")
 
         return jsonify({
             'success': True,
             'recommendations': top_recommendations,
             'cached': False,
-            'cache_age_days': 0
+            'cache_age_minutes': 0
         })
 
     except Exception as e:
@@ -1933,13 +1991,18 @@ def save_recommendation_to_db(recommendation):
         # Extract options flow data
         options_flow = recommendation.get('options_flow', {})
 
+        # Extract contract details
+        contract = recommendation.get('contract_details', {})
+
         c.execute('''INSERT INTO recommendations
                      (ticker, company, option_type, strike_price, current_price, expiration,
                       confidence, pattern, direction, volume_ratio, news_sentiment, source,
                       reasoning, news_json, options_flow_score, options_avg_volume, options_avg_oi,
                       options_total_volume, options_total_oi, options_has_pattern, options_details,
-                      expiration_date)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                      contract_premium, contract_bid, contract_ask, contract_bid_ask_spread,
+                      contract_volume, contract_oi, contract_premium_value, contract_percent_change,
+                      contract_implied_vol, expiration_date)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                   (recommendation['ticker'],
                    recommendation['company'],
                    recommendation['option_type'],
@@ -1961,6 +2024,15 @@ def save_recommendation_to_db(recommendation):
                    options_flow.get('total_oi', 0),
                    options_flow.get('has_pattern', False),
                    options_flow.get('details', ''),
+                   contract.get('last_price', 0),
+                   contract.get('bid', 0),
+                   contract.get('ask', 0),
+                   contract.get('bid_ask_spread', 0),
+                   contract.get('volume', 0),
+                   contract.get('open_interest', 0),
+                   contract.get('premium_value', 0),
+                   contract.get('percent_change', 0),
+                   contract.get('implied_volatility', 0),
                    exp_date.strftime('%Y-%m-%d')))
 
         rec_id = c.lastrowid
@@ -2240,6 +2312,64 @@ def calculate_ai_confidence(stock):
 
     reasoning = '\n'.join(reasoning_parts)
     return confidence, reasoning, options_flow
+
+def get_contract_details(ticker, strike_price, option_type, options_data):
+    """Get detailed contract information for a specific strike
+
+    Args:
+        ticker: stock symbol
+        strike_price: target strike price
+        option_type: 'CALL' or 'PUT'
+        options_data: dict with 'calls' and 'puts' DataFrames
+
+    Returns:
+        dict with premium, bid, ask, volume, OI, change, etc.
+    """
+    if not options_data:
+        return None
+
+    try:
+        # Select the appropriate chain
+        chain = options_data['calls'] if option_type == 'CALL' else options_data['puts']
+
+        # Find the closest strike to our target
+        chain['strike_diff'] = abs(chain['strike'] - strike_price)
+        closest_contract = chain.loc[chain['strike_diff'].idxmin()]
+
+        # Extract contract details
+        last_price = closest_contract.get('lastPrice', 0)
+        bid = closest_contract.get('bid', 0)
+        ask = closest_contract.get('ask', 0)
+        volume = closest_contract.get('volume', 0)
+        open_interest = closest_contract.get('openInterest', 0)
+        change = closest_contract.get('change', 0)
+        percent_change = closest_contract.get('percentChange', 0)
+        implied_volatility = closest_contract.get('impliedVolatility', 0)
+
+        # Calculate bid-ask spread
+        bid_ask_spread = ask - bid if ask > 0 and bid > 0 else 0
+
+        # Calculate premium value (price * 100 * volume)
+        premium_value = last_price * 100 * volume if volume > 0 else 0
+
+        return {
+            'strike': float(closest_contract['strike']),
+            'last_price': float(last_price),
+            'bid': float(bid),
+            'ask': float(ask),
+            'bid_ask_spread': float(bid_ask_spread),
+            'volume': int(volume) if volume > 0 else 0,
+            'open_interest': int(open_interest) if open_interest > 0 else 0,
+            'change': float(change),
+            'percent_change': float(percent_change),
+            'premium_value': float(premium_value),
+            'implied_volatility': float(implied_volatility) if implied_volatility else 0,
+            'expiration': options_data['expiration']
+        }
+
+    except Exception as e:
+        print(f"⚠️  Error getting contract details for {ticker}: {e}")
+        return None
 
 def analyze_news_sentiment(news_articles):
     """Analyze news sentiment based on keywords"""
