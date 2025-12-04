@@ -1688,6 +1688,46 @@ def lemonai_analyze():
                 'message': 'No scans have been run yet. Run other scanners first to generate recommendations.'
             })
 
+        # MULTIPLE TIMEFRAME CONFIRMATION - Check for stocks appearing in both daily AND weekly
+        # This is a STRONG signal that both short-term and longer-term are aligned
+        ticker_timeframes = {}
+        for stock in all_stocks:
+            ticker = stock['ticker']
+            if ticker not in ticker_timeframes:
+                ticker_timeframes[ticker] = {'timeframes': [], 'directions': []}
+
+            # Determine timeframe from source or pattern
+            if 'Weekly' in stock['pattern'] or stock['source'] == 'Weekly Plays':
+                timeframe = 'weekly'
+            elif 'Daily' in stock['pattern'] or stock['source'] == 'Daily Plays':
+                timeframe = 'daily'
+            else:
+                timeframe = 'other'
+
+            ticker_timeframes[ticker]['timeframes'].append(timeframe)
+            ticker_timeframes[ticker]['directions'].append(stock['direction'])
+
+        # Mark stocks with multiple timeframe confirmation
+        for stock in all_stocks:
+            ticker = stock['ticker']
+            tf_data = ticker_timeframes[ticker]
+
+            # Check if ticker appears in both daily AND weekly with SAME direction
+            has_daily = 'daily' in tf_data['timeframes']
+            has_weekly = 'weekly' in tf_data['timeframes']
+            directions = tf_data['directions']
+
+            # Multiple timeframe confirmation: same direction across timeframes
+            if has_daily and has_weekly:
+                # Check if all directions agree (all bullish or all bearish)
+                if all(d == directions[0] for d in directions):
+                    stock['multi_timeframe_confirmation'] = True
+                    print(f"🎯 {ticker}: Multiple timeframe confirmation ({directions[0]} on both daily & weekly)")
+                else:
+                    stock['multi_timeframe_confirmation'] = False
+            else:
+                stock['multi_timeframe_confirmation'] = False
+
         # Analyze each stock and calculate confidence score
         recommendations = []
 
@@ -1719,14 +1759,10 @@ def lemonai_analyze():
                 # Add options flow to stock data
                 stock['options_flow'] = options_flow
 
-                # Calculate confidence with options flow included
+                # Calculate initial confidence with options flow included
                 confidence, reasoning, options_flow_result = calculate_ai_confidence(stock)
 
-                # Include all plays with confidence >= 35 to ensure we always show recommendations
-                if confidence < 35:
-                    continue
-
-                # Strike price: 2-5% above/below current price
+                # Strike price: 2-5% above/below current price (calculate early for contract check)
                 strike_distance = 0.03 if confidence >= 75 else 0.05
 
                 if option_type == 'CALL':
@@ -1742,6 +1778,40 @@ def lemonai_analyze():
                 else:
                     strike_price = round(strike_price / 5) * 5  # Round to nearest 5
 
+                # Get detailed contract information for the recommended strike
+                contract_details = get_contract_details(
+                    stock['ticker'],
+                    strike_price,
+                    option_type,
+                    options_data
+                )
+
+                # Check contract quality and liquidity (CRITICAL - prevents bad fills)
+                if contract_details:
+                    quality_score, quality_issues, is_tradeable = check_contract_quality(contract_details)
+
+                    # Skip untradeable contracts (illiquid, wide spreads, etc.)
+                    if not is_tradeable:
+                        print(f"⚠️  Skipping {stock['ticker']} {option_type} ${strike_price:.2f}: {', '.join(quality_issues)}")
+                        continue
+
+                    # Adjust confidence based on contract quality
+                    confidence += quality_score
+
+                    # Add quality issues to reasoning
+                    reasoning_parts = reasoning.split('\n')
+                    for issue in quality_issues:
+                        reasoning_parts.append(issue)
+                    reasoning = '\n'.join(reasoning_parts)
+                else:
+                    # No contract data available - skip this recommendation
+                    print(f"⚠️  Skipping {stock['ticker']} {option_type} ${strike_price:.2f}: No contract data")
+                    continue
+
+                # Include all plays with confidence >= 35 (after quality adjustment)
+                if confidence < 35:
+                    continue
+
                 # Determine expiration based on pattern timeframe
                 if 'Weekly' in stock['pattern']:
                     expiration = '3-4 weeks'
@@ -1752,14 +1822,6 @@ def lemonai_analyze():
 
                 # Analyze news sentiment
                 news_sentiment = analyze_news_sentiment(stock['news'])
-
-                # Get detailed contract information for the recommended strike
-                contract_details = get_contract_details(
-                    stock['ticker'],
-                    strike_price,
-                    option_type,
-                    options_data
-                )
 
                 recommendations.append({
                     'ticker': stock['ticker'],
@@ -2347,11 +2409,110 @@ def calculate_ai_confidence(stock):
             confidence += 5
             reasoning_parts.append(f"Options activity detected ({flow_score}/100)")
 
+    # 7. Multiple timeframe confirmation (max +25) - STRONG SIGNAL
+    if stock.get('multi_timeframe_confirmation', False):
+        confidence += 25
+        reasoning_parts.append(f"🎯 Multiple timeframe confirmation: {stock['direction']} on BOTH daily & weekly (high conviction)")
+
     # Cap confidence at 95 (never 100%)
     confidence = min(confidence, 95)
 
     reasoning = '\n'.join(reasoning_parts)
     return confidence, reasoning, options_flow
+
+def check_contract_quality(contract_details):
+    """
+    Analyze contract liquidity and quality to prevent bad fills
+
+    Args:
+        contract_details: dict with bid, ask, volume, open_interest, etc.
+
+    Returns:
+        tuple: (quality_score, issues_list, is_tradeable)
+            - quality_score: -30 to +50 points to add to confidence
+            - issues_list: list of warnings about the contract
+            - is_tradeable: bool, False if contract fails minimum requirements
+    """
+    if not contract_details:
+        return -30, ['No contract data available'], False
+
+    score = 0
+    issues = []
+
+    bid = contract_details.get('bid', 0)
+    ask = contract_details.get('ask', 0)
+    volume = contract_details.get('volume', 0)
+    oi = contract_details.get('open_interest', 0)
+
+    # 1. BID-ASK SPREAD CHECK (most important for execution quality)
+    if ask > 0 and bid > 0:
+        spread_pct = (contract_details['bid_ask_spread'] / ask) * 100
+
+        if spread_pct < 5:
+            score += 20
+            # Excellent spread - no issue to report
+        elif spread_pct < 10:
+            score += 10
+            # Good spread - no issue to report
+        elif spread_pct < 20:
+            score += 0
+            issues.append(f"⚠️ Moderate spread ({spread_pct:.1f}% - expect some slippage)")
+        elif spread_pct < 35:
+            score -= 15
+            issues.append(f"🔴 Wide spread ({spread_pct:.1f}% - hard to profit)")
+        else:
+            score -= 30
+            issues.append(f"🚨 Very wide spread ({spread_pct:.1f}% - AVOID)")
+            return score, issues, False  # Not tradeable
+    else:
+        score -= 30
+        issues.append("🚨 No bid or ask available - AVOID")
+        return score, issues, False
+
+    # 2. VOLUME CHECK (can you actually trade it today?)
+    if volume >= 100:
+        score += 15
+        # Excellent volume - no issue
+    elif volume >= 50:
+        score += 10
+        # Good volume - no issue
+    elif volume >= 20:
+        score += 5
+        issues.append(f"⚠️ Low volume ({volume} contracts - may have trouble filling)")
+    elif volume >= 10:
+        score -= 10
+        issues.append(f"🔴 Very low volume ({volume} contracts - difficult to fill)")
+    else:
+        score -= 20
+        issues.append(f"🚨 Minimal volume ({volume} contracts - AVOID)")
+        return score, issues, False  # Not tradeable
+
+    # 3. OPEN INTEREST CHECK (is this contract actively traded?)
+    if oi >= 500:
+        score += 15
+        # Excellent OI - no issue
+    elif oi >= 100:
+        score += 10
+        # Good OI - no issue
+    elif oi >= 50:
+        score += 5
+        issues.append(f"⚠️ Moderate OI ({oi} - less liquid)")
+    elif oi >= 20:
+        score -= 10
+        issues.append(f"🔴 Low OI ({oi} - may have exit problems)")
+    else:
+        score -= 20
+        issues.append(f"🚨 Very low OI ({oi} - AVOID)")
+        return score, issues, False  # Not tradeable
+
+    # Contract passes minimum requirements
+    is_tradeable = True
+
+    # If no issues were added, add a positive note
+    if not issues:
+        issues.append(f"✅ Liquid contract: Vol {volume}, OI {oi}, Spread {spread_pct:.1f}%")
+
+    return score, issues, is_tradeable
 
 def get_contract_details(ticker, strike_price, option_type, options_data):
     """Get detailed contract information for a specific strike
