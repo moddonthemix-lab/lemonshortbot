@@ -483,6 +483,7 @@ def check_strat_31(hist):
     if is_three and is_one:
         pattern_data = {
             'has_pattern': True,
+            'type': '3-1 Strat',
             'direction': direction,
             'three_candle': {
                 'high': float(previous['High']),
@@ -1603,12 +1604,14 @@ def lemonai_analyze():
 
         # From daily plays
         for stock in scan_cache['daily']['results']:
+            # Get the actual pattern type from the scan data
+            pattern_type = stock['pattern'].get('type', 'Unknown Pattern') if isinstance(stock['pattern'], dict) else 'Pattern'
             all_stocks.append({
                 'ticker': stock['ticker'],
                 'company': stock.get('company', stock['ticker']),
                 'current_price': stock['currentPrice'],
-                'pattern': '3-1 Strat (Daily)',
-                'direction': stock['pattern']['direction'],
+                'pattern': f"{pattern_type} (Daily)",
+                'direction': stock['pattern']['direction'] if isinstance(stock['pattern'], dict) else 'neutral',
                 'volume_ratio': stock['volume'] / stock['avgVolume'] if stock.get('avgVolume', 0) > 0 else 1,
                 'change': stock.get('dailyChange', 0),
                 'risk_score': None,
@@ -1618,12 +1621,14 @@ def lemonai_analyze():
 
         # From weekly plays
         for stock in scan_cache['weekly']['results']:
+            # Get the actual pattern type from the scan data
+            pattern_type = stock['pattern'].get('type', 'Unknown Pattern') if isinstance(stock['pattern'], dict) else 'Pattern'
             all_stocks.append({
                 'ticker': stock['ticker'],
                 'company': stock.get('company', stock['ticker']),
                 'current_price': stock['currentPrice'],
-                'pattern': '3-1 Strat (Weekly)',
-                'direction': stock['pattern']['direction'],
+                'pattern': f"{pattern_type} (Weekly)",
+                'direction': stock['pattern']['direction'] if isinstance(stock['pattern'], dict) else 'neutral',
                 'volume_ratio': stock['volume'] / stock.get('avgVolume', 1) if stock.get('avgVolume', 0) > 0 else 1,
                 'change': 0,
                 'risk_score': None,
@@ -1975,6 +1980,12 @@ def auto_run_scans_for_lemonai():
                             # Momentum play
                             patterns['daily'] = {
                                 'type': 'Momentum',
+                                'direction': 'bullish' if change > 0 else 'bearish'
+                            }
+                        else:
+                            # No clear pattern detected
+                            patterns['daily'] = {
+                                'type': 'No Pattern',
                                 'direction': 'bullish' if change > 0 else 'bearish'
                             }
 
