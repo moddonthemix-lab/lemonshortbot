@@ -1718,49 +1718,68 @@
                     </p>
                 </div>
 
-                <!-- Win/Loss Statistics Panel -->
-                <div id="lemonaiStatsPanel" style="margin: 30px 0; display: none;">
+                <!-- Win/Loss Statistics Panel - ALWAYS VISIBLE -->
+                <div id="lemonaiStatsPanel" style="margin: 30px 0;">
                     <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 20px; border-radius: 15px; color: white; margin-bottom: 20px;">
                         <h3 style="margin: 0 0 20px 0; font-size: 1.5em;">📊 Performance Tracker (Last 30 Days)</h3>
 
-                        <!-- Overall Stats -->
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px;">
-                            <div style="background: rgba(255,255,255,0.15); padding: 15px; border-radius: 10px; text-align: center;">
-                                <div style="font-size: 2em; font-weight: bold;" id="statsWinRate">--%</div>
-                                <div style="font-size: 0.9em; opacity: 0.9;">Win Rate</div>
+                        <!-- No Data Message (shows initially, hidden when data loads) -->
+                        <div id="statsNoData" style="background: rgba(255,255,255,0.15); padding: 25px; border-radius: 10px; text-align: center;">
+                            <div style="font-size: 1.8em; margin-bottom: 15px;">🔄 Building Performance Data...</div>
+                            <div style="font-size: 1.1em; line-height: 1.6; opacity: 0.9;">
+                                The system is now tracking all recommendations!<br>
+                                Win/loss statistics will appear here after 7 days when trades are checked.<br><br>
+                                <strong>📅 Check back in a week to see your accuracy!</strong>
                             </div>
-                            <div style="background: rgba(255,255,255,0.15); padding: 15px; border-radius: 10px; text-align: center;">
-                                <div style="font-size: 2em; font-weight: bold; color: #6ee7b7;" id="statsWins">--</div>
-                                <div style="font-size: 0.9em; opacity: 0.9;">Wins</div>
-                            </div>
-                            <div style="background: rgba(255,255,255,0.15); padding: 15px; border-radius: 10px; text-align: center;">
-                                <div style="font-size: 2em; font-weight: bold; color: #fca5a5;" id="statsLosses">--</div>
-                                <div style="font-size: 0.9em; opacity: 0.9;">Losses</div>
-                            </div>
-                            <div style="background: rgba(255,255,255,0.15); padding: 15px; border-radius: 10px; text-align: center;">
-                                <div style="font-size: 2em; font-weight: bold;" id="statsTotalTrades">--</div>
-                                <div style="font-size: 0.9em; opacity: 0.9;">Total Trades</div>
+                            <div style="margin-top: 15px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 8px; font-size: 0.95em;">
+                                <strong>How it works:</strong><br>
+                                • Day 1-6: Collecting trade data<br>
+                                • Day 7+: Win/loss stats calculated and displayed here<br>
+                                • Updates daily with latest performance
                             </div>
                         </div>
 
-                        <!-- Best Patterns -->
-                        <div id="statsByPattern" style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; margin-top: 15px;">
-                            <div style="font-weight: bold; margin-bottom: 10px; font-size: 1.1em;">🎯 Best Performing Patterns:</div>
-                            <div id="statsPatternList" style="font-size: 0.95em;">
-                                <div style="opacity: 0.7;">Loading pattern statistics...</div>
+                        <!-- Stats Content (hidden initially, shows when data loads) -->
+                        <div id="statsContent" style="display: none;">
+                            <!-- Overall Stats -->
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                                <div style="background: rgba(255,255,255,0.15); padding: 15px; border-radius: 10px; text-align: center;">
+                                    <div style="font-size: 2em; font-weight: bold;" id="statsWinRate">--%</div>
+                                    <div style="font-size: 0.9em; opacity: 0.9;">Win Rate</div>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.15); padding: 15px; border-radius: 10px; text-align: center;">
+                                    <div style="font-size: 2em; font-weight: bold; color: #6ee7b7;" id="statsWins">--</div>
+                                    <div style="font-size: 0.9em; opacity: 0.9;">Wins</div>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.15); padding: 15px; border-radius: 10px; text-align: center;">
+                                    <div style="font-size: 2em; font-weight: bold; color: #fca5a5;" id="statsLosses">--</div>
+                                    <div style="font-size: 0.9em; opacity: 0.9;">Losses</div>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.15); padding: 15px; border-radius: 10px; text-align: center;">
+                                    <div style="font-size: 2em; font-weight: bold;" id="statsTotalTrades">--</div>
+                                    <div style="font-size: 0.9em; opacity: 0.9;">Total Trades</div>
+                                </div>
                             </div>
-                        </div>
 
-                        <!-- Timeframe Performance -->
-                        <div id="statsByTimeframe" style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; margin-top: 15px;">
-                            <div style="font-weight: bold; margin-bottom: 10px; font-size: 1.1em;">⏰ Performance by Holding Period:</div>
-                            <div id="statsTimeframeList" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px;">
-                                <div style="opacity: 0.7;">Loading timeframe stats...</div>
+                            <!-- Best Patterns -->
+                            <div id="statsByPattern" style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; margin-top: 15px;">
+                                <div style="font-weight: bold; margin-bottom: 10px; font-size: 1.1em;">🎯 Best Performing Patterns:</div>
+                                <div id="statsPatternList" style="font-size: 0.95em;">
+                                    <div style="opacity: 0.7;">Loading pattern statistics...</div>
+                                </div>
                             </div>
-                        </div>
 
-                        <div style="text-align: center; margin-top: 15px; font-size: 0.85em; opacity: 0.8;" id="statsLastUpdated">
-                            Last updated: --
+                            <!-- Timeframe Performance -->
+                            <div id="statsByTimeframe" style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; margin-top: 15px;">
+                                <div style="font-weight: bold; margin-bottom: 10px; font-size: 1.1em;">⏰ Performance by Holding Period:</div>
+                                <div id="statsTimeframeList" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px;">
+                                    <div style="opacity: 0.7;">Loading timeframe stats...</div>
+                                </div>
+                            </div>
+
+                            <div style="text-align: center; margin-top: 15px; font-size: 0.85em; opacity: 0.8;" id="statsLastUpdated">
+                                Last updated: --
+                            </div>
                         </div>
                     </div>
                 </div>
