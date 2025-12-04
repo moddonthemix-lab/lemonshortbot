@@ -4754,78 +4754,194 @@
                         <tbody>
             `;
 
+            // Beginner-friendly card layout with prominent option pricing
             recommendations.forEach((rec, idx) => {
                 const marketColor = rec.direction === 'bullish' ? '#10b981' : '#ef4444';
                 const marketText = rec.direction === 'bullish' ? 'Bullish' : 'Bearish';
                 const confidenceColor = rec.confidence >= 80 ? '#10b981' : rec.confidence >= 60 ? '#f59e0b' : '#ef4444';
                 const contract = rec.contract_details || {};
-                const rowBg = idx % 2 === 0 ? '#fafafa' : 'white';
 
                 html += `
-                    <tr style="background: ${rowBg}; border-bottom: 1px solid #e5e5e5;">
-                        <td style="padding: 14px 10px; font-size: 1em;">${idx + 1}</td>
-                        <td style="padding: 14px 10px; font-weight: bold; color: #667eea; font-size: 1.1em;">${rec.ticker}</td>
-                        <td style="padding: 14px 10px; color: ${marketColor}; font-weight: 600; font-size: 1em;">${marketText}</td>
-                        <td style="padding: 14px 10px; font-weight: bold; font-size: 1em;">${rec.option_type}</td>
-                        <td style="padding: 14px 10px; text-align: right; font-weight: bold; color: ${confidenceColor}; font-size: 1.05em;">${rec.confidence.toFixed(1)}%</td>
-                        <td style="padding: 14px 10px; text-align: right; font-size: 1em;">$${rec.current_price.toFixed(2)}</td>
-                        <td style="padding: 14px 10px; text-align: right; font-size: 0.95em;">${contract.bid ? contract.bid.toFixed(2) : '0.00'} / ${contract.ask ? contract.ask.toFixed(2) : '0.00'}</td>
-                        <td style="padding: 14px 10px; text-align: right; font-weight: bold; color: #667eea; font-size: 1.05em;">${rec.strike_price.toFixed(2)}</td>
-                        <td style="padding: 14px 10px; font-size: 0.95em;">${contract.expiration || rec.expiration}</td>
-                        <td style="padding: 14px 10px; text-align: right; font-size: 0.95em;">${contract.volume ? contract.volume.toLocaleString() : '0'}</td>
-                        <td style="padding: 14px 10px; text-align: right; font-size: 0.95em;">${contract.open_interest ? contract.open_interest.toLocaleString() : '0'}</td>
-                        <td style="padding: 14px 10px; text-align: right; font-size: 0.95em;">${contract.premium_value ? (contract.premium_value / 1000).toFixed(2) + 'K' : 'N/A'}</td>
-                        <td style="padding: 14px 10px; text-align: right; color: ${contract.percent_change >= 0 ? '#10b981' : '#ef4444'}; font-weight: 600; font-size: 1em;">${contract.percent_change ? contract.percent_change.toFixed(1) + '%' : '0.0%'}</td>
-                        <td style="padding: 14px 10px;">
-                            ${rec.options_flow && rec.options_flow.has_pattern ? '<span style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 5px 10px; border-radius: 4px; font-size: 0.9em; font-weight: 600;">🔥 3-LEGS</span>' :
-                              rec.options_flow && rec.options_flow.flow_score >= 40 ? '<span style="background: #f59e0b; color: white; padding: 5px 10px; border-radius: 4px; font-size: 0.9em; font-weight: 600;">⚡ Active</span>' :
-                              '<span style="color: #999; font-size: 0.9em;">-</span>'}
-                        </td>
-                    </tr>
-                    <tr style="background: ${rowBg};">
-                        <td colspan="14" style="padding: 12px 10px 20px 10px; border-bottom: 2px solid #ddd;">
-                            <!-- Pattern & Reasoning -->
-                            <div style="margin-bottom: 12px;">
-                                <div style="font-size: 0.95em; color: #374151; line-height: 1.6;">
-                                    <strong style="color: #667eea;">Pattern:</strong> ${rec.pattern} &nbsp;|&nbsp;
-                                    <strong style="color: #667eea;">Source:</strong> ${rec.source}
+                    <div style="background: white; border: 2px solid #e5e7eb; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                        <!-- Header: Stock & Confidence -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid #f3f4f6;">
+                            <div>
+                                <div style="font-size: 0.85em; color: #666; margin-bottom: 4px;">Trade #${idx + 1}</div>
+                                <div style="font-size: 2em; font-weight: bold; color: #667eea; margin-bottom: 4px;">${rec.ticker}</div>
+                                <div style="font-size: 1.1em; color: #666;">${rec.company}</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="background: ${confidenceColor}; color: white; padding: 12px 20px; border-radius: 8px; font-size: 1.8em; font-weight: bold; margin-bottom: 8px;">
+                                    ${rec.confidence.toFixed(0)}%
                                 </div>
-                                <div style="font-size: 0.9em; color: #666; margin-top: 6px; line-height: 1.5;">
-                                    <strong>AI Analysis:</strong> ${rec.reasoning.split('\n').slice(0, 2).join(' • ')}
+                                <div style="font-size: 0.9em; color: #666;">AI Confidence</div>
+                            </div>
+                        </div>
+
+                        <!-- Main Trade Info -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                            <!-- Left Column: The Trade -->
+                            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 8px; color: white;">
+                                <div style="font-size: 0.9em; opacity: 0.9; margin-bottom: 12px;">📊 THE TRADE</div>
+                                <div style="font-size: 1.3em; font-weight: bold; margin-bottom: 16px;">
+                                    ${rec.option_type === 'CALL' ? '📈 BUY CALL' : '📉 BUY PUT'}
+                                </div>
+                                <div style="margin-bottom: 12px;">
+                                    <div style="font-size: 0.85em; opacity: 0.8;">Strike Price</div>
+                                    <div style="font-size: 1.6em; font-weight: bold;">$${rec.strike_price.toFixed(2)}</div>
+                                </div>
+                                <div style="margin-bottom: 12px;">
+                                    <div style="font-size: 0.85em; opacity: 0.8;">Expiration</div>
+                                    <div style="font-size: 1.1em; font-weight: 600;">${contract.expiration || rec.expiration}</div>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.2); padding: 10px; border-radius: 6px; margin-top: 12px;">
+                                    <div style="font-size: 0.85em; opacity: 0.9;">Stock Currently Trading</div>
+                                    <div style="font-size: 1.3em; font-weight: bold;">$${rec.current_price.toFixed(2)}</div>
                                 </div>
                             </div>
 
-                            <!-- News Section -->
-                            ${rec.news && rec.news.length > 0 ? `
-                                <div style="background: rgba(245, 158, 11, 0.08); border-left: 3px solid #f59e0b; padding: 10px 12px; border-radius: 4px;">
-                                    <div style="font-weight: bold; color: #f59e0b; margin-bottom: 8px; font-size: 0.9em;">📰 Latest News</div>
-                                    ${rec.news.slice(0, 3).map(item => {
-                                        const publishedDate = item.published ? new Date(item.published * 1000).toLocaleDateString() : 'Recently';
-                                        return `
-                                            <div style="margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(245, 158, 11, 0.2);">
-                                                <a href="${item.link}" target="_blank" style="color: #374151; text-decoration: none; font-size: 0.9em; font-weight: 500; display: block; margin-bottom: 3px;">
-                                                    📌 ${item.title}
-                                                </a>
-                                                <span style="font-size: 0.8em; color: #666;">
-                                                    ${item.publisher} • ${publishedDate}
-                                                </span>
+                            <!-- Right Column: Option Pricing -->
+                            <div style="background: #f0fdf4; border: 2px solid #10b981; padding: 20px; border-radius: 8px;">
+                                <div style="font-size: 0.9em; color: #059669; font-weight: 600; margin-bottom: 12px;">💰 OPTION PRICING</div>
+
+                                ${contract.bid && contract.ask ? `
+                                    <div style="margin-bottom: 16px;">
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                                            <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #d1d5db;">
+                                                <div style="font-size: 0.8em; color: #666; margin-bottom: 4px;">BID (Sell)</div>
+                                                <div style="font-size: 1.4em; font-weight: bold; color: #ef4444;">$${contract.bid.toFixed(2)}</div>
                                             </div>
-                                        `;
-                                    }).join('')}
+                                            <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #d1d5db;">
+                                                <div style="font-size: 0.8em; color: #666; margin-bottom: 4px;">ASK (Buy)</div>
+                                                <div style="font-size: 1.4em; font-weight: bold; color: #10b981;">$${contract.ask.toFixed(2)}</div>
+                                            </div>
+                                        </div>
+                                        <div style="font-size: 0.85em; color: #666; font-style: italic; line-height: 1.4;">
+                                            💡 You'll buy at the ASK price ($${contract.ask.toFixed(2)} × 100 shares = $${(contract.ask * 100).toFixed(2)} total cost)
+                                        </div>
+                                    </div>
+
+                                    <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #d1d5db; margin-bottom: 12px;">
+                                        <div style="font-size: 0.8em; color: #666; margin-bottom: 4px;">Spread</div>
+                                        <div style="font-size: 1.1em; font-weight: 600;">$${contract.bid_ask_spread ? contract.bid_ask_spread.toFixed(2) : '0.00'}</div>
+                                        <div style="font-size: 0.75em; color: #666; margin-top: 4px;">Tighter = Better</div>
+                                    </div>
+
+                                    ${contract.percent_change ? `
+                                        <div style="background: ${contract.percent_change >= 0 ? '#dcfce7' : '#fee2e2'}; padding: 10px; border-radius: 6px;">
+                                            <div style="font-size: 0.8em; color: #666; margin-bottom: 4px;">Today's Change</div>
+                                            <div style="font-size: 1.3em; font-weight: bold; color: ${contract.percent_change >= 0 ? '#10b981' : '#ef4444'};">
+                                                ${contract.percent_change > 0 ? '+' : ''}${contract.percent_change.toFixed(1)}%
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                ` : `
+                                    <div style="background: #fef3c7; padding: 12px; border-radius: 6px; border: 1px solid #f59e0b;">
+                                        <div style="font-size: 0.9em; color: #92400e;">⚠️ Pricing data not available</div>
+                                        <div style="font-size: 0.85em; color: #78350f; margin-top: 4px;">Check with your broker for current prices</div>
+                                    </div>
+                                `}
+                            </div>
+                        </div>
+
+                        <!-- Market Direction & Pattern -->
+                        <div style="background: #f9fafb; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+                                <div>
+                                    <div style="font-size: 0.8em; color: #666; margin-bottom: 6px;">Market Direction</div>
+                                    <div style="font-size: 1.2em; font-weight: bold; color: ${marketColor};">
+                                        ${marketText === 'Bullish' ? '⬆️ ' : '⬇️ '}${marketText}
+                                    </div>
                                 </div>
-                            ` : '<div style="font-size: 0.85em; color: #999; font-style: italic;">No recent news available</div>'}
-                        </td>
-                    </tr>
+                                <div>
+                                    <div style="font-size: 0.8em; color: #666; margin-bottom: 6px;">Pattern Detected</div>
+                                    <div style="font-size: 1.1em; font-weight: 600; color: #374151;">${rec.pattern}</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 0.8em; color: #666; margin-bottom: 6px;">Options Flow</div>
+                                    <div>
+                                        ${rec.options_flow && rec.options_flow.has_pattern ?
+                                            '<span style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 6px 12px; border-radius: 6px; font-size: 0.95em; font-weight: 600;">🔥 3-LEGS PATTERN</span>' :
+                                          rec.options_flow && rec.options_flow.flow_score >= 40 ?
+                                            '<span style="background: #f59e0b; color: white; padding: 6px 12px; border-radius: 6px; font-size: 0.95em; font-weight: 600;">⚡ Active Flow</span>' :
+                                            '<span style="color: #999; font-size: 0.95em;">No Pattern</span>'}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Why This Trade -->
+                        <div style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 16px; border-radius: 6px; margin-bottom: 20px;">
+                            <div style="font-weight: bold; color: #1e40af; margin-bottom: 10px; font-size: 1.05em;">🧠 WHY THIS TRADE?</div>
+                            <div style="font-size: 0.95em; color: #374151; line-height: 1.7;">
+                                ${rec.reasoning.split('\n').map(line => `<div style="margin-bottom: 6px;">• ${line}</div>`).join('')}
+                            </div>
+                        </div>
+
+                        <!-- News Section -->
+                        ${rec.news && rec.news.length > 0 ? `
+                            <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 6px; margin-bottom: 20px;">
+                                <div style="font-weight: bold; color: #92400e; margin-bottom: 12px; font-size: 1.05em;">📰 LATEST NEWS</div>
+                                ${rec.news.slice(0, 3).map(item => {
+                                    const publishedDate = item.published ? new Date(item.published * 1000).toLocaleDateString() : 'Recently';
+                                    return `
+                                        <div style="background: white; padding: 12px; border-radius: 6px; margin-bottom: 10px; border: 1px solid #fcd34d;">
+                                            <a href="${item.link}" target="_blank" style="color: #1f2937; text-decoration: none; font-weight: 600; font-size: 0.95em; display: block; margin-bottom: 4px;">
+                                                📌 ${item.title}
+                                            </a>
+                                            <div style="font-size: 0.85em; color: #6b7280;">
+                                                ${item.publisher} • ${publishedDate}
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        ` : ''}
+
+                        <!-- Market Data -->
+                        <div style="background: #f9fafb; padding: 16px; border-radius: 8px;">
+                            <div style="font-size: 0.9em; color: #666; font-weight: 600; margin-bottom: 12px;">📊 MARKET DATA</div>
+                            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+                                <div>
+                                    <div style="font-size: 0.75em; color: #666; margin-bottom: 4px;">Volume</div>
+                                    <div style="font-size: 1.1em; font-weight: 600;">${contract.volume ? contract.volume.toLocaleString() : 'N/A'}</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 0.75em; color: #666; margin-bottom: 4px;">Open Interest</div>
+                                    <div style="font-size: 1.1em; font-weight: 600;">${contract.open_interest ? contract.open_interest.toLocaleString() : 'N/A'}</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 0.75em; color: #666; margin-bottom: 4px;">Premium Value</div>
+                                    <div style="font-size: 1.1em; font-weight: 600;">${contract.premium_value ? '$' + (contract.premium_value / 1000).toFixed(1) + 'K' : 'N/A'}</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 0.75em; color: #666; margin-bottom: 4px;">Source</div>
+                                    <div style="font-size: 1.1em; font-weight: 600;">${rec.source}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 `;
             });
 
+            // Close the table (not actually used in card layout but keep for structure)
             html += `
                         </tbody>
                     </table>
                 </div>
-                <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                    <strong style="color: #856404;">⚠️ Risk Warning:</strong>
-                    <span style="color: #856404;">Options trading involves substantial risk. Only trade with capital you can afford to lose. Auto-refreshes hourly with latest options data.</span>
+            `;
+
+            // Beginner-friendly disclaimer
+            html += `
+                <div style="background: linear-gradient(135deg, #fee2e2 0%, #fef3c7 100%); border: 3px solid #ef4444; padding: 20px; border-radius: 12px; margin: 20px 0;">
+                    <div style="font-size: 1.3em; font-weight: bold; color: #991b1b; margin-bottom: 12px;">
+                        ⚠️ IMPORTANT: Options Trading Disclaimer
+                    </div>
+                    <div style="font-size: 1em; color: #7c2d12; line-height: 1.7;">
+                        <strong>For beginners:</strong> Options are advanced financial instruments. These are AI-generated suggestions, NOT financial advice.
+                        You can <strong>lose 100% of your investment</strong>. Only trade with money you can afford to lose.
+                        Consider paper trading first to learn. Auto-refreshes hourly with latest market data.
+                    </div>
                 </div>
             `;
 
