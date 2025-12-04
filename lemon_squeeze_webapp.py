@@ -1632,17 +1632,31 @@ def lemonai_analyze():
             })
 
         # From usuals - Top 5 by volume ratio and price change
-        usuals_with_patterns = []
+        usuals_with_direction = []
         for stock in scan_cache['usuals']['results']:
             patterns = stock.get('patterns', {})
             daily_pattern = patterns.get('daily', {})
+
+            # Determine direction - use pattern direction or infer from price change
+            direction = 'neutral'
+            pattern_type = 'Momentum Play'
+
             if daily_pattern and daily_pattern.get('direction') in ['bullish', 'bearish']:
-                usuals_with_patterns.append({
+                direction = daily_pattern.get('direction')
+                pattern_type = daily_pattern.get('type', 'Pattern')
+            elif stock['change'] > 0.5:  # Positive momentum
+                direction = 'bullish'
+            elif stock['change'] < -0.5:  # Negative momentum
+                direction = 'bearish'
+
+            # Include all stocks with any directional bias
+            if direction in ['bullish', 'bearish']:
+                usuals_with_direction.append({
                     'ticker': stock['ticker'],
                     'company': stock.get('company', stock['ticker']),
                     'current_price': stock['price'],
-                    'pattern': daily_pattern.get('type', 'Pattern'),
-                    'direction': daily_pattern.get('direction', 'neutral'),
+                    'pattern': pattern_type,
+                    'direction': direction,
                     'volume_ratio': stock['volume_ratio'],
                     'change': stock['change'],
                     'risk_score': None,
@@ -1652,8 +1666,8 @@ def lemonai_analyze():
                 })
 
         # Sort usuals by score and take top 5
-        usuals_with_patterns.sort(key=lambda x: x['score'], reverse=True)
-        top_5_usuals = usuals_with_patterns[:5]
+        usuals_with_direction.sort(key=lambda x: x['score'], reverse=True)
+        top_5_usuals = usuals_with_direction[:5]
 
         # Remove the temporary score field and add to all_stocks
         for usual in top_5_usuals:
@@ -1703,7 +1717,8 @@ def lemonai_analyze():
                 # Calculate confidence with options flow included
                 confidence, reasoning, options_flow_result = calculate_ai_confidence(stock)
 
-                if confidence < 50:  # Skip low confidence trades
+                # Include all plays with confidence >= 35 to ensure we always show recommendations
+                if confidence < 35:
                     continue
 
                 # Strike price: 2-5% above/below current price
@@ -1764,21 +1779,35 @@ def lemonai_analyze():
                 print(f"⚠️  Error analyzing {stock['ticker']}: {e}")
                 continue
 
-        # Sort by confidence score (highest first) and return top 15
+        # Sort by confidence score (highest first)
         recommendations.sort(key=lambda x: x['confidence'], reverse=True)
-        top_recommendations = recommendations[:15]
+
+        # Always return at least 10 recommendations if available, up to 15
+        if len(recommendations) >= 15:
+            top_recommendations = recommendations[:15]
+        elif len(recommendations) >= 10:
+            top_recommendations = recommendations[:10]
+        elif len(recommendations) > 0:
+            # Return whatever we have to ensure plays are always shown
+            top_recommendations = recommendations
+            print(f"⚠️  Only {len(recommendations)} plays found - showing all")
+        else:
+            # Absolute fallback - should never happen with our relaxed filters
+            top_recommendations = []
+            print("⚠️  No recommendations generated - all stocks filtered out")
 
         # Save recommendations to database for tracking and learning
-        print("💾 Saving recommendations to database...")
-        for rec in top_recommendations:
-            save_recommendation_to_db(rec)
+        if len(top_recommendations) > 0:
+            print("💾 Saving recommendations to database...")
+            for rec in top_recommendations:
+                save_recommendation_to_db(rec)
 
-        # Run backtesting on historical recommendations
-        print("🔄 Running backtest on historical recommendations...")
-        try:
-            backtest_recommendations()
-        except Exception as backtest_error:
-            print(f"⚠️  Backtest error (non-critical): {backtest_error}")
+            # Run backtesting on historical recommendations
+            print("🔄 Running backtest on historical recommendations...")
+            try:
+                backtest_recommendations()
+            except Exception as backtest_error:
+                print(f"⚠️  Backtest error (non-critical): {backtest_error}")
 
         # Cache the recommendations for 59 minutes
         scan_cache['lemonai']['results'] = top_recommendations
