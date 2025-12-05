@@ -6258,9 +6258,24 @@
                 document.getElementById('avgYield').textContent = `${data.avg_yield.toFixed(2)}%`;
             }
 
-            // Display top 10 dividend stocks
+            // Display dividend stocks
             if (data.stocks && data.stocks.length > 0) {
-                let stocksHTML = '<div style="display: grid; gap: 12px;">';
+                let stocksHTML = '';
+
+                // Show warning if some stocks failed to load
+                if (data.failed_count && data.failed_count > 0) {
+                    stocksHTML += `
+                        <div style="background: rgba(251, 191, 36, 0.15); border: 2px solid #f59e0b; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                            <div style="color: #d97706; font-weight: bold; margin-bottom: 5px;">⚠️ Some stocks unavailable</div>
+                            <div style="color: #92400e; font-size: 0.95em;">
+                                ${data.failed_count} stock${data.failed_count > 1 ? 's' : ''} couldn't be loaded: ${data.failed_tickers.join(', ')}
+                                <br><span style="font-size: 0.9em; opacity: 0.8;">Showing ${data.loaded_count} available stocks</span>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                stocksHTML += '<div style="display: grid; gap: 12px;">';
 
                 data.stocks.forEach((stock, idx) => {
                     const monthlyIncome = ((1000 / stock.price) * stock.annual_dividend / 12);
@@ -6305,6 +6320,27 @@
 
                 stocksHTML += '</div>';
                 document.getElementById('dividendStocksList').innerHTML = stocksHTML;
+            } else {
+                // No stocks loaded successfully
+                document.getElementById('dividendStocksList').innerHTML = `
+                    <div style="text-align: center; padding: 30px; color: #ef4444;">
+                        <div style="font-size: 2em; margin-bottom: 10px;">❌</div>
+                        <div style="font-size: 1.2em; font-weight: bold; margin-bottom: 10px;">No Dividend Data Available</div>
+                        <div style="font-size: 0.95em; color: #666;">
+                            Unable to load dividend stocks at this time. This may be due to:
+                            <ul style="text-align: left; display: inline-block; margin-top: 10px;">
+                                <li>Market data provider issues</li>
+                                <li>Stocks may be delisted or have changed tickers</li>
+                                <li>Temporary API connectivity problems</li>
+                            </ul>
+                            <div style="margin-top: 15px;">
+                                <button onclick="loadDividendData()" style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1em;">
+                                    🔄 Try Again
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
             }
 
             // Create dividend chart

@@ -2373,12 +2373,16 @@ def get_dividend_data():
         ]
 
         dividend_stocks = []
+        failed_tickers = []
 
         for ticker_symbol, name, frequency in dividend_tickers:
             try:
+                print(f"Fetching dividend data for {ticker_symbol}...")
                 stock_data, hist, info = safe_yf_ticker(ticker_symbol)
 
                 if stock_data is None or hist is None or hist.empty:
+                    print(f"⚠️ {ticker_symbol}: No data available (might be delisted or invalid)")
+                    failed_tickers.append(ticker_symbol)
                     continue
 
                 current_price = hist['Close'].iloc[-1]
@@ -2402,9 +2406,14 @@ def get_dividend_data():
                         'yield': float(dividend_yield),
                         'frequency': frequency
                     })
+                    print(f"✅ {ticker_symbol}: {dividend_yield:.2f}% yield")
+                else:
+                    print(f"⚠️ {ticker_symbol}: No dividend data available")
+                    failed_tickers.append(ticker_symbol)
 
             except Exception as e:
-                print(f"Error fetching dividend data for {ticker_symbol}: {e}")
+                print(f"❌ Error fetching dividend data for {ticker_symbol}: {e}")
+                failed_tickers.append(ticker_symbol)
                 continue
 
         # Sort by yield (highest first) - show all stocks
@@ -2437,15 +2446,26 @@ def get_dividend_data():
         # Limit news to 10 items
         news_items = news_items[:10]
 
+        print(f"\n📊 Dividend Data Summary:")
+        print(f"✅ Successfully loaded: {len(all_stocks)} stocks")
+        if failed_tickers:
+            print(f"⚠️ Failed to load: {len(failed_tickers)} stocks - {', '.join(failed_tickers)}")
+
+        # Return success even if some stocks failed (as long as we have at least 1)
         return jsonify({
             'success': True,
             'stocks': all_stocks,
             'avg_yield': avg_yield,
-            'news': news_items
+            'news': news_items,
+            'loaded_count': len(all_stocks),
+            'failed_count': len(failed_tickers),
+            'failed_tickers': failed_tickers
         })
 
     except Exception as e:
         print(f"❌ Dividend data error: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 def auto_run_scans_for_lemonai():
