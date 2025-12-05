@@ -662,7 +662,7 @@ def get_combined_weekly_hourly_list():
     daily_plays = [
         'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD',
         'SPY', 'QQQ', 'IWM', 'DIA',
-        'NFLX', 'DIS', 'BABA', 'PYPL', 'SQ', 'ROKU', 'SNAP', 'UBER',
+        'NFLX', 'DIS', 'BABA', 'PYPL', 'ROKU', 'SNAP', 'UBER',
         'F', 'GM', 'NIO', 'LCID', 'RIVN',
         'BA', 'GE', 'CAT', 'DE',
         'JPM', 'BAC', 'GS', 'MS', 'C',
@@ -674,7 +674,7 @@ def get_combined_weekly_hourly_list():
     volemon = [
         'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD',
         'SPY', 'QQQ', 'IWM', 'DIA',
-        'NFLX', 'DIS', 'BABA', 'PYPL', 'SQ', 'ROKU', 'SNAP', 'UBER',
+        'NFLX', 'DIS', 'BABA', 'PYPL', 'ROKU', 'SNAP', 'UBER',
         'F', 'GM', 'NIO', 'LCID', 'RIVN',
         'JPM', 'BAC', 'GS', 'MS', 'C',
         'XOM', 'CVX', 'COP', 'SLB',
@@ -1351,7 +1351,7 @@ def daily_plays():
         popular_tickers = [
             'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD',
             'SPY', 'QQQ', 'IWM', 'DIA',
-            'NFLX', 'DIS', 'BABA', 'PYPL', 'SQ', 'ROKU', 'SNAP', 'UBER',
+            'NFLX', 'DIS', 'BABA', 'PYPL', 'ROKU', 'SNAP', 'UBER',
             'F', 'GM', 'NIO', 'LCID', 'RIVN',
             'BA', 'GE', 'CAT', 'DE',
             'JPM', 'BAC', 'GS', 'MS', 'C',
@@ -1573,7 +1573,7 @@ def volemon_scan():
         popular_tickers = [
             'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD',
             'SPY', 'QQQ', 'IWM', 'DIA',
-            'NFLX', 'DIS', 'BABA', 'PYPL', 'SQ', 'ROKU', 'SNAP', 'UBER',
+            'NFLX', 'DIS', 'BABA', 'PYPL', 'ROKU', 'SNAP', 'UBER',
             'F', 'GM', 'NIO', 'LCID', 'RIVN',
             'JPM', 'BAC', 'GS', 'MS', 'C',
             'XOM', 'CVX', 'COP', 'SLB',
@@ -2496,7 +2496,7 @@ def auto_run_scans_for_lemonai():
         popular_tickers = [
             'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD',
             'SPY', 'QQQ', 'IWM', 'DIA',
-            'NFLX', 'DIS', 'PYPL', 'SQ', 'UBER', 'BABA', 'SNAP', 'ROKU',
+            'NFLX', 'DIS', 'PYPL', 'UBER', 'BABA', 'SNAP', 'ROKU',
             'F', 'GM', 'BA', 'JPM', 'GS', 'MS',
             'XOM', 'CVX', 'COP',
             'PFE', 'JNJ', 'MRNA',
