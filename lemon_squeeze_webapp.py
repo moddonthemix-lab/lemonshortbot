@@ -2418,15 +2418,33 @@ def get_dividend_data():
                             failed_tickers.append(ticker_symbol)
                             continue
 
+                    # Get news for this stock
+                    news_for_stock = []
+                    try:
+                        stock_data_news, _, _ = safe_yf_ticker(ticker_symbol)
+                        if stock_data_news:
+                            news = stock_data_news.news[:2]  # Get 2 latest news items
+                            for article in news:
+                                news_for_stock.append({
+                                    'title': article.get('title', 'No title'),
+                                    'summary': article.get('summary', '')[:150],
+                                    'source': article.get('publisher', 'Unknown'),
+                                    'published': datetime.fromtimestamp(article.get('providerPublishTime', 0)).strftime('%Y-%m-%d'),
+                                    'url': article.get('link', '')
+                                })
+                    except Exception as e:
+                        print(f"  ⚠️ No news for {ticker_symbol}")
+
                     dividend_stocks.append({
                         'ticker': ticker_symbol,
                         'name': name,
                         'price': float(current_price),
-                        'annual_dividend': float(dividend_rate),
+                        'dividend_per_share': float(dividend_rate),
                         'yield': float(calculated_yield),
-                        'frequency': frequency
+                        'frequency': frequency,
+                        'news': news_for_stock
                     })
-                    print(f"✅ {ticker_symbol}: {calculated_yield:.2f}% yield (${dividend_rate:.2f} annual)")
+                    print(f"✅ {ticker_symbol}: {calculated_yield:.2f}% yield (${dividend_rate:.2f} per share)")
                 else:
                     print(f"⚠️ {ticker_symbol}: No dividend data available (rate={dividend_rate}, price={current_price})")
                     failed_tickers.append(ticker_symbol)
@@ -2436,35 +2454,8 @@ def get_dividend_data():
                 failed_tickers.append(ticker_symbol)
                 continue
 
-        # Sort by yield (highest first) - show all stocks
-        dividend_stocks.sort(key=lambda x: x['yield'], reverse=True)
-        all_stocks = dividend_stocks  # Show all available stocks
-
-        # Calculate average yield
-        avg_yield = sum(s['yield'] for s in all_stocks) / len(all_stocks) if all_stocks else 0
-
-        # Fetch dividend-related news
-        news_items = []
-        try:
-            # Get news for top 3 dividend stocks
-            for stock in all_stocks[:3]:
-                ticker = stock['ticker']
-                stock_data, _, _ = safe_yf_ticker(ticker)
-                if stock_data:
-                    news = stock_data.news[:2]  # Get 2 latest news items
-                    for article in news:
-                        news_items.append({
-                            'title': article.get('title', 'No title'),
-                            'summary': article.get('summary', '')[:200],
-                            'source': article.get('publisher', 'Unknown'),
-                            'published': datetime.fromtimestamp(article.get('providerPublishTime', 0)).strftime('%Y-%m-%d'),
-                            'url': article.get('link', '')
-                        })
-        except Exception as e:
-            print(f"Error fetching dividend news: {e}")
-
-        # Limit news to 10 items
-        news_items = news_items[:10]
+        # Don't sort - keep in original order
+        all_stocks = dividend_stocks
 
         print(f"\n📊 Dividend Data Summary:")
         print(f"✅ Successfully loaded: {len(all_stocks)} stocks")
@@ -2475,8 +2466,6 @@ def get_dividend_data():
         return jsonify({
             'success': True,
             'stocks': all_stocks,
-            'avg_yield': avg_yield,
-            'news': news_items,
             'loaded_count': len(all_stocks),
             'failed_count': len(failed_tickers),
             'failed_tickers': failed_tickers
