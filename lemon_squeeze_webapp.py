@@ -2351,23 +2351,25 @@ def get_challenges():
 def get_dividend_data():
     """Get top dividend stocks with yield, price, and news"""
     try:
-        # Top dividend stocks (known reliable dividend payers)
+        # Custom dividend stocks list
         dividend_tickers = [
+            ('O', 'Realty Income Corp', 'Monthly'),
+            ('CTRE', 'CareTrust REIT', 'Quarterly'),
+            ('GOOD', 'Gladstone Commercial Corp', 'Monthly'),
+            ('DX', 'Dynex Capital', 'Monthly'),
+            ('MAIN', 'Main Street Capital', 'Monthly'),
+            ('KO', 'Coca-Cola Company', 'Quarterly'),
+            ('JNJ', 'Johnson & Johnson', 'Quarterly'),
             ('T', 'AT&T Inc.', 'Quarterly'),
             ('VZ', 'Verizon Communications', 'Quarterly'),
-            ('O', 'Realty Income Corp', 'Monthly'),
+            ('JEPI', 'JPMorgan Equity Premium Income ETF', 'Monthly'),
+            ('STAG', 'STAG Industrial REIT', 'Monthly'),
+            ('EARN', 'Ellington Residential Mortgage REIT', 'Monthly'),
+            ('EPR', 'EPR Properties', 'Monthly'),
             ('AGNC', 'AGNC Investment Corp', 'Monthly'),
-            ('KO', 'Coca-Cola Company', 'Quarterly'),
-            ('PFE', 'Pfizer Inc.', 'Quarterly'),
-            ('MO', 'Altria Group', 'Quarterly'),
-            ('XOM', 'Exxon Mobil', 'Quarterly'),
-            ('CVX', 'Chevron Corporation', 'Quarterly'),
-            ('JNJ', 'Johnson & Johnson', 'Quarterly'),
-            ('PG', 'Procter & Gamble', 'Quarterly'),
-            ('ABBV', 'AbbVie Inc.', 'Quarterly'),
-            ('MMM', '3M Company', 'Quarterly'),
-            ('IBM', 'IBM Corporation', 'Quarterly'),
-            ('WBA', 'Walgreens Boots Alliance', 'Quarterly')
+            ('SPHD', 'Invesco S&P 500 High Dividend ETF', 'Quarterly'),
+            ('SDIV', 'Global X SuperDividend ETF', 'Monthly'),
+            ('UPS', 'United Parcel Service', 'Quarterly')
         ]
 
         dividend_stocks = []
@@ -2405,18 +2407,18 @@ def get_dividend_data():
                 print(f"Error fetching dividend data for {ticker_symbol}: {e}")
                 continue
 
-        # Sort by yield (highest first) and take top 10
+        # Sort by yield (highest first) - show all stocks
         dividend_stocks.sort(key=lambda x: x['yield'], reverse=True)
-        top_10 = dividend_stocks[:10]
+        all_stocks = dividend_stocks  # Show all available stocks
 
         # Calculate average yield
-        avg_yield = sum(s['yield'] for s in top_10) / len(top_10) if top_10 else 0
+        avg_yield = sum(s['yield'] for s in all_stocks) / len(all_stocks) if all_stocks else 0
 
         # Fetch dividend-related news
         news_items = []
         try:
             # Get news for top 3 dividend stocks
-            for stock in top_10[:3]:
+            for stock in all_stocks[:3]:
                 ticker = stock['ticker']
                 stock_data, _, _ = safe_yf_ticker(ticker)
                 if stock_data:
@@ -2437,7 +2439,7 @@ def get_dividend_data():
 
         return jsonify({
             'success': True,
-            'stocks': top_10,
+            'stocks': all_stocks,
             'avg_yield': avg_yield,
             'news': news_items
         })
