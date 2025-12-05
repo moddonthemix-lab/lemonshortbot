@@ -2196,6 +2196,215 @@ def lemonai_stats():
         print(f"❌ Stats error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/challenges', methods=['GET'])
+def get_challenges():
+    """Get current trading challenges (monthly and weekly)"""
+    try:
+        from datetime import date
+        from calendar import monthrange
+
+        today = date.today()
+        month_name = today.strftime('%B')
+        year = today.year
+
+        # Calculate end of month
+        last_day = monthrange(year, today.month)[1]
+        end_of_month = date(year, today.month, last_day)
+        days_left = (end_of_month - today).days
+
+        # Calculate end of week (Sunday)
+        days_until_sunday = (6 - today.weekday()) % 7
+        if days_until_sunday == 0:
+            days_until_sunday = 7
+        end_of_week = today + timedelta(days=days_until_sunday)
+
+        # Monthly challenge - changes each month
+        monthly_challenges = [
+            {
+                'title': '🎯 Pattern Master Challenge',
+                'description': 'Successfully identify and trade 20 3-1 Strat patterns this month. Focus on quality setups with proper confirmation.',
+                'target': 20,
+                'reward': '🏆 Pattern Master Badge',
+                'current_progress': 0
+            },
+            {
+                'title': '💰 Profit Goal Challenge',
+                'description': 'Achieve a 10% return on your trading account this month. Focus on risk management and consistent execution.',
+                'target': 10,
+                'reward': '🏆 Profit King Badge',
+                'current_progress': 0
+            },
+            {
+                'title': '📊 Volume Explorer',
+                'description': 'Find and analyze 50 high-volume opportunities using Volemon scanner this month.',
+                'target': 50,
+                'reward': '🏆 Volume Detective Badge',
+                'current_progress': 0
+            },
+            {
+                'title': '🤖 AI Assistant Challenge',
+                'description': 'Take 15 LemonAI recommendations and track their outcomes. Learn what makes winning trades.',
+                'target': 15,
+                'reward': '🏆 AI Trader Badge',
+                'current_progress': 0
+            }
+        ]
+
+        # Use month number to rotate challenges
+        monthly_challenge = monthly_challenges[today.month % len(monthly_challenges)]
+        monthly_challenge['end_date'] = f"{month_name} {last_day}"
+
+        # Weekly challenge - sometimes active, sometimes not
+        weekly_challenge = None
+        if today.day <= 21:  # Only first 3 weeks of month
+            weekly_challenges = [
+                {
+                    'title': '⚡ Quick Win Challenge',
+                    'description': 'Execute 5 winning day trades this week with at least 2% profit each.',
+                    'target': 5,
+                    'reward': '🎖️ Day Trader Badge',
+                    'current_progress': 0,
+                    'end_date': end_of_week.strftime('%B %d')
+                },
+                {
+                    'title': '🔥 Hot Streak Challenge',
+                    'description': 'Find 10 stocks with unusual volume (3x+ average) this week.',
+                    'target': 10,
+                    'reward': '🎖️ Volume Hunter Badge',
+                    'current_progress': 0,
+                    'end_date': end_of_week.strftime('%B %d')
+                },
+                {
+                    'title': '🎯 Precision Challenge',
+                    'description': 'Make 3 trades with 80%+ win rate this week.',
+                    'target': 3,
+                    'reward': '🎖️ Sniper Badge',
+                    'current_progress': 0,
+                    'end_date': end_of_week.strftime('%B %d')
+                }
+            ]
+            weekly_challenge = weekly_challenges[(today.isocalendar()[1]) % len(weekly_challenges)]
+
+        # User progress (placeholder - would be tracked in database)
+        progress = [
+            {
+                'challenge_name': monthly_challenge['title'],
+                'progress': 0,
+                'target': monthly_challenge['target'],
+                'completed': False
+            }
+        ]
+
+        return jsonify({
+            'success': True,
+            'monthly': monthly_challenge,
+            'weekly': weekly_challenge,
+            'progress': progress
+        })
+
+    except Exception as e:
+        print(f"❌ Challenges error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/dividend-data', methods=['GET'])
+def get_dividend_data():
+    """Get top dividend stocks with yield, price, and news"""
+    try:
+        # Top dividend stocks (known reliable dividend payers)
+        dividend_tickers = [
+            ('T', 'AT&T Inc.', 'Quarterly'),
+            ('VZ', 'Verizon Communications', 'Quarterly'),
+            ('O', 'Realty Income Corp', 'Monthly'),
+            ('AGNC', 'AGNC Investment Corp', 'Monthly'),
+            ('KO', 'Coca-Cola Company', 'Quarterly'),
+            ('PFE', 'Pfizer Inc.', 'Quarterly'),
+            ('MO', 'Altria Group', 'Quarterly'),
+            ('XOM', 'Exxon Mobil', 'Quarterly'),
+            ('CVX', 'Chevron Corporation', 'Quarterly'),
+            ('JNJ', 'Johnson & Johnson', 'Quarterly'),
+            ('PG', 'Procter & Gamble', 'Quarterly'),
+            ('ABBV', 'AbbVie Inc.', 'Quarterly'),
+            ('MMM', '3M Company', 'Quarterly'),
+            ('IBM', 'IBM Corporation', 'Quarterly'),
+            ('WBA', 'Walgreens Boots Alliance', 'Quarterly')
+        ]
+
+        dividend_stocks = []
+
+        for ticker_symbol, name, frequency in dividend_tickers:
+            try:
+                stock_data, hist, info = safe_yf_ticker(ticker_symbol)
+
+                if stock_data is None or hist is None or hist.empty:
+                    continue
+
+                current_price = hist['Close'].iloc[-1]
+
+                # Get dividend info
+                dividend_rate = info.get('dividendRate', 0)
+                dividend_yield = info.get('dividendYield', 0)
+
+                if dividend_rate > 0 and current_price > 0:
+                    # Calculate yield if not provided
+                    if dividend_yield == 0:
+                        dividend_yield = (dividend_rate / current_price) * 100
+                    else:
+                        dividend_yield = dividend_yield * 100  # Convert to percentage
+
+                    dividend_stocks.append({
+                        'ticker': ticker_symbol,
+                        'name': name,
+                        'price': float(current_price),
+                        'annual_dividend': float(dividend_rate),
+                        'yield': float(dividend_yield),
+                        'frequency': frequency
+                    })
+
+            except Exception as e:
+                print(f"Error fetching dividend data for {ticker_symbol}: {e}")
+                continue
+
+        # Sort by yield (highest first) and take top 10
+        dividend_stocks.sort(key=lambda x: x['yield'], reverse=True)
+        top_10 = dividend_stocks[:10]
+
+        # Calculate average yield
+        avg_yield = sum(s['yield'] for s in top_10) / len(top_10) if top_10 else 0
+
+        # Fetch dividend-related news
+        news_items = []
+        try:
+            # Get news for top 3 dividend stocks
+            for stock in top_10[:3]:
+                ticker = stock['ticker']
+                stock_data, _, _ = safe_yf_ticker(ticker)
+                if stock_data:
+                    news = stock_data.news[:2]  # Get 2 latest news items
+                    for article in news:
+                        news_items.append({
+                            'title': article.get('title', 'No title'),
+                            'summary': article.get('summary', '')[:200],
+                            'source': article.get('publisher', 'Unknown'),
+                            'published': datetime.fromtimestamp(article.get('providerPublishTime', 0)).strftime('%Y-%m-%d'),
+                            'url': article.get('link', '')
+                        })
+        except Exception as e:
+            print(f"Error fetching dividend news: {e}")
+
+        # Limit news to 10 items
+        news_items = news_items[:10]
+
+        return jsonify({
+            'success': True,
+            'stocks': top_10,
+            'avg_yield': avg_yield,
+            'news': news_items
+        })
+
+    except Exception as e:
+        print(f"❌ Dividend data error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 def auto_run_scans_for_lemonai():
     """Auto-run scans to populate data for LemonAI recommendations - ALWAYS finds plays"""
     try:

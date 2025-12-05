@@ -1372,6 +1372,12 @@
             <button class="tab-button" onclick="switchTab('lemonai')">
                 🤖 LemonAI
             </button>
+            <button class="tab-button" onclick="switchTab('challenges')">
+                🏆 Challenges
+            </button>
+            <button class="tab-button" onclick="switchTab('lemonade')">
+                🥤 Lemonade Stand
+            </button>
             <button class="tab-button" onclick="switchTab('howto')">
                 📚 How to Use
             </button>
@@ -1803,6 +1809,127 @@
 
                         Always conduct your own research, understand the risks, and consult with a licensed financial advisor before making any trades.
                     </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Challenges Tab -->
+        <div id="challengesTab" class="tab-content">
+            <div class="content">
+                <div class="settings-panel">
+                    <h2>🏆 Trading Challenges</h2>
+                    <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 25px; border-radius: 15px; color: white; margin-bottom: 20px;">
+                        <p style="font-size: 1.3em; font-weight: bold; margin-bottom: 10px;">
+                            🎯 Test Your Skills & Compete!
+                        </p>
+                        <p style="font-size: 1.1em; line-height: 1.6;">
+                            Complete trading challenges to improve your skills and compete with other traders. Track your progress and earn achievements!
+                        </p>
+                    </div>
+
+                    <!-- Monthly Challenge -->
+                    <div id="monthlyChallengeSection" style="margin-bottom: 30px;">
+                        <div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); padding: 20px; border-radius: 12px; color: white;">
+                            <h3 style="margin: 0 0 15px 0; font-size: 1.4em;">📅 Monthly Challenge</h3>
+                            <div id="monthlyChallengeContent" style="background: rgba(255,255,255,0.15); padding: 20px; border-radius: 10px;">
+                                <div style="text-align: center;">
+                                    <div style="font-size: 1.2em; margin-bottom: 10px;">Loading monthly challenge...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Weekly Challenge -->
+                    <div id="weeklyChallengeSection" style="margin-bottom: 30px;">
+                        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 20px; border-radius: 12px; color: white;">
+                            <h3 style="margin: 0 0 15px 0; font-size: 1.4em;">⚡ Weekly Challenge</h3>
+                            <div id="weeklyChallengeContent" style="background: rgba(255,255,255,0.15); padding: 20px; border-radius: 10px;">
+                                <div style="text-align: center;">
+                                    <div style="font-size: 1.2em; margin-bottom: 10px;">Loading weekly challenge...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Challenge Progress -->
+                    <div id="challengeProgressSection">
+                        <div style="background: rgba(59, 130, 246, 0.1); padding: 20px; border-radius: 12px; border: 2px solid #3b82f6;">
+                            <h3 style="margin: 0 0 15px 0; font-size: 1.3em; color: #3b82f6;">📊 Your Progress</h3>
+                            <div id="challengeProgressContent">
+                                <div style="text-align: center; padding: 20px; color: #666;">
+                                    Start completing challenges to track your progress!
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="loadChallenges()" class="scan-button" style="margin-top: 20px;">
+                        🔄 Refresh Challenges
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lemonade Stand Tab -->
+        <div id="lemonadeTab" class="tab-content">
+            <div class="content">
+                <div class="settings-panel">
+                    <h2>🥤 Lemonade Stand - Dividend Income</h2>
+                    <div style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); padding: 25px; border-radius: 15px; color: white; margin-bottom: 20px;">
+                        <p style="font-size: 1.3em; font-weight: bold; margin-bottom: 10px;">
+                            💰 Build Your Passive Income Stream
+                        </p>
+                        <p style="font-size: 1.1em; line-height: 1.6;">
+                            Discover the top dividend-paying stocks and see how much monthly income you can generate from a $1,000 investment.
+                        </p>
+                    </div>
+
+                    <!-- Monthly Income Calculator -->
+                    <div style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); padding: 20px; border-radius: 12px; color: white; margin-bottom: 20px;">
+                        <h3 style="margin: 0 0 15px 0; font-size: 1.4em;">💵 Income Calculator</h3>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                            <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 10px; text-align: center;">
+                                <div style="font-size: 0.9em; opacity: 0.9; margin-bottom: 5px;">$1,000 Investment</div>
+                                <div style="font-size: 2em; font-weight: bold;" id="monthlyIncome1k">$--</div>
+                                <div style="font-size: 0.85em; opacity: 0.8;">per month</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 10px; text-align: center;">
+                                <div style="font-size: 0.9em; opacity: 0.9; margin-bottom: 5px;">Annual Yield</div>
+                                <div style="font-size: 2em; font-weight: bold;" id="avgYield">--%</div>
+                                <div style="font-size: 0.85em; opacity: 0.8;">average</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Top 10 Dividend Stocks -->
+                    <div style="background: rgba(99, 102, 241, 0.1); padding: 20px; border-radius: 12px; border: 2px solid #6366f1; margin-bottom: 20px;">
+                        <h3 style="margin: 0 0 15px 0; font-size: 1.3em; color: #6366f1;">🏆 Top 10 Dividend Stocks</h3>
+                        <div id="dividendStocksList">
+                            <div style="text-align: center; padding: 20px; color: #666;">
+                                Loading dividend stocks...
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dividend Chart -->
+                    <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <h3 style="margin: 0 0 15px 0; font-size: 1.3em; color: #333;">📈 Yield Comparison Chart</h3>
+                        <canvas id="dividendChart" style="max-height: 400px;"></canvas>
+                    </div>
+
+                    <!-- Dividend News -->
+                    <div style="background: rgba(234, 88, 12, 0.1); padding: 20px; border-radius: 12px; border: 2px solid #ea580c; margin-bottom: 20px;">
+                        <h3 style="margin: 0 0 15px 0; font-size: 1.3em; color: #ea580c;">📰 Dividend News</h3>
+                        <div id="dividendNewsList">
+                            <div style="text-align: center; padding: 20px; color: #666;">
+                                Loading dividend news...
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="loadDividendData()" class="scan-button">
+                        🔄 Refresh Dividend Data
+                    </button>
                 </div>
             </div>
         </div>
@@ -3741,13 +3868,20 @@
                 }
                 // Start auto-refresh for real-time updates
                 startLemonAIAutoRefresh();
+            } else if (tab === 'challenges') {
+                document.getElementById('challengesTab').classList.add('active');
+                // Auto-load challenges when tab is opened
+                loadChallenges();
+            } else if (tab === 'lemonade') {
+                document.getElementById('lemonadeTab').classList.add('active');
+                // Auto-load dividend data when tab is opened
+                loadDividendData();
             } else if (tab === 'howto') {
-                document.getElementById('lemonaiTab').classList.remove('active');
-                // Stop auto-refresh when leaving LemonAI tab
-                stopLemonAIAutoRefresh();
+                document.getElementById('howtoTab').classList.add('active');
             }
+
+            // Stop auto-refresh when switching away from LemonAI tab
             if (tab !== 'lemonai') {
-                // Stop auto-refresh when switching to any other tab
                 stopLemonAIAutoRefresh();
             }
         }
@@ -5948,6 +6082,325 @@
                 console.error('Error deleting message:', error);
                 alert('❌ Failed to delete message');
             }
+        }
+
+        // ===== CHALLENGES =====
+        let challengesChart = null;
+
+        async function loadChallenges() {
+            try {
+                const response = await fetch('/api/challenges', { method: 'GET' });
+                const data = await response.json();
+
+                if (data.success) {
+                    displayChallenges(data);
+                } else {
+                    console.error('Failed to load challenges:', data.error);
+                    document.getElementById('monthlyChallengeContent').innerHTML = `
+                        <div style="text-align: center; color: #fca5a5;">
+                            ❌ Failed to load challenges
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading challenges:', error);
+                document.getElementById('monthlyChallengeContent').innerHTML = `
+                    <div style="text-align: center; color: #fca5a5;">
+                        ❌ Error loading challenges
+                    </div>
+                `;
+            }
+        }
+
+        function displayChallenges(data) {
+            // Display Monthly Challenge
+            if (data.monthly) {
+                const monthly = data.monthly;
+                const progressPct = monthly.current_progress ?
+                    Math.min(100, (monthly.current_progress / monthly.target) * 100).toFixed(1) : 0;
+
+                document.getElementById('monthlyChallengeContent').innerHTML = `
+                    <div style="margin-bottom: 15px;">
+                        <div style="font-size: 1.4em; font-weight: bold; margin-bottom: 10px;">
+                            ${monthly.title}
+                        </div>
+                        <div style="font-size: 1.1em; opacity: 0.95; margin-bottom: 15px; line-height: 1.5;">
+                            ${monthly.description}
+                        </div>
+                        <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                                <span style="font-size: 1.1em;">🎯 Target: <strong>${monthly.target}</strong></span>
+                                <span style="font-size: 1.1em;">📊 Progress: <strong>${monthly.current_progress || 0}</strong></span>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.3); border-radius: 10px; height: 30px; overflow: hidden;">
+                                <div style="background: linear-gradient(90deg, #6ee7b7, #10b981); height: 100%; width: ${progressPct}%; transition: width 0.5s; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.9em;">
+                                    ${progressPct}%
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px;">
+                            <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.85em; opacity: 0.9;">Reward</div>
+                                <div style="font-size: 1.2em; font-weight: bold;">${monthly.reward}</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.85em; opacity: 0.9;">Ends</div>
+                                <div style="font-size: 1.2em; font-weight: bold;">${monthly.end_date}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Display Weekly Challenge
+            if (data.weekly) {
+                const weekly = data.weekly;
+                const progressPct = weekly.current_progress ?
+                    Math.min(100, (weekly.current_progress / weekly.target) * 100).toFixed(1) : 0;
+
+                document.getElementById('weeklyChallengeContent').innerHTML = `
+                    <div style="margin-bottom: 15px;">
+                        <div style="font-size: 1.4em; font-weight: bold; margin-bottom: 10px;">
+                            ${weekly.title}
+                        </div>
+                        <div style="font-size: 1.1em; opacity: 0.95; margin-bottom: 15px; line-height: 1.5;">
+                            ${weekly.description}
+                        </div>
+                        <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                                <span style="font-size: 1.1em;">🎯 Target: <strong>${weekly.target}</strong></span>
+                                <span style="font-size: 1.1em;">📊 Progress: <strong>${weekly.current_progress || 0}</strong></span>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.3); border-radius: 10px; height: 30px; overflow: hidden;">
+                                <div style="background: linear-gradient(90deg, #6ee7b7, #10b981); height: 100%; width: ${progressPct}%; transition: width 0.5s; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.9em;">
+                                    ${progressPct}%
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px;">
+                            <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.85em; opacity: 0.9;">Reward</div>
+                                <div style="font-size: 1.2em; font-weight: bold;">${weekly.reward}</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.85em; opacity: 0.9;">Ends</div>
+                                <div style="font-size: 1.2em; font-weight: bold;">${weekly.end_date}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                document.getElementById('weeklyChallengeContent').innerHTML = `
+                    <div style="text-align: center; opacity: 0.8;">
+                        <div style="font-size: 1.5em; margin-bottom: 10px;">⏸️</div>
+                        <div style="font-size: 1.1em;">No weekly challenge this week</div>
+                        <div style="font-size: 0.95em; margin-top: 5px;">Check back next week!</div>
+                    </div>
+                `;
+            }
+
+            // Display Progress
+            if (data.progress && data.progress.length > 0) {
+                let progressHTML = '<div style="display: grid; gap: 10px;">';
+                data.progress.forEach(p => {
+                    const statusColor = p.completed ? '#10b981' : '#f59e0b';
+                    const statusIcon = p.completed ? '✅' : '⏳';
+                    progressHTML += `
+                        <div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid ${statusColor};">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="font-weight: bold; color: #333; margin-bottom: 5px;">
+                                        ${statusIcon} ${p.challenge_name}
+                                    </div>
+                                    <div style="color: #666; font-size: 0.9em;">
+                                        ${p.progress} / ${p.target}
+                                    </div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="color: ${statusColor}; font-weight: bold;">
+                                        ${Math.min(100, (p.progress / p.target * 100)).toFixed(0)}%
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                progressHTML += '</div>';
+                document.getElementById('challengeProgressContent').innerHTML = progressHTML;
+            }
+        }
+
+        // ===== LEMONADE STAND (DIVIDEND TRACKER) =====
+        let dividendChart = null;
+
+        async function loadDividendData() {
+            try {
+                const response = await fetch('/api/dividend-data', { method: 'GET' });
+                const data = await response.json();
+
+                if (data.success) {
+                    displayDividendData(data);
+                } else {
+                    console.error('Failed to load dividend data:', data.error);
+                    document.getElementById('dividendStocksList').innerHTML = `
+                        <div style="text-align: center; color: #ef4444;">
+                            ❌ Failed to load dividend data
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading dividend data:', error);
+                document.getElementById('dividendStocksList').innerHTML = `
+                    <div style="text-align: center; color: #ef4444;">
+                        ❌ Error loading dividend data
+                    </div>
+                `;
+            }
+        }
+
+        function displayDividendData(data) {
+            // Update income calculator
+            if (data.avg_yield) {
+                const monthlyIncome = (1000 * (data.avg_yield / 100) / 12);
+                document.getElementById('monthlyIncome1k').textContent = `$${monthlyIncome.toFixed(2)}`;
+                document.getElementById('avgYield').textContent = `${data.avg_yield.toFixed(2)}%`;
+            }
+
+            // Display top 10 dividend stocks
+            if (data.stocks && data.stocks.length > 0) {
+                let stocksHTML = '<div style="display: grid; gap: 12px;">';
+
+                data.stocks.forEach((stock, idx) => {
+                    const monthlyIncome = ((1000 / stock.price) * stock.annual_dividend / 12);
+                    const bgColor = idx < 3 ? 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)' : 'white';
+                    const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '';
+
+                    stocksHTML += `
+                        <div style="background: ${bgColor}; padding: 15px; border-radius: 10px; border: 2px solid ${idx < 3 ? '#f59e0b' : '#e5e7eb'};">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div style="flex: 1;">
+                                    <div style="font-size: 1.2em; font-weight: bold; color: #333; margin-bottom: 5px;">
+                                        ${medal} ${stock.ticker} - ${stock.name}
+                                    </div>
+                                    <div style="color: #666; font-size: 0.95em; margin-bottom: 8px;">
+                                        Price: $${stock.price.toFixed(2)} | Annual Dividend: $${stock.annual_dividend.toFixed(2)}
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px;">
+                                        <div style="background: rgba(34, 197, 94, 0.15); padding: 10px; border-radius: 6px; text-align: center;">
+                                            <div style="font-size: 0.85em; color: #666;">Yield</div>
+                                            <div style="font-size: 1.3em; font-weight: bold; color: #16a34a;">
+                                                ${stock.yield.toFixed(2)}%
+                                            </div>
+                                        </div>
+                                        <div style="background: rgba(59, 130, 246, 0.15); padding: 10px; border-radius: 6px; text-align: center;">
+                                            <div style="font-size: 0.85em; color: #666;">Monthly from $1k</div>
+                                            <div style="font-size: 1.3em; font-weight: bold; color: #2563eb;">
+                                                $${monthlyIncome.toFixed(2)}
+                                            </div>
+                                        </div>
+                                        <div style="background: rgba(168, 85, 247, 0.15); padding: 10px; border-radius: 6px; text-align: center;">
+                                            <div style="font-size: 0.85em; color: #666;">Payout Frequency</div>
+                                            <div style="font-size: 1.3em; font-weight: bold; color: #7c3aed;">
+                                                ${stock.frequency}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                stocksHTML += '</div>';
+                document.getElementById('dividendStocksList').innerHTML = stocksHTML;
+            }
+
+            // Create dividend chart
+            if (data.stocks && data.stocks.length > 0) {
+                createDividendChart(data.stocks);
+            }
+
+            // Display dividend news
+            if (data.news && data.news.length > 0) {
+                let newsHTML = '<div style="display: grid; gap: 12px;">';
+
+                data.news.forEach(article => {
+                    newsHTML += `
+                        <div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #ea580c;">
+                            <div style="font-weight: bold; color: #333; margin-bottom: 8px; font-size: 1.1em;">
+                                📰 ${article.title}
+                            </div>
+                            <div style="color: #666; margin-bottom: 8px; line-height: 1.5;">
+                                ${article.summary || 'No summary available'}
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9em; color: #999;">
+                                <span>${article.source}</span>
+                                <span>${article.published}</span>
+                            </div>
+                            ${article.url ? `<a href="${article.url}" target="_blank" style="display: inline-block; margin-top: 10px; color: #ea580c; text-decoration: none; font-weight: bold;">Read More →</a>` : ''}
+                        </div>
+                    `;
+                });
+
+                newsHTML += '</div>';
+                document.getElementById('dividendNewsList').innerHTML = newsHTML;
+            } else {
+                document.getElementById('dividendNewsList').innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: #666;">
+                        📰 No dividend news available at the moment
+                    </div>
+                `;
+            }
+        }
+
+        function createDividendChart(stocks) {
+            const ctx = document.getElementById('dividendChart');
+
+            if (dividendChart) {
+                dividendChart.destroy();
+            }
+
+            const labels = stocks.map(s => s.ticker);
+            const yields = stocks.map(s => s.yield);
+            const colors = stocks.map((_, idx) =>
+                idx < 3 ? '#f59e0b' : '#3b82f6'
+            );
+
+            dividendChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Dividend Yield (%)',
+                        data: yields,
+                        backgroundColor: colors,
+                        borderColor: colors,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Yield (%)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Top 10 Dividend Yields'
+                        }
+                    }
+                }
+            });
         }
     </script>
 </body>
