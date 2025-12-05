@@ -2387,28 +2387,48 @@ def get_dividend_data():
 
                 current_price = hist['Close'].iloc[-1]
 
-                # Get dividend info
+                # Get dividend info - try multiple methods
                 dividend_rate = info.get('dividendRate', 0)
                 dividend_yield = info.get('dividendYield', 0)
+                trailing_annual_dividend = info.get('trailingAnnualDividendRate', 0)
+
+                # Use trailing annual dividend if dividendRate is not available
+                if dividend_rate == 0 and trailing_annual_dividend > 0:
+                    dividend_rate = trailing_annual_dividend
+
+                # Debug logging
+                print(f"  Price: ${current_price:.2f}, DivRate: ${dividend_rate:.4f}, DivYield: {dividend_yield:.6f}")
 
                 if dividend_rate > 0 and current_price > 0:
-                    # Calculate yield if not provided
-                    if dividend_yield == 0:
-                        dividend_yield = (dividend_rate / current_price) * 100
+                    # Calculate yield - Yahoo Finance returns dividendYield as decimal (e.g., 0.05 = 5%)
+                    if dividend_yield == 0 or dividend_yield is None:
+                        # Calculate manually
+                        calculated_yield = (dividend_rate / current_price) * 100
                     else:
-                        dividend_yield = dividend_yield * 100  # Convert to percentage
+                        # Yahoo returns as decimal, so multiply by 100
+                        calculated_yield = dividend_yield * 100
+
+                    # Sanity check: yields above 50% are usually data errors
+                    if calculated_yield > 50:
+                        print(f"⚠️ {ticker_symbol}: Suspiciously high yield {calculated_yield:.2f}% - might be bad data")
+                        # Try recalculating
+                        calculated_yield = (dividend_rate / current_price) * 100
+                        if calculated_yield > 50:
+                            print(f"⚠️ {ticker_symbol}: Still high after recalc - skipping")
+                            failed_tickers.append(ticker_symbol)
+                            continue
 
                     dividend_stocks.append({
                         'ticker': ticker_symbol,
                         'name': name,
                         'price': float(current_price),
                         'annual_dividend': float(dividend_rate),
-                        'yield': float(dividend_yield),
+                        'yield': float(calculated_yield),
                         'frequency': frequency
                     })
-                    print(f"✅ {ticker_symbol}: {dividend_yield:.2f}% yield")
+                    print(f"✅ {ticker_symbol}: {calculated_yield:.2f}% yield (${dividend_rate:.2f} annual)")
                 else:
-                    print(f"⚠️ {ticker_symbol}: No dividend data available")
+                    print(f"⚠️ {ticker_symbol}: No dividend data available (rate={dividend_rate}, price={current_price})")
                     failed_tickers.append(ticker_symbol)
 
             except Exception as e:
