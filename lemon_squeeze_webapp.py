@@ -2198,7 +2198,7 @@ def lemonai_stats():
 
 @app.route('/api/challenges', methods=['GET'])
 def get_challenges():
-    """Get current trading challenges (monthly and weekly)"""
+    """Get current trading challenges (multi-week and weekly)"""
     try:
         from datetime import date
         from calendar import monthrange
@@ -2207,10 +2207,9 @@ def get_challenges():
         month_name = today.strftime('%B')
         year = today.year
 
-        # Calculate end of month
+        # Calculate end dates
         last_day = monthrange(year, today.month)[1]
         end_of_month = date(year, today.month, last_day)
-        days_left = (end_of_month - today).days
 
         # Calculate end of week (Sunday)
         days_until_sunday = (6 - today.weekday()) % 7
@@ -2218,87 +2217,129 @@ def get_challenges():
             days_until_sunday = 7
         end_of_week = today + timedelta(days=days_until_sunday)
 
-        # Monthly challenge - changes each month
-        monthly_challenges = [
+        # Calculate 2 weeks from now
+        two_weeks = today + timedelta(days=14)
+
+        # Calculate 3 weeks from now
+        three_weeks = today + timedelta(days=21)
+
+        # MULTI-WEEK CHALLENGES (Longer term)
+        multi_week_challenges = [
             {
-                'title': '🎯 Pattern Master Challenge',
-                'description': 'Successfully identify and trade 20 3-1 Strat patterns this month. Focus on quality setups with proper confirmation.',
-                'target': 20,
-                'reward': '🏆 Pattern Master Badge',
-                'current_progress': 0
+                'title': '💰 100 to 1K Challenge',
+                'description': 'Turn $100 into $1,000 in 3 weeks. Focus on consistent gains and smart risk management.',
+                'duration': '3 weeks',
+                'target': '$1,000',
+                'starting_amount': '$100',
+                'reward': '🏆 10x Trader Badge',
+                'current_progress': '$100',
+                'end_date': three_weeks.strftime('%B %d')
             },
             {
-                'title': '💰 Profit Goal Challenge',
-                'description': 'Achieve a 10% return on your trading account this month. Focus on risk management and consistent execution.',
-                'target': 10,
-                'reward': '🏆 Profit King Badge',
-                'current_progress': 0
+                'title': '🚀 1K to 10K Challenge',
+                'description': 'Grow $1,000 to $10,000 in 1 month. Master risk management and compound your gains.',
+                'duration': '1 month',
+                'target': '$10,000',
+                'starting_amount': '$1,000',
+                'reward': '🏆 10x Master Badge',
+                'current_progress': '$1,000',
+                'end_date': end_of_month.strftime('%B %d')
             },
             {
-                'title': '📊 Volume Explorer',
-                'description': 'Find and analyze 50 high-volume opportunities using Volemon scanner this month.',
-                'target': 50,
-                'reward': '🏆 Volume Detective Badge',
-                'current_progress': 0
-            },
-            {
-                'title': '🤖 AI Assistant Challenge',
-                'description': 'Take 15 LemonAI recommendations and track their outcomes. Learn what makes winning trades.',
-                'target': 15,
-                'reward': '🏆 AI Trader Badge',
-                'current_progress': 0
+                'title': '💎 Double Up Challenge',
+                'description': '2x your investment in 2 weeks. Focus on high-probability setups and discipline.',
+                'duration': '2 weeks',
+                'target': '2x',
+                'starting_amount': 'Your choice',
+                'reward': '🏆 Doubler Badge',
+                'current_progress': '1x',
+                'end_date': two_weeks.strftime('%B %d')
             }
         ]
 
-        # Use month number to rotate challenges
-        monthly_challenge = monthly_challenges[today.month % len(monthly_challenges)]
-        monthly_challenge['end_date'] = f"{month_name} {last_day}"
-
-        # Weekly challenge - sometimes active, sometimes not
-        weekly_challenge = None
-        if today.day <= 21:  # Only first 3 weeks of month
-            weekly_challenges = [
-                {
-                    'title': '⚡ Quick Win Challenge',
-                    'description': 'Execute 5 winning day trades this week with at least 2% profit each.',
-                    'target': 5,
-                    'reward': '🎖️ Day Trader Badge',
-                    'current_progress': 0,
-                    'end_date': end_of_week.strftime('%B %d')
-                },
-                {
-                    'title': '🔥 Hot Streak Challenge',
-                    'description': 'Find 10 stocks with unusual volume (3x+ average) this week.',
-                    'target': 10,
-                    'reward': '🎖️ Volume Hunter Badge',
-                    'current_progress': 0,
-                    'end_date': end_of_week.strftime('%B %d')
-                },
-                {
-                    'title': '🎯 Precision Challenge',
-                    'description': 'Make 3 trades with 80%+ win rate this week.',
-                    'target': 3,
-                    'reward': '🎖️ Sniper Badge',
-                    'current_progress': 0,
-                    'end_date': end_of_week.strftime('%B %d')
-                }
-            ]
-            weekly_challenge = weekly_challenges[(today.isocalendar()[1]) % len(weekly_challenges)]
+        # WEEKLY CHALLENGES (This week)
+        weekly_challenges = [
+            {
+                'title': '📈 50% Day Trade',
+                'description': 'Make 50% profit on a day trade this week. Enter and exit same day.',
+                'duration': 'This week',
+                'target': '50%',
+                'reward': '🎖️ Day Trader Pro',
+                'current_progress': '0%',
+                'end_date': end_of_week.strftime('%B %d')
+            },
+            {
+                'title': '📊 50% Swing Trade',
+                'description': 'Make 50% profit on a swing trade this week. Hold for multiple days.',
+                'duration': 'This week',
+                'target': '50%',
+                'reward': '🎖️ Swing Trader Pro',
+                'current_progress': '0%',
+                'end_date': end_of_week.strftime('%B %d')
+            },
+            {
+                'title': '🎯 3-1 Strat Week',
+                'description': 'Trade only 3-1 Strat patterns this week. Master the setup.',
+                'duration': 'This week',
+                'target': '5 trades',
+                'reward': '🎖️ 3-1 Specialist',
+                'current_progress': '0',
+                'end_date': end_of_week.strftime('%B %d')
+            },
+            {
+                'title': '📉 Inside Bar (1s) Week',
+                'description': 'Trade only Inside Bar (1) patterns this week. Perfect your timing.',
+                'duration': 'This week',
+                'target': '5 trades',
+                'reward': '🎖️ Inside Bar Master',
+                'current_progress': '0',
+                'end_date': end_of_week.strftime('%B %d')
+            },
+            {
+                'title': '⚡ 25% Day Trade',
+                'description': 'Make 25% or more on a day trade this week. Quick profits.',
+                'duration': 'This week',
+                'target': '25%',
+                'reward': '🎖️ Quick Gainer',
+                'current_progress': '0%',
+                'end_date': end_of_week.strftime('%B %d')
+            },
+            {
+                'title': '💹 25% Swing Trade',
+                'description': 'Make 25% or more on a swing trade this week. Patient profits.',
+                'duration': 'This week',
+                'target': '25%',
+                'reward': '🎖️ Swing Master',
+                'current_progress': '0%',
+                'end_date': end_of_week.strftime('%B %d')
+            },
+            {
+                'title': '🤖 LemonAI Day Trade 25%',
+                'description': 'Day trade a LemonAI recommendation and make 25%+ profit.',
+                'duration': 'This week',
+                'target': '25%',
+                'reward': '🎖️ AI Day Trader',
+                'current_progress': '0%',
+                'end_date': end_of_week.strftime('%B %d')
+            },
+            {
+                'title': '🤖 LemonAI Swing Trade 25%',
+                'description': 'Swing trade a LemonAI recommendation and make 25%+ profit.',
+                'duration': 'This week',
+                'target': '25%',
+                'reward': '🎖️ AI Swing Trader',
+                'current_progress': '0%',
+                'end_date': end_of_week.strftime('%B %d')
+            }
+        ]
 
         # User progress (placeholder - would be tracked in database)
-        progress = [
-            {
-                'challenge_name': monthly_challenge['title'],
-                'progress': 0,
-                'target': monthly_challenge['target'],
-                'completed': False
-            }
-        ]
+        progress = []
 
         return jsonify({
             'success': True,
-            'monthly': monthly_challenge,
-            'weekly': weekly_challenge,
+            'multi_week': multi_week_challenges,
+            'weekly': weekly_challenges,
             'progress': progress
         })
 

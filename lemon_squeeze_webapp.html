@@ -1827,25 +1827,25 @@
                         </p>
                     </div>
 
-                    <!-- Monthly Challenge -->
-                    <div id="monthlyChallengeSection" style="margin-bottom: 30px;">
+                    <!-- Multi-Week Challenges -->
+                    <div id="multiWeekChallengeSection" style="margin-bottom: 30px;">
                         <div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); padding: 20px; border-radius: 12px; color: white;">
-                            <h3 style="margin: 0 0 15px 0; font-size: 1.4em;">📅 Monthly Challenge</h3>
-                            <div id="monthlyChallengeContent" style="background: rgba(255,255,255,0.15); padding: 20px; border-radius: 10px;">
+                            <h3 style="margin: 0 0 15px 0; font-size: 1.4em;">🎯 Multi-Week Challenges</h3>
+                            <div id="multiWeekChallengeContent">
                                 <div style="text-align: center;">
-                                    <div style="font-size: 1.2em; margin-bottom: 10px;">Loading monthly challenge...</div>
+                                    <div style="font-size: 1.2em; margin-bottom: 10px;">Loading multi-week challenges...</div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Weekly Challenge -->
+                    <!-- Weekly Challenges -->
                     <div id="weeklyChallengeSection" style="margin-bottom: 30px;">
                         <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 20px; border-radius: 12px; color: white;">
-                            <h3 style="margin: 0 0 15px 0; font-size: 1.4em;">⚡ Weekly Challenge</h3>
-                            <div id="weeklyChallengeContent" style="background: rgba(255,255,255,0.15); padding: 20px; border-radius: 10px;">
+                            <h3 style="margin: 0 0 15px 0; font-size: 1.4em;">⚡ Weekly Challenges</h3>
+                            <div id="weeklyChallengeContent">
                                 <div style="text-align: center;">
-                                    <div style="font-size: 1.2em; margin-bottom: 10px;">Loading weekly challenge...</div>
+                                    <div style="font-size: 1.2em; margin-bottom: 10px;">Loading weekly challenges...</div>
                                 </div>
                             </div>
                         </div>
@@ -6096,7 +6096,7 @@
                     displayChallenges(data);
                 } else {
                     console.error('Failed to load challenges:', data.error);
-                    document.getElementById('monthlyChallengeContent').innerHTML = `
+                    document.getElementById('multiWeekChallengeContent').innerHTML = `
                         <div style="text-align: center; color: #fca5a5;">
                             ❌ Failed to load challenges
                         </div>
@@ -6104,7 +6104,7 @@
                 }
             } catch (error) {
                 console.error('Error loading challenges:', error);
-                document.getElementById('monthlyChallengeContent').innerHTML = `
+                document.getElementById('multiWeekChallengeContent').innerHTML = `
                     <div style="text-align: center; color: #fca5a5;">
                         ❌ Error loading challenges
                     </div>
@@ -6113,90 +6113,82 @@
         }
 
         function displayChallenges(data) {
-            // Display Monthly Challenge
-            if (data.monthly) {
-                const monthly = data.monthly;
-                const progressPct = monthly.current_progress ?
-                    Math.min(100, (monthly.current_progress / monthly.target) * 100).toFixed(1) : 0;
+            // Display Multi-Week Challenges
+            if (data.multi_week && data.multi_week.length > 0) {
+                let multiWeekHTML = '<div style="display: grid; gap: 15px;">';
 
-                document.getElementById('monthlyChallengeContent').innerHTML = `
-                    <div style="margin-bottom: 15px;">
-                        <div style="font-size: 1.4em; font-weight: bold; margin-bottom: 10px;">
-                            ${monthly.title}
-                        </div>
-                        <div style="font-size: 1.1em; opacity: 0.95; margin-bottom: 15px; line-height: 1.5;">
-                            ${monthly.description}
-                        </div>
-                        <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                <span style="font-size: 1.1em;">🎯 Target: <strong>${monthly.target}</strong></span>
-                                <span style="font-size: 1.1em;">📊 Progress: <strong>${monthly.current_progress || 0}</strong></span>
+                data.multi_week.forEach(challenge => {
+                    multiWeekHTML += `
+                        <div style="background: rgba(255,255,255,0.15); padding: 20px; border-radius: 10px;">
+                            <div style="font-size: 1.3em; font-weight: bold; margin-bottom: 8px;">
+                                ${challenge.title}
                             </div>
-                            <div style="background: rgba(255,255,255,0.3); border-radius: 10px; height: 30px; overflow: hidden;">
-                                <div style="background: linear-gradient(90deg, #6ee7b7, #10b981); height: 100%; width: ${progressPct}%; transition: width 0.5s; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.9em;">
-                                    ${progressPct}%
+                            <div style="font-size: 1em; opacity: 0.95; margin-bottom: 12px; line-height: 1.5;">
+                                ${challenge.description}
+                            </div>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin-bottom: 12px;">
+                                <div style="background: rgba(255,255,255,0.2); padding: 10px; border-radius: 6px; text-align: center;">
+                                    <div style="font-size: 0.8em; opacity: 0.85;">Duration</div>
+                                    <div style="font-size: 1.1em; font-weight: bold;">${challenge.duration}</div>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.2); padding: 10px; border-radius: 6px; text-align: center;">
+                                    <div style="font-size: 0.8em; opacity: 0.85;">Starting</div>
+                                    <div style="font-size: 1.1em; font-weight: bold;">${challenge.starting_amount}</div>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.2); padding: 10px; border-radius: 6px; text-align: center;">
+                                    <div style="font-size: 0.8em; opacity: 0.85;">Target</div>
+                                    <div style="font-size: 1.1em; font-weight: bold;">${challenge.target}</div>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.2); padding: 10px; border-radius: 6px; text-align: center;">
+                                    <div style="font-size: 0.8em; opacity: 0.85;">Ends</div>
+                                    <div style="font-size: 1.1em; font-weight: bold;">${challenge.end_date}</div>
                                 </div>
                             </div>
-                        </div>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px;">
-                            <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; text-align: center;">
+                            <div style="background: rgba(255,255,255,0.2); padding: 12px; border-radius: 6px; text-align: center;">
                                 <div style="font-size: 0.85em; opacity: 0.9;">Reward</div>
-                                <div style="font-size: 1.2em; font-weight: bold;">${monthly.reward}</div>
-                            </div>
-                            <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; text-align: center;">
-                                <div style="font-size: 0.85em; opacity: 0.9;">Ends</div>
-                                <div style="font-size: 1.2em; font-weight: bold;">${monthly.end_date}</div>
+                                <div style="font-size: 1.2em; font-weight: bold;">${challenge.reward}</div>
                             </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                });
+
+                multiWeekHTML += '</div>';
+                document.getElementById('multiWeekChallengeContent').innerHTML = multiWeekHTML;
             }
 
-            // Display Weekly Challenge
-            if (data.weekly) {
-                const weekly = data.weekly;
-                const progressPct = weekly.current_progress ?
-                    Math.min(100, (weekly.current_progress / weekly.target) * 100).toFixed(1) : 0;
+            // Display Weekly Challenges
+            if (data.weekly && data.weekly.length > 0) {
+                let weeklyHTML = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px;">';
 
-                document.getElementById('weeklyChallengeContent').innerHTML = `
-                    <div style="margin-bottom: 15px;">
-                        <div style="font-size: 1.4em; font-weight: bold; margin-bottom: 10px;">
-                            ${weekly.title}
-                        </div>
-                        <div style="font-size: 1.1em; opacity: 0.95; margin-bottom: 15px; line-height: 1.5;">
-                            ${weekly.description}
-                        </div>
-                        <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                <span style="font-size: 1.1em;">🎯 Target: <strong>${weekly.target}</strong></span>
-                                <span style="font-size: 1.1em;">📊 Progress: <strong>${weekly.current_progress || 0}</strong></span>
+                data.weekly.forEach(challenge => {
+                    weeklyHTML += `
+                        <div style="background: rgba(255,255,255,0.15); padding: 15px; border-radius: 10px;">
+                            <div style="font-size: 1.2em; font-weight: bold; margin-bottom: 8px;">
+                                ${challenge.title}
                             </div>
-                            <div style="background: rgba(255,255,255,0.3); border-radius: 10px; height: 30px; overflow: hidden;">
-                                <div style="background: linear-gradient(90deg, #6ee7b7, #10b981); height: 100%; width: ${progressPct}%; transition: width 0.5s; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.9em;">
-                                    ${progressPct}%
+                            <div style="font-size: 0.95em; opacity: 0.9; margin-bottom: 10px; line-height: 1.4;">
+                                ${challenge.description}
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+                                <div style="background: rgba(255,255,255,0.2); padding: 8px; border-radius: 6px; text-align: center;">
+                                    <div style="font-size: 0.75em; opacity: 0.85;">Target</div>
+                                    <div style="font-size: 1.1em; font-weight: bold;">${challenge.target}</div>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.2); padding: 8px; border-radius: 6px; text-align: center;">
+                                    <div style="font-size: 0.75em; opacity: 0.85;">Ends</div>
+                                    <div style="font-size: 1.1em; font-weight: bold;">${challenge.end_date}</div>
                                 </div>
                             </div>
-                        </div>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px;">
-                            <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; text-align: center;">
-                                <div style="font-size: 0.85em; opacity: 0.9;">Reward</div>
-                                <div style="font-size: 1.2em; font-weight: bold;">${weekly.reward}</div>
-                            </div>
-                            <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; text-align: center;">
-                                <div style="font-size: 0.85em; opacity: 0.9;">Ends</div>
-                                <div style="font-size: 1.2em; font-weight: bold;">${weekly.end_date}</div>
+                            <div style="background: rgba(255,255,255,0.2); padding: 10px; border-radius: 6px; text-align: center;">
+                                <div style="font-size: 0.8em; opacity: 0.9;">Reward</div>
+                                <div style="font-size: 1.1em; font-weight: bold;">${challenge.reward}</div>
                             </div>
                         </div>
-                    </div>
-                `;
-            } else {
-                document.getElementById('weeklyChallengeContent').innerHTML = `
-                    <div style="text-align: center; opacity: 0.8;">
-                        <div style="font-size: 1.5em; margin-bottom: 10px;">⏸️</div>
-                        <div style="font-size: 1.1em;">No weekly challenge this week</div>
-                        <div style="font-size: 0.95em; margin-top: 5px;">Check back next week!</div>
-                    </div>
-                `;
+                    `;
+                });
+
+                weeklyHTML += '</div>';
+                document.getElementById('weeklyChallengeContent').innerHTML = weeklyHTML;
             }
 
             // Display Progress
