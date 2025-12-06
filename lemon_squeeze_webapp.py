@@ -2432,14 +2432,41 @@ def get_dividend_data():
                                 for article in news_items[:2]:  # Get 2 latest news items
                                     # Validate article has required fields
                                     if article and isinstance(article, dict):
-                                        title = article.get('title', '')
+                                        # News structure: article['content'] contains the actual data
+                                        content = article.get('content', {})
+
+                                        # Extract title from nested structure
+                                        title = content.get('title', '')
                                         if title and title != '':  # Only add if title exists
+                                            # Get URL - try clickThroughUrl first, then canonicalUrl
+                                            click_url = content.get('clickThroughUrl', {})
+                                            canonical_url = content.get('canonicalUrl', {})
+                                            link = click_url.get('url') or canonical_url.get('url', '')
+
+                                            # Get provider displayName
+                                            provider = content.get('provider', {})
+                                            publisher = provider.get('displayName', 'Unknown')
+
+                                            # Get pubDate (it's a string like '2025-12-02T16:48:01Z')
+                                            pub_date_str = content.get('pubDate', '')
+                                            try:
+                                                if pub_date_str:
+                                                    dt = datetime.fromisoformat(pub_date_str.replace('Z', '+00:00'))
+                                                    published = dt.strftime('%Y-%m-%d')
+                                                else:
+                                                    published = 'Unknown'
+                                            except:
+                                                published = 'Unknown'
+
+                                            # Get summary if available
+                                            summary = content.get('summary', '')[:150] if content.get('summary') else ''
+
                                             news_for_stock.append({
                                                 'title': title,
-                                                'summary': article.get('summary', '')[:150] if article.get('summary') else '',
-                                                'source': article.get('publisher', 'Unknown'),
-                                                'published': datetime.fromtimestamp(article.get('providerPublishTime', 0)).strftime('%Y-%m-%d') if article.get('providerPublishTime') else 'Unknown',
-                                                'url': article.get('link', '')
+                                                'summary': summary,
+                                                'source': publisher,
+                                                'published': published,
+                                                'url': link
                                             })
                                 if len(news_for_stock) > 0:
                                     print(f"  📰 Found {len(news_for_stock)} news articles for {ticker_symbol}")
