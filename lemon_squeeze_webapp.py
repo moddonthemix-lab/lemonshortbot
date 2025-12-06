@@ -2351,7 +2351,7 @@ def get_challenges():
 def get_dividend_data():
     """Get top dividend stocks with yield, price, and news"""
     try:
-        # Custom dividend stocks list
+        # Custom dividend stocks list (removed JEPI, SPHD, SDIV as they couldn't be fetched)
         dividend_tickers = [
             ('O', 'Realty Income Corp', 'Monthly'),
             ('CTRE', 'CareTrust REIT', 'Quarterly'),
@@ -2362,13 +2362,10 @@ def get_dividend_data():
             ('JNJ', 'Johnson & Johnson', 'Quarterly'),
             ('T', 'AT&T Inc.', 'Quarterly'),
             ('VZ', 'Verizon Communications', 'Quarterly'),
-            ('JEPI', 'JPMorgan Equity Premium Income ETF', 'Monthly'),
             ('STAG', 'STAG Industrial REIT', 'Monthly'),
             ('EARN', 'Ellington Residential Mortgage REIT', 'Monthly'),
             ('EPR', 'EPR Properties', 'Monthly'),
             ('AGNC', 'AGNC Investment Corp', 'Monthly'),
-            ('SPHD', 'Invesco S&P 500 High Dividend ETF', 'Quarterly'),
-            ('SDIV', 'Global X SuperDividend ETF', 'Monthly'),
             ('UPS', 'United Parcel Service', 'Quarterly')
         ]
 
@@ -2418,33 +2415,54 @@ def get_dividend_data():
                             failed_tickers.append(ticker_symbol)
                             continue
 
+                    # Calculate per-period payout based on frequency
+                    if frequency == 'Monthly':
+                        payout_per_period = dividend_rate / 12
+                    elif frequency == 'Quarterly':
+                        payout_per_period = dividend_rate / 4
+                    else:
+                        payout_per_period = dividend_rate  # Default to annual
+
                     # Get news for this stock
                     news_for_stock = []
                     try:
-                        stock_data_news, _, _ = safe_yf_ticker(ticker_symbol)
-                        if stock_data_news:
-                            news = stock_data_news.news[:2]  # Get 2 latest news items
-                            for article in news:
-                                news_for_stock.append({
-                                    'title': article.get('title', 'No title'),
-                                    'summary': article.get('summary', '')[:150],
-                                    'source': article.get('publisher', 'Unknown'),
-                                    'published': datetime.fromtimestamp(article.get('providerPublishTime', 0)).strftime('%Y-%m-%d'),
-                                    'url': article.get('link', '')
-                                })
+                        if stock_data and hasattr(stock_data, 'news'):
+                            news_items = stock_data.news
+                            if news_items and len(news_items) > 0:
+                                for article in news_items[:2]:  # Get 2 latest news items
+                                    # Validate article has required fields
+                                    if article and isinstance(article, dict):
+                                        title = article.get('title', '')
+                                        if title and title != '':  # Only add if title exists
+                                            news_for_stock.append({
+                                                'title': title,
+                                                'summary': article.get('summary', '')[:150] if article.get('summary') else '',
+                                                'source': article.get('publisher', 'Unknown'),
+                                                'published': datetime.fromtimestamp(article.get('providerPublishTime', 0)).strftime('%Y-%m-%d') if article.get('providerPublishTime') else 'Unknown',
+                                                'url': article.get('link', '')
+                                            })
+                                if len(news_for_stock) > 0:
+                                    print(f"  📰 Found {len(news_for_stock)} news articles for {ticker_symbol}")
+                                else:
+                                    print(f"  ⚠️ No valid news articles for {ticker_symbol}")
+                            else:
+                                print(f"  ⚠️ No news items available for {ticker_symbol}")
+                        else:
+                            print(f"  ⚠️ No news attribute for {ticker_symbol}")
                     except Exception as e:
-                        print(f"  ⚠️ No news for {ticker_symbol}")
+                        print(f"  ⚠️ Error fetching news for {ticker_symbol}: {e}")
 
                     dividend_stocks.append({
                         'ticker': ticker_symbol,
                         'name': name,
                         'price': float(current_price),
-                        'dividend_per_share': float(dividend_rate),
+                        'dividend_per_share': float(payout_per_period),  # Changed to per-period payout
+                        'annual_dividend': float(dividend_rate),  # Keep annual for reference
                         'yield': float(calculated_yield),
                         'frequency': frequency,
                         'news': news_for_stock
                     })
-                    print(f"✅ {ticker_symbol}: {calculated_yield:.2f}% yield (${dividend_rate:.2f} per share)")
+                    print(f"✅ {ticker_symbol}: {calculated_yield:.2f}% yield (${payout_per_period:.2f} per {frequency.lower()} payment)")
                 else:
                     print(f"⚠️ {ticker_symbol}: No dividend data available (rate={dividend_rate}, price={current_price})")
                     failed_tickers.append(ticker_symbol)

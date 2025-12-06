@@ -1888,6 +1888,12 @@
                         🔄 Refresh Dividend Data
                     </button>
 
+                    <!-- Dividend Yield Chart -->
+                    <div id="dividendChartContainer" style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; display: none;">
+                        <h3 style="color: #1f2937; margin-bottom: 15px;">📊 Dividend Yields Comparison</h3>
+                        <canvas id="dividendChart" style="max-height: 400px;"></canvas>
+                    </div>
+
                     <div id="lemonadeLoading" class="loading" style="display: none;">
                         <div class="loading-spinner"></div>
                         <p>Loading dividend stocks...</p>
@@ -6236,8 +6242,12 @@
                         </p>
                     </div>
                 `;
+                document.getElementById('dividendChartContainer').style.display = 'none';
                 return;
             }
+
+            // Create dividend yield chart
+            createDividendChart(data.stocks);
 
             let html = `
                 <div class="results-header">
@@ -6305,6 +6315,98 @@
 
             html += `</div>`;
             resultsDiv.innerHTML = html;
+        }
+
+        // Global variable to store chart instance
+        let dividendChartInstance = null;
+
+        function createDividendChart(stocks) {
+            const chartContainer = document.getElementById('dividendChartContainer');
+            const ctx = document.getElementById('dividendChart');
+
+            if (!ctx) {
+                console.error('Chart canvas not found');
+                return;
+            }
+
+            // Show chart container
+            chartContainer.style.display = 'block';
+
+            // Destroy existing chart if it exists
+            if (dividendChartInstance) {
+                dividendChartInstance.destroy();
+            }
+
+            // Prepare data for chart
+            const labels = stocks.map(stock => stock.ticker);
+            const yields = stocks.map(stock => stock.yield);
+            const colors = yields.map(yield => {
+                if (yield >= 5) return 'rgba(16, 185, 129, 0.8)';  // Green for high yields
+                if (yield >= 3) return 'rgba(59, 130, 246, 0.8)';  // Blue for medium yields
+                return 'rgba(251, 191, 36, 0.8)';  // Yellow for low yields
+            });
+
+            // Create chart
+            dividendChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Dividend Yield (%)',
+                        data: yields,
+                        backgroundColor: colors,
+                        borderColor: colors.map(c => c.replace('0.8', '1')),
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Yield: ${context.parsed.y.toFixed(2)}%`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Dividend Yield (%)',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toFixed(1) + '%';
+                                }
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Stock Ticker',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         }
 
     </script>
