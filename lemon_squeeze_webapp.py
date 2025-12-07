@@ -14,6 +14,7 @@ Total API calls reduced from 493-1,393 to ~200 per complete scan!
 from flask import Flask, render_template, jsonify, request, send_from_directory, session
 import yfinance as yf
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 import time
 import os
 import json
@@ -1390,8 +1391,20 @@ def scan():
 
 @app.route('/api/daily-plays', methods=['POST'])
 def daily_plays():
-    """Daily plays scanner - KEEP FULL LIST (47 stocks)"""
+    """Daily plays scanner - Auto-scans at 5pm ET, cached until 2pm next day"""
     try:
+        # Check if we have valid cached data
+        if is_daily_cache_valid():
+            cached_results = scan_cache['daily']['results']
+            cached_time = scan_cache['daily']['timestamp']
+            print(f"📦 Returning cached daily data from {cached_time.strftime('%I:%M %p ET')}")
+            return jsonify({
+                'success': True,
+                'results': cached_results,
+                'timestamp': cached_time.isoformat(),
+                'cached': True
+            })
+
         popular_tickers = [
             'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD',
             'SPY', 'QQQ', 'IWM', 'DIA',
@@ -1403,10 +1416,10 @@ def daily_plays():
             'PFE', 'JNJ', 'MRNA', 'BNTX',
             'WMT', 'TGT', 'COST', 'HD', 'LOW',
         ]
-        
+
         results = []
         total = len(popular_tickers)
-        
+
         print(f"\n🎯 Daily Plays scan - {total} stocks...")
         
         for i, ticker in enumerate(popular_tickers, 1):
@@ -1445,15 +1458,16 @@ def daily_plays():
         
         print(f"✅ Found {len(results)} daily patterns\n")
 
-        # Cache results for #lemonplays bot
-        timestamp = datetime.now()
+        # Cache results for #lemonplays bot and auto-scanner
+        timestamp = datetime.now(ZoneInfo('America/New_York'))
         scan_cache['daily']['results'] = results
         scan_cache['daily']['timestamp'] = timestamp
 
         return jsonify({
             'success': True,
             'results': results,
-            'timestamp': timestamp.isoformat()
+            'timestamp': timestamp.isoformat(),
+            'cached': False
         })
         
     except Exception as e:
@@ -1461,11 +1475,23 @@ def daily_plays():
 
 @app.route('/api/weekly-plays', methods=['POST'])
 def weekly_plays():
-    """Weekly plays scanner - COMBINED DAILY + VOLEMON LIST"""
+    """Weekly plays scanner - Auto-scans Friday 5pm ET, cached for the week"""
     try:
+        # Check if we have valid cached data
+        if is_weekly_cache_valid():
+            cached_results = scan_cache['weekly']['results']
+            cached_time = scan_cache['weekly']['timestamp']
+            print(f"📦 Returning cached weekly data from {cached_time.strftime('%A %I:%M %p ET')}")
+            return jsonify({
+                'success': True,
+                'results': cached_results,
+                'timestamp': cached_time.isoformat(),
+                'cached': True
+            })
+
         combined_tickers = get_combined_weekly_hourly_list()
         results = []
-        
+
         print(f"\n📅 Weekly Plays scan - {len(combined_tickers)} stocks...")
         
         for ticker in combined_tickers:
@@ -1505,11 +1531,17 @@ def weekly_plays():
         
         print(f"✅ Found {len(results)} weekly patterns\n")
 
-        # Cache results for #lemonplays bot
+        # Cache results for #lemonplays bot and auto-scanner
+        timestamp = datetime.now(ZoneInfo('America/New_York'))
         scan_cache['weekly']['results'] = results
-        scan_cache['weekly']['timestamp'] = datetime.now()
+        scan_cache['weekly']['timestamp'] = timestamp
 
-        return jsonify({'success': True, 'results': results})
+        return jsonify({
+            'success': True,
+            'results': results,
+            'timestamp': timestamp.isoformat(),
+            'cached': False
+        })
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -3626,10 +3658,165 @@ def run_options_flow_monitor():
             print(f"❌ Options flow monitor error: {e}")
             time_module.sleep(600)  # Sleep 10 minutes on error
 
+def is_daily_cache_valid():
+    """Check if daily cache is still valid (5pm to 2pm next day)"""
+    if not scan_cache['daily']['timestamp']:
+        return False
+
+    now_et = datetime.now(ZoneInfo('America/New_York'))
+    cache_time = scan_cache['daily']['timestamp']
+
+    # Cache is valid from 5pm to 2pm next day
+    # If current time is between 2pm and 5pm, cache is invalid (reset period)
+    current_hour = now_et.hour
+
+    if 14 <= current_hour < 17:  # Between 2pm and 5pm - reset period
+        return False
+
+    # Check if cache is from today (after 5pm) or yesterday (before 2pm today)
+    if cache_time.date() == now_et.date() and cache_time.hour >= 17:
+        # Cached today after 5pm
+        return True
+    elif cache_time.date() == (now_et - timedelta(days=1)).date() and cache_time.hour >= 17:
+        # Cached yesterday after 5pm, and it's before 2pm today
+        if current_hour < 14:
+            return True
+
+    return False
+
+def is_weekly_cache_valid():
+    """Check if weekly cache is still valid (Friday 5pm to next Friday 5pm)"""
+    if not scan_cache['weekly']['timestamp']:
+        return False
+
+    now_et = datetime.now(ZoneInfo('America/New_York'))
+    cache_time = scan_cache['weekly']['timestamp']
+
+    # Cache is valid for one week from Friday 5pm
+    # Check if we're past the next Friday 5pm
+    days_since_cache = (now_et - cache_time).days
+
+    # If it's Friday after 5pm and cache is from last week, invalid
+    if now_et.weekday() == 4 and now_et.hour >= 17:  # Friday 5pm or later
+        if days_since_cache >= 7:
+            return False
+        # If cache is from before this Friday 5pm, invalid
+        if cache_time.date() < now_et.date():
+            return False
+
+    # Cache valid if less than 7 days old
+    return days_since_cache < 7
+
+def run_daily_auto_scan():
+    """Automatically scan daily plays at 5pm ET every day"""
+    print("📅 Daily auto-scanner started")
+
+    while True:
+        try:
+            now_et = datetime.now(ZoneInfo('America/New_York'))
+
+            # Target time: 5:00 PM ET
+            target_time = now_et.replace(hour=17, minute=0, second=0, microsecond=0)
+
+            # If it's past 5pm today, schedule for 5pm tomorrow
+            if now_et >= target_time:
+                target_time += timedelta(days=1)
+
+            # Calculate sleep time
+            sleep_seconds = (target_time - now_et).total_seconds()
+            hours_until = sleep_seconds / 3600
+
+            print(f"⏰ Next daily scan in {hours_until:.1f} hours (at {target_time.strftime('%I:%M %p ET')})")
+            time_module.sleep(sleep_seconds)
+
+            # It's 5pm! Run the scan
+            print("\n🎯 5:00 PM ET - Running daily plays auto-scan...")
+
+            try:
+                # Call the daily_plays function directly
+                with app.test_request_context(json={}):
+                    result = daily_plays()
+                    if result and hasattr(result, 'json'):
+                        data = result.json
+                        if data and data.get('success'):
+                            print(f"✅ Daily scan completed! Found {len(data.get('results', []))} patterns")
+                        else:
+                            print("⚠️ Daily scan completed with no results")
+                    else:
+                        print("✅ Daily scan completed!")
+            except Exception as scan_error:
+                print(f"❌ Daily scan error: {scan_error}")
+
+        except Exception as e:
+            print(f"❌ Daily auto-scan error: {e}")
+            time_module.sleep(300)  # Sleep 5 minutes on error
+
+def run_weekly_auto_scan():
+    """Automatically scan weekly plays on Friday at 5pm ET"""
+    print("📅 Weekly auto-scanner started")
+
+    while True:
+        try:
+            now_et = datetime.now(ZoneInfo('America/New_York'))
+
+            # Find next Friday 5pm
+            days_until_friday = (4 - now_et.weekday()) % 7  # 4 = Friday
+            target_time = now_et.replace(hour=17, minute=0, second=0, microsecond=0)
+
+            # If today is Friday but past 5pm, schedule for next Friday
+            if now_et.weekday() == 4 and now_et >= target_time:
+                days_until_friday = 7
+
+            if days_until_friday == 0 and now_et < target_time:
+                # It's Friday before 5pm
+                target_time = target_time
+            else:
+                # Add days to get to next Friday
+                target_time += timedelta(days=days_until_friday if days_until_friday > 0 else 7)
+
+            # Calculate sleep time
+            sleep_seconds = (target_time - now_et).total_seconds()
+            hours_until = sleep_seconds / 3600
+
+            print(f"⏰ Next weekly scan in {hours_until:.1f} hours (at {target_time.strftime('%A %I:%M %p ET')})")
+            time_module.sleep(sleep_seconds)
+
+            # It's Friday 5pm! Run the scan
+            print("\n📅 FRIDAY 5:00 PM ET - Running weekly plays auto-scan...")
+
+            try:
+                # Call the weekly_plays function directly
+                with app.test_request_context(json={}):
+                    result = weekly_plays()
+                    if result and hasattr(result, 'json'):
+                        data = result.json
+                        if data and data.get('success'):
+                            print(f"✅ Weekly scan completed! Found {len(data.get('results', []))} patterns")
+                        else:
+                            print("⚠️ Weekly scan completed with no results")
+                    else:
+                        print("✅ Weekly scan completed!")
+            except Exception as scan_error:
+                print(f"❌ Weekly scan error: {scan_error}")
+
+        except Exception as e:
+            print(f"❌ Weekly auto-scan error: {e}")
+            time_module.sleep(300)  # Sleep 5 minutes on error
+
 # Start background thread for daily backtest
 backtest_thread = threading.Thread(target=run_daily_backtest, daemon=True)
 backtest_thread.start()
 print("✅ Daily backtest scheduler started (runs every 24 hours)")
+
+# Start background thread for daily plays auto-scan
+daily_scan_thread = threading.Thread(target=run_daily_auto_scan, daemon=True)
+daily_scan_thread.start()
+print("✅ Daily plays auto-scanner started (scans at 5pm ET daily)")
+
+# Start background thread for weekly plays auto-scan
+weekly_scan_thread = threading.Thread(target=run_weekly_auto_scan, daemon=True)
+weekly_scan_thread.start()
+print("✅ Weekly plays auto-scanner started (scans Friday 5pm ET)")
 
 # Start background thread for market open scanning
 market_open_thread = threading.Thread(target=run_market_open_scan, daemon=True)
