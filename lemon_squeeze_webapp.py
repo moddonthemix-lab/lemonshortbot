@@ -2641,8 +2641,8 @@ def fear_greed_index():
     """Calculate Fear & Greed Index based on market indicators"""
     try:
         # Fetch S&P 500 (SPY) and VIX data
-        spy_data, spy_hist, spy_info = safe_yf_ticker('SPY', period='3mo')
-        vix_data, vix_hist, vix_info = safe_yf_ticker('^VIX', period='5d')
+        spy_data, spy_hist, spy_info = safe_yf_ticker('SPY', period='6mo')
+        vix_data, vix_hist, vix_info = safe_yf_ticker('^VIX', period='1mo')
 
         if spy_hist is None or len(spy_hist) < 50:
             return jsonify({'success': False, 'error': 'Unable to fetch market data'}), 500
@@ -2651,62 +2651,139 @@ def fear_greed_index():
         current_price = spy_hist['Close'].iloc[-1]
         sma_50 = spy_hist['Close'].tail(50).mean()
         sma_20 = spy_hist['Close'].tail(20).mean()
+        sma_125 = spy_hist['Close'].tail(125).mean() if len(spy_hist) >= 125 else sma_50
 
-        # Price momentum (above/below moving averages)
-        momentum_score = 0
-        if current_price > sma_50:
-            momentum_score += 25
-        if current_price > sma_20:
-            momentum_score += 25
+        # 1. Price Momentum Score (0-30 points)
+        # Based on percentage deviation from moving averages
+        deviation_50 = ((current_price - sma_50) / sma_50) * 100
+        deviation_20 = ((current_price - sma_20) / sma_20) * 100
 
-        # 52-week high/low
+        momentum_score = 15  # Start at neutral
+        # SMA-50 component (0-15 points)
+        if deviation_50 > 5:
+            momentum_score += 7.5
+        elif deviation_50 > 2:
+            momentum_score += 5
+        elif deviation_50 > 0:
+            momentum_score += 2.5
+        elif deviation_50 > -2:
+            momentum_score -= 2.5
+        elif deviation_50 > -5:
+            momentum_score -= 5
+        else:
+            momentum_score -= 7.5
+
+        # SMA-20 component (0-15 points)
+        if deviation_20 > 3:
+            momentum_score += 7.5
+        elif deviation_20 > 1:
+            momentum_score += 5
+        elif deviation_20 > 0:
+            momentum_score += 2.5
+        elif deviation_20 > -1:
+            momentum_score -= 2.5
+        elif deviation_20 > -3:
+            momentum_score -= 5
+        else:
+            momentum_score -= 7.5
+
+        # 2. 52-Week Range Score (0-25 points)
+        # Position in range, but weighted to make extremes harder to reach
         week_52_high = spy_hist['High'].tail(252).max() if len(spy_hist) >= 252 else spy_hist['High'].max()
         week_52_low = spy_hist['Low'].tail(252).min() if len(spy_hist) >= 252 else spy_hist['Low'].min()
         price_range = (current_price - week_52_low) / (week_52_high - week_52_low) if week_52_high != week_52_low else 0.5
-        range_score = price_range * 25
 
-        # VIX (volatility) - lower VIX = more greed
-        vix_score = 25
+        # Apply curve to make middle range more common
+        if price_range > 0.9:
+            range_score = 22
+        elif price_range > 0.75:
+            range_score = 18
+        elif price_range > 0.6:
+            range_score = 15
+        elif price_range > 0.4:
+            range_score = 12.5
+        elif price_range > 0.25:
+            range_score = 10
+        elif price_range > 0.1:
+            range_score = 7
+        else:
+            range_score = 3
+
+        # 3. VIX Score (0-25 points) - More granular
+        vix_score = 12.5  # Default neutral
         if vix_hist is not None and len(vix_hist) > 0:
             current_vix = vix_hist['Close'].iloc[-1]
-            if current_vix < 15:
-                vix_score = 25  # Low volatility = Greed
-            elif current_vix < 20:
-                vix_score = 18
-            elif current_vix < 30:
-                vix_score = 12
-            else:
-                vix_score = 5  # High volatility = Fear
+            vix_avg = vix_hist['Close'].mean()
 
-        # Recent price trend (last 5 days)
-        if len(spy_hist) >= 5:
-            recent_change = ((spy_hist['Close'].iloc[-1] - spy_hist['Close'].iloc[-5]) / spy_hist['Close'].iloc[-5]) * 100
-            if recent_change > 2:
-                trend_score = 25
-            elif recent_change > 0:
-                trend_score = 18
-            elif recent_change > -2:
-                trend_score = 12
+            # Compare to recent average for context
+            if current_vix < 12:
+                vix_score = 22  # Very low volatility = strong greed
+            elif current_vix < 15:
+                vix_score = 18  # Low volatility = greed
+            elif current_vix < 18:
+                vix_score = 15  # Below average = slight greed
+            elif current_vix < 22:
+                vix_score = 12.5  # Normal = neutral
+            elif current_vix < 28:
+                vix_score = 10  # Elevated = slight fear
+            elif current_vix < 35:
+                vix_score = 7  # High = fear
             else:
-                trend_score = 5
+                vix_score = 3  # Very high = extreme fear
+
+        # 4. Price Momentum Score (0-20 points)
+        # Multiple timeframes
+        if len(spy_hist) >= 20:
+            change_5d = ((spy_hist['Close'].iloc[-1] - spy_hist['Close'].iloc[-5]) / spy_hist['Close'].iloc[-5]) * 100
+            change_20d = ((spy_hist['Close'].iloc[-1] - spy_hist['Close'].iloc[-20]) / spy_hist['Close'].iloc[-20]) * 100
+
+            trend_score = 10  # Start neutral
+
+            # 5-day trend (0-10 points)
+            if change_5d > 3:
+                trend_score += 5
+            elif change_5d > 1:
+                trend_score += 3
+            elif change_5d > 0:
+                trend_score += 1
+            elif change_5d > -1:
+                trend_score -= 1
+            elif change_5d > -3:
+                trend_score -= 3
+            else:
+                trend_score -= 5
+
+            # 20-day trend (0-10 points)
+            if change_20d > 5:
+                trend_score += 5
+            elif change_20d > 2:
+                trend_score += 3
+            elif change_20d > 0:
+                trend_score += 1
+            elif change_20d > -2:
+                trend_score -= 1
+            elif change_20d > -5:
+                trend_score -= 3
+            else:
+                trend_score -= 5
         else:
-            trend_score = 12
+            trend_score = 10
 
         # Calculate total score (0-100)
-        total_score = int(momentum_score + range_score + vix_score + trend_score)
-        total_score = max(0, min(100, total_score))  # Clamp between 0-100
+        total_score = momentum_score + range_score + vix_score + trend_score
+        total_score = int(max(0, min(100, total_score)))  # Clamp between 0-100
 
-        # Determine sentiment
-        if total_score >= 75:
+        # Determine sentiment with more realistic thresholds
+        if total_score >= 80:
             sentiment = 'Extreme Greed'
             css_class = 'extreme-greed'
-        elif total_score >= 55:
+        elif total_score >= 60:
             sentiment = 'Greed'
             css_class = 'greed'
-        elif total_score >= 45:
+        elif total_score >= 40:
             sentiment = 'Neutral'
             css_class = 'neutral'
-        elif total_score >= 25:
+        elif total_score >= 20:
             sentiment = 'Fear'
             css_class = 'fear'
         else:
