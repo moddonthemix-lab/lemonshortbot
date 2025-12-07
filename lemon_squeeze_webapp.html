@@ -4601,6 +4601,7 @@
                                     <span class="metric-label">This Week Vol:</span>
                                     <span class="metric-value">${stock.volume.toLocaleString()}</span>
                                 </div>
+                                ${stock.avgVolume ? `
                                 <div class="metric-item">
                                     <span class="metric-label">Avg Weekly Vol:</span>
                                     <span class="metric-value">${stock.avgVolume.toLocaleString()}</span>
@@ -4609,6 +4610,7 @@
                                     <span class="metric-label">Volume Ratio:</span>
                                     <span class="metric-value">${(stock.volume / stock.avgVolume).toFixed(2)}x</span>
                                 </div>
+                                ` : ''}
                             </div>
                         </div>
 
