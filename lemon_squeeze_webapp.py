@@ -467,19 +467,19 @@ def check_strat_31(hist):
     """
     if len(hist) < 3:
         return False, None
-    
+
     current = hist.iloc[-1]
     previous = hist.iloc[-2]
     before_prev = hist.iloc[-3]
-    
-    is_three = (previous['High'] > before_prev['High'] and 
+
+    is_three = (previous['High'] > before_prev['High'] and
                 previous['Low'] < before_prev['Low'])
-    
-    is_one = (current['High'] < previous['High'] and 
+
+    is_one = (current['High'] < previous['High'] and
               current['Low'] > previous['Low'])
-    
+
     direction = "bullish" if current['Close'] > current['Open'] else "bearish"
-    
+
     if is_three and is_one:
         pattern_data = {
             'has_pattern': True,
@@ -500,7 +500,51 @@ def check_strat_31(hist):
             }
         }
         return True, pattern_data
-    
+
+    return False, None
+
+def check_all_patterns(hist):
+    """
+    Check for both 3-1 Strat and Inside Bar patterns
+    Returns (has_pattern, pattern_data)
+    """
+    if len(hist) < 3:
+        return False, None
+
+    # First check for 3-1 pattern (higher priority)
+    has_31, pattern_data = check_strat_31(hist)
+    if has_31:
+        return True, pattern_data
+
+    # Check for inside bar (1 bar in The Strat)
+    current = hist.iloc[-1]
+    previous = hist.iloc[-2]
+
+    is_inside = (current['High'] < previous['High'] and
+                 current['Low'] > previous['Low'])
+
+    if is_inside:
+        direction = 'bullish' if current['Close'] > previous['Close'] else 'bearish'
+        pattern_data = {
+            'has_pattern': True,
+            'type': 'Inside Bar (1)',
+            'direction': direction,
+            'previous_candle': {
+                'high': float(previous['High']),
+                'low': float(previous['Low']),
+                'close': float(previous['Close']),
+                'date': previous.name.strftime('%Y-%m-%d')
+            },
+            'current_candle': {
+                'high': float(current['High']),
+                'low': float(current['Low']),
+                'close': float(current['Close']),
+                'open': float(current['Open']),
+                'date': current.name.strftime('%Y-%m-%d')
+            }
+        }
+        return True, pattern_data
+
     return False, None
 
 def analyze_multiple_timeframes(ticker):
@@ -1370,8 +1414,8 @@ def daily_plays():
                 stock_data, hist, info = safe_yf_ticker(ticker)
 
                 if stock_data and hist is not None and len(hist) >= 3:
-                    has_pattern, pattern_data = check_strat_31(hist)
-                    
+                    has_pattern, pattern_data = check_all_patterns(hist)
+
                     if has_pattern:
                         current_price = hist['Close'].iloc[-1]
                         previous_close = hist['Close'].iloc[-2]
@@ -1392,9 +1436,9 @@ def daily_plays():
                             'timeframe': 'daily',
                             'news': news
                         })
-                        
-                        print(f"✅ {ticker}: {pattern_data['direction']} ({i}/{total})")
-                
+
+                        print(f"✅ {ticker}: {pattern_data['type']} - {pattern_data['direction']} ({i}/{total})")
+
             except Exception as e:
                 print(f"❌ {ticker}: {e}")
                 continue
@@ -1437,9 +1481,9 @@ def weekly_plays():
                         'Close': 'last',
                         'Volume': 'sum'
                     })
-                    
-                    has_pattern, pattern_data = check_strat_31(weekly)
-                    
+
+                    has_pattern, pattern_data = check_all_patterns(weekly)
+
                     if has_pattern:
                         current_price = hist['Close'].iloc[-1]
 
@@ -1455,7 +1499,7 @@ def weekly_plays():
                             'timeframe': 'weekly',
                             'news': news
                         })
-                        print(f"✅ {ticker}")
+                        print(f"✅ {ticker}: {pattern_data['type']}")
             except:
                 continue
         
@@ -1484,8 +1528,8 @@ def hourly_plays():
                 stock_data, hist, info = safe_yf_ticker(ticker, period='5d', interval='1h')
 
                 if stock_data and hist is not None and len(hist) >= 3:
-                    has_pattern, pattern_data = check_strat_31(hist)
-                    
+                    has_pattern, pattern_data = check_all_patterns(hist)
+
                     if has_pattern:
                         current_price = hist['Close'].iloc[-1]
                         results.append({
@@ -1496,7 +1540,7 @@ def hourly_plays():
                             'pattern': pattern_data,
                             'timeframe': 'hourly'
                         })
-                        print(f"✅ {ticker}")
+                        print(f"✅ {ticker}: {pattern_data['type']}")
             except:
                 continue
         
@@ -1513,7 +1557,7 @@ def hourly_plays():
 
 @app.route('/api/crypto-plays', methods=['POST'])
 def crypto_plays():
-    """Crypto scanner - KEEP FULL LIST (5 cryptos)"""
+    """Crypto scanner - checks 1h, 4h, daily, weekly for 3-1 and inside bars"""
     try:
         crypto_tickers = {
             'BTC-USD': 'Bitcoin',
@@ -1522,44 +1566,70 @@ def crypto_plays():
             'SOL-USD': 'Solana',
             'DOGE-USD': 'Dogecoin'
         }
-        
+
         results = []
-        
-        print(f"\n₿ Crypto scan - {len(crypto_tickers)} cryptos...")
-        
+
+        print(f"\n₿ Crypto scan - {len(crypto_tickers)} cryptos across 4 timeframes...")
+
         for ticker, name in crypto_tickers.items():
             try:
-                stock_data, hist, info = safe_yf_ticker(ticker, period='1mo')
+                # Check multiple timeframes
+                timeframes_to_check = [
+                    ('1h', '5d', '1h', 'Hourly'),
+                    ('4h', '1mo', '1h', '4-Hour'),
+                    ('daily', '3mo', '1d', 'Daily'),
+                    ('weekly', '2y', '1wk', 'Weekly')
+                ]
 
-                if stock_data and hist is not None and len(hist) >= 3:
-                    has_pattern, pattern_data = check_strat_31(hist)
-                    
-                    if has_pattern:
-                        current_price = hist['Close'].iloc[-1]
-                        prev_price = hist['Close'].iloc[-2]
-                        change = ((current_price - prev_price) / prev_price) * 100
-                        
-                        results.append({
-                            'ticker': ticker.replace('-USD', ''),
-                            'company': name,
-                            'currentPrice': float(current_price),
-                            'change': float(change),
-                            'volume': int(hist['Volume'].iloc[-1]),
-                            'pattern': pattern_data,
-                            'timeframe': 'daily'
-                        })
-                        print(f"✅ {name}")
-            except:
+                for tf_name, period, interval, display_name in timeframes_to_check:
+                    try:
+                        stock_data, hist, info = safe_yf_ticker(ticker, period=period, interval=interval)
+
+                        if stock_data and hist is not None and len(hist) >= 3:
+                            # For weekly, need to resample from daily data if interval wasn't weekly
+                            if tf_name == 'weekly' and interval != '1wk':
+                                hist = hist.resample('W').agg({
+                                    'Open': 'first',
+                                    'High': 'max',
+                                    'Low': 'min',
+                                    'Close': 'last',
+                                    'Volume': 'sum'
+                                })
+
+                            has_pattern, pattern_data = check_all_patterns(hist)
+
+                            if has_pattern:
+                                current_price = hist['Close'].iloc[-1]
+                                prev_price = hist['Close'].iloc[-2]
+                                change = ((current_price - prev_price) / prev_price) * 100
+
+                                results.append({
+                                    'ticker': ticker.replace('-USD', ''),
+                                    'company': name,
+                                    'currentPrice': float(current_price),
+                                    'change': float(change),
+                                    'volume': int(hist['Volume'].iloc[-1]),
+                                    'pattern': pattern_data,
+                                    'timeframe': tf_name,
+                                    'timeframe_display': display_name
+                                })
+                                print(f"✅ {name} - {display_name}: {pattern_data['type']}")
+                    except Exception as tf_error:
+                        print(f"⚠️  {name} {display_name}: {tf_error}")
+                        continue
+
+            except Exception as e:
+                print(f"❌ {name}: {e}")
                 continue
-        
-        print(f"✅ Found {len(results)} crypto patterns\n")
+
+        print(f"✅ Found {len(results)} crypto patterns across all timeframes\n")
 
         # Cache results for #lemonplays bot
         scan_cache['crypto']['results'] = results
         scan_cache['crypto']['timestamp'] = datetime.now()
 
         return jsonify({'success': True, 'results': results})
-        
+
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -1651,26 +1721,31 @@ def usuals_scan():
                     avg_volume = hist['Volume'].iloc[:-1].mean()
                     volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1
                     
-                    # Check patterns
+                    # Check patterns on daily timeframe
                     patterns = {}
-                    has_pattern, pattern_data = check_strat_31(hist)
+                    has_daily_pattern, daily_pattern_data = check_all_patterns(hist)
 
-                    if has_pattern:
+                    if has_daily_pattern:
                         patterns['daily'] = {
-                            'type': '3-1 Strat',
-                            'direction': pattern_data['direction']
+                            'type': daily_pattern_data['type'],
+                            'direction': daily_pattern_data['direction']
                         }
-                    else:
-                        # Check inside bar
-                        current = hist.iloc[-1]
-                        previous = hist.iloc[-2]
-                        is_inside = (current['High'] < previous['High'] and
-                                   current['Low'] > previous['Low'])
-                        if is_inside:
-                            patterns['daily'] = {
-                                'type': 'Inside Bar (1)',
-                                'direction': 'neutral'
-                            }
+
+                    # Check weekly timeframe
+                    weekly = hist.resample('W').agg({
+                        'Open': 'first',
+                        'High': 'max',
+                        'Low': 'min',
+                        'Close': 'last',
+                        'Volume': 'sum'
+                    })
+
+                    has_weekly_pattern, weekly_pattern_data = check_all_patterns(weekly)
+                    if has_weekly_pattern:
+                        patterns['weekly'] = {
+                            'type': weekly_pattern_data['type'],
+                            'direction': weekly_pattern_data['direction']
+                        }
 
                     # Fetch news for this ticker
                     news_articles = fetch_news(stock_data, ticker)
