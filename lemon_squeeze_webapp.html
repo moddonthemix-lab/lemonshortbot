@@ -4305,6 +4305,7 @@
                         
                         <div class="pattern-info">
                             <h4 style="color: #FFA500; margin-bottom: 10px;">📊 Pattern Details</h4>
+                            ${pattern.type === '3-1 Strat' ? `
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
                                 <div>
                                     <strong style="color: #666;">3️⃣ Outside Bar (${pattern.three_candle.date}):</strong><br>
@@ -4321,11 +4322,33 @@
                                 </div>
                             </div>
                             <div style="background: white; padding: 10px; border-radius: 5px; margin-top: 10px;">
-                                <strong>💡 Interpretation:</strong> 
-                                The stock formed an outside bar (expansion) followed by an inside bar (consolidation). 
-                                This ${pattern.direction} setup suggests potential breakout ${pattern.direction === 'bullish' ? 'above' : 'below'} 
+                                <strong>💡 Interpretation:</strong>
+                                The stock formed an outside bar (expansion) followed by an inside bar (consolidation).
+                                This ${pattern.direction} setup suggests potential breakout ${pattern.direction === 'bullish' ? 'above' : 'below'}
                                 the inside bar's range.
                             </div>
+                            ` : pattern.type === 'Inside Bar (1)' ? `
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                                <div>
+                                    <strong style="color: #666;">📊 Previous Bar (${pattern.previous_candle.date}):</strong><br>
+                                    High: $${pattern.previous_candle.high.toFixed(2)}<br>
+                                    Low: $${pattern.previous_candle.low.toFixed(2)}<br>
+                                    Close: $${pattern.previous_candle.close.toFixed(2)}
+                                </div>
+                                <div>
+                                    <strong style="color: #666;">1️⃣ Inside Bar (${pattern.current_candle.date}):</strong><br>
+                                    High: $${pattern.current_candle.high.toFixed(2)}<br>
+                                    Low: $${pattern.current_candle.low.toFixed(2)}<br>
+                                    Open: $${pattern.current_candle.open.toFixed(2)}<br>
+                                    Close: $${pattern.current_candle.close.toFixed(2)}
+                                </div>
+                            </div>
+                            <div style="background: white; padding: 10px; border-radius: 5px; margin-top: 10px;">
+                                <strong>💡 Interpretation:</strong>
+                                Inside bar consolidation pattern. The current bar traded entirely within the previous bar's range.
+                                This suggests potential breakout ${pattern.direction === 'bullish' ? 'above' : 'below'} the inside bar.
+                            </div>
+                            ` : ''}
                         </div>
                         
                         <div class="metrics-grid" style="margin-top: 20px;">
@@ -4507,6 +4530,7 @@
                         
                         <div class="pattern-info">
                             <h4 style="color: #FFA500; margin-bottom: 10px;">📊 Weekly Pattern Details</h4>
+                            ${pattern.type === '3-1 Strat' ? `
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
                                 <div>
                                     <strong style="color: #666;">3️⃣ Outside Week (${pattern.three_candle.date}):</strong><br>
@@ -4523,11 +4547,33 @@
                                 </div>
                             </div>
                             <div style="background: white; padding: 10px; border-radius: 5px; margin-top: 10px;">
-                                <strong>💡 Interpretation:</strong> 
-                                Weekly pattern! The stock formed an outside week (expansion) followed by an inside week (consolidation). 
-                                This ${pattern.direction} setup on the weekly timeframe suggests potential for a multi-day/week move 
+                                <strong>💡 Interpretation:</strong>
+                                Weekly pattern! The stock formed an outside week (expansion) followed by an inside week (consolidation).
+                                This ${pattern.direction} setup on the weekly timeframe suggests potential for a multi-day/week move
                                 ${pattern.direction === 'bullish' ? 'above' : 'below'} the inside week's range.
                             </div>
+                            ` : pattern.type === 'Inside Bar (1)' ? `
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                                <div>
+                                    <strong style="color: #666;">📊 Previous Week (${pattern.previous_candle.date}):</strong><br>
+                                    High: $${pattern.previous_candle.high.toFixed(2)}<br>
+                                    Low: $${pattern.previous_candle.low.toFixed(2)}<br>
+                                    Close: $${pattern.previous_candle.close.toFixed(2)}
+                                </div>
+                                <div>
+                                    <strong style="color: #666;">1️⃣ Inside Week (${pattern.current_candle.date}):</strong><br>
+                                    High: $${pattern.current_candle.high.toFixed(2)}<br>
+                                    Low: $${pattern.current_candle.low.toFixed(2)}<br>
+                                    Open: $${pattern.current_candle.open.toFixed(2)}<br>
+                                    Close: $${pattern.current_candle.close.toFixed(2)}
+                                </div>
+                            </div>
+                            <div style="background: white; padding: 10px; border-radius: 5px; margin-top: 10px;">
+                                <strong>💡 Interpretation:</strong>
+                                Weekly inside bar consolidation! Current week traded entirely within previous week's range.
+                                This suggests potential for a multi-day/week breakout ${pattern.direction === 'bullish' ? 'above' : 'below'} the inside week.
+                            </div>
+                            ` : ''}
                         </div>
                         
                         <div class="metrics-grid" style="margin-top: 20px;">
@@ -4702,6 +4748,7 @@
                         
                         <div class="pattern-info">
                             <h4 style="color: #FFA500; margin-bottom: 10px;">⏰ Hourly Pattern Details</h4>
+                            ${pattern.type === '3-1 Strat' ? `
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
                                 <div>
                                     <strong style="color: #666;">3️⃣ Outside Hour (${pattern.three_candle.date}):</strong><br>
@@ -4718,10 +4765,32 @@
                                 </div>
                             </div>
                             <div style="background: white; padding: 10px; border-radius: 5px; margin-top: 10px;">
-                                <strong>💡 Interpretation:</strong> 
+                                <strong>💡 Interpretation:</strong>
                                 Hourly pattern! Quick intraday setup showing ${pattern.direction} consolidation after expansion.
                                 Watch for breakout ${pattern.direction === 'bullish' ? 'above' : 'below'} the inside hour's range.
                             </div>
+                            ` : pattern.type === 'Inside Bar (1)' ? `
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                                <div>
+                                    <strong style="color: #666;">📊 Previous Hour (${pattern.previous_candle.date}):</strong><br>
+                                    High: $${pattern.previous_candle.high.toFixed(2)}<br>
+                                    Low: $${pattern.previous_candle.low.toFixed(2)}<br>
+                                    Close: $${pattern.previous_candle.close.toFixed(2)}
+                                </div>
+                                <div>
+                                    <strong style="color: #666;">1️⃣ Inside Hour (${pattern.current_candle.date}):</strong><br>
+                                    High: $${pattern.current_candle.high.toFixed(2)}<br>
+                                    Low: $${pattern.current_candle.low.toFixed(2)}<br>
+                                    Open: $${pattern.current_candle.open.toFixed(2)}<br>
+                                    Close: $${pattern.current_candle.close.toFixed(2)}
+                                </div>
+                            </div>
+                            <div style="background: white; padding: 10px; border-radius: 5px; margin-top: 10px;">
+                                <strong>💡 Interpretation:</strong>
+                                Hourly inside bar consolidation! Quick intraday setup for potential breakout.
+                                Watch for breakout ${pattern.direction === 'bullish' ? 'above' : 'below'} the inside hour's range.
+                            </div>
+                            ` : ''}
                         </div>
                         
                         <div class="metrics-grid" style="margin-top: 20px;">
@@ -4861,7 +4930,8 @@
                         <div class="stock-company">${crypto.company}</div>
                         
                         <div class="pattern-info">
-                            <h4 style="color: #FFA500; margin-bottom: 10px;">₿ ${crypto.timeframe} Pattern Details</h4>
+                            <h4 style="color: #FFA500; margin-bottom: 10px;">₿ ${crypto.timeframe_display || crypto.timeframe} Pattern Details</h4>
+                            ${pattern.type === '3-1 Strat' ? `
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
                                 <div>
                                     <strong style="color: #666;">3️⃣ Outside Bar (${pattern.three_candle.date}):</strong><br>
@@ -4878,11 +4948,34 @@
                                 </div>
                             </div>
                             <div style="background: white; padding: 10px; border-radius: 5px; margin-top: 10px;">
-                                <strong>💡 Interpretation:</strong> 
-                                ${crypto.timeframe} crypto pattern! ${pattern.direction.charAt(0).toUpperCase() + pattern.direction.slice(1)} setup 
+                                <strong>💡 Interpretation:</strong>
+                                ${crypto.timeframe_display || crypto.timeframe} crypto pattern! ${pattern.direction.charAt(0).toUpperCase() + pattern.direction.slice(1)} setup
                                 suggests potential breakout ${pattern.direction === 'bullish' ? 'above' : 'below'} the consolidation range.
-                                ${crypto.timeframe === 'Weekly' ? 'Weekly patterns can signal major multi-week moves!' : ''}
+                                ${(crypto.timeframe_display || crypto.timeframe) === 'Weekly' ? 'Weekly patterns can signal major multi-week moves!' : ''}
                             </div>
+                            ` : pattern.type === 'Inside Bar (1)' ? `
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                                <div>
+                                    <strong style="color: #666;">📊 Previous Bar (${pattern.previous_candle.date}):</strong><br>
+                                    High: $${pattern.previous_candle.high.toFixed(2)}<br>
+                                    Low: $${pattern.previous_candle.low.toFixed(2)}<br>
+                                    Close: $${pattern.previous_candle.close.toFixed(2)}
+                                </div>
+                                <div>
+                                    <strong style="color: #666;">1️⃣ Inside Bar (${pattern.current_candle.date}):</strong><br>
+                                    High: $${pattern.current_candle.high.toFixed(2)}<br>
+                                    Low: $${pattern.current_candle.low.toFixed(2)}<br>
+                                    Open: $${pattern.current_candle.open.toFixed(2)}<br>
+                                    Close: $${pattern.current_candle.close.toFixed(2)}
+                                </div>
+                            </div>
+                            <div style="background: white; padding: 10px; border-radius: 5px; margin-top: 10px;">
+                                <strong>💡 Interpretation:</strong>
+                                ${crypto.timeframe_display || crypto.timeframe} crypto inside bar! Consolidation pattern suggests potential breakout
+                                ${pattern.direction === 'bullish' ? 'above' : 'below'} the inside bar's range.
+                                ${(crypto.timeframe_display || crypto.timeframe) === 'Weekly' ? 'Weekly patterns can signal major multi-week moves!' : ''}
+                            </div>
+                            ` : ''}
                         </div>
                         
                         <div class="metrics-grid" style="margin-top: 20px;">
@@ -4912,10 +5005,12 @@
                                     <span class="metric-label">Current Vol:</span>
                                     <span class="metric-value">${crypto.volume.toLocaleString()}</span>
                                 </div>
+                                ${crypto.avgVolume ? `
                                 <div class="metric-item">
                                     <span class="metric-label">Avg Volume:</span>
                                     <span class="metric-value">${crypto.avgVolume.toLocaleString()}</span>
                                 </div>
+                                ` : ''}
                             </div>
                         </div>
                         
