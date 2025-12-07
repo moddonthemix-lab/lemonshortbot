@@ -1513,6 +1513,11 @@ def weekly_plays():
                     if has_pattern:
                         current_price = hist['Close'].iloc[-1]
 
+                        # Calculate weekly change from the weekly data
+                        current_week_close = weekly['Close'].iloc[-1]
+                        previous_week_close = weekly['Close'].iloc[-2]
+                        weekly_change = ((current_week_close - previous_week_close) / previous_week_close) * 100
+
                         # Fetch news for this ticker
                         news = fetch_news(stock_data, ticker)
 
@@ -1520,7 +1525,9 @@ def weekly_plays():
                             'ticker': ticker,
                             'company': ticker,
                             'currentPrice': float(current_price),
+                            'weeklyChange': float(weekly_change),
                             'volume': int(hist['Volume'].iloc[-1]),
+                            'marketCap': info.get('marketCap', 0),
                             'pattern': pattern_data,
                             'timeframe': 'weekly',
                             'news': news
