@@ -2636,6 +2636,94 @@ def get_dividend_data():
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/fear-greed-index', methods=['GET'])
+def fear_greed_index():
+    """Calculate Fear & Greed Index based on market indicators"""
+    try:
+        # Fetch S&P 500 (SPY) and VIX data
+        spy_data, spy_hist, spy_info = safe_yf_ticker('SPY', period='3mo')
+        vix_data, vix_hist, vix_info = safe_yf_ticker('^VIX', period='5d')
+
+        if spy_hist is None or len(spy_hist) < 50:
+            return jsonify({'success': False, 'error': 'Unable to fetch market data'}), 500
+
+        # Calculate indicators
+        current_price = spy_hist['Close'].iloc[-1]
+        sma_50 = spy_hist['Close'].tail(50).mean()
+        sma_20 = spy_hist['Close'].tail(20).mean()
+
+        # Price momentum (above/below moving averages)
+        momentum_score = 0
+        if current_price > sma_50:
+            momentum_score += 25
+        if current_price > sma_20:
+            momentum_score += 25
+
+        # 52-week high/low
+        week_52_high = spy_hist['High'].tail(252).max() if len(spy_hist) >= 252 else spy_hist['High'].max()
+        week_52_low = spy_hist['Low'].tail(252).min() if len(spy_hist) >= 252 else spy_hist['Low'].min()
+        price_range = (current_price - week_52_low) / (week_52_high - week_52_low) if week_52_high != week_52_low else 0.5
+        range_score = price_range * 25
+
+        # VIX (volatility) - lower VIX = more greed
+        vix_score = 25
+        if vix_hist is not None and len(vix_hist) > 0:
+            current_vix = vix_hist['Close'].iloc[-1]
+            if current_vix < 15:
+                vix_score = 25  # Low volatility = Greed
+            elif current_vix < 20:
+                vix_score = 18
+            elif current_vix < 30:
+                vix_score = 12
+            else:
+                vix_score = 5  # High volatility = Fear
+
+        # Recent price trend (last 5 days)
+        if len(spy_hist) >= 5:
+            recent_change = ((spy_hist['Close'].iloc[-1] - spy_hist['Close'].iloc[-5]) / spy_hist['Close'].iloc[-5]) * 100
+            if recent_change > 2:
+                trend_score = 25
+            elif recent_change > 0:
+                trend_score = 18
+            elif recent_change > -2:
+                trend_score = 12
+            else:
+                trend_score = 5
+        else:
+            trend_score = 12
+
+        # Calculate total score (0-100)
+        total_score = int(momentum_score + range_score + vix_score + trend_score)
+        total_score = max(0, min(100, total_score))  # Clamp between 0-100
+
+        # Determine sentiment
+        if total_score >= 75:
+            sentiment = 'Extreme Greed'
+            css_class = 'extreme-greed'
+        elif total_score >= 55:
+            sentiment = 'Greed'
+            css_class = 'greed'
+        elif total_score >= 45:
+            sentiment = 'Neutral'
+            css_class = 'neutral'
+        elif total_score >= 25:
+            sentiment = 'Fear'
+            css_class = 'fear'
+        else:
+            sentiment = 'Extreme Fear'
+            css_class = 'extreme-fear'
+
+        return jsonify({
+            'success': True,
+            'score': total_score,
+            'sentiment': sentiment,
+            'css_class': css_class
+        })
+
+    except Exception as e:
+        print(f"❌ Fear & Greed Index error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 def auto_run_scans_for_lemonai():
     """Auto-run scans to populate data for LemonAI recommendations - ALWAYS finds plays"""
     try:
