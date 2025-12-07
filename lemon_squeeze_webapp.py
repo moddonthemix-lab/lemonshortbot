@@ -2638,152 +2638,204 @@ def get_dividend_data():
 
 @app.route('/api/fear-greed-index', methods=['GET'])
 def fear_greed_index():
-    """Calculate Fear & Greed Index based on market indicators"""
+    """
+    Calculate Fear & Greed Index matching CNN's methodology
+    Uses 7 indicators (each 0-100), then averages them
+    """
     try:
-        # Fetch S&P 500 (SPY) and VIX data
-        spy_data, spy_hist, spy_info = safe_yf_ticker('SPY', period='6mo')
-        vix_data, vix_hist, vix_info = safe_yf_ticker('^VIX', period='1mo')
+        # Fetch market data
+        spy_data, spy_hist, spy_info = safe_yf_ticker('SPY', period='1y')
+        vix_data, vix_hist, vix_info = safe_yf_ticker('^VIX', period='3mo')
+        tlt_data, tlt_hist, tlt_info = safe_yf_ticker('TLT', period='2mo')  # 20+ year Treasury
+        hyg_data, hyg_hist, hyg_info = safe_yf_ticker('HYG', period='2mo')  # High Yield Corp Bonds
+        lqd_data, lqd_hist, lqd_info = safe_yf_ticker('LQD', period='2mo')  # Investment Grade Corp Bonds
 
-        if spy_hist is None or len(spy_hist) < 50:
+        if spy_hist is None or len(spy_hist) < 125:
             return jsonify({'success': False, 'error': 'Unable to fetch market data'}), 500
 
-        # Calculate indicators
+        indicators = []
+
+        # ===== INDICATOR 1: Market Momentum (S&P 500 vs 125-day MA) =====
         current_price = spy_hist['Close'].iloc[-1]
-        sma_50 = spy_hist['Close'].tail(50).mean()
-        sma_20 = spy_hist['Close'].tail(20).mean()
-        sma_125 = spy_hist['Close'].tail(125).mean() if len(spy_hist) >= 125 else sma_50
+        sma_125 = spy_hist['Close'].tail(125).mean()
+        momentum_pct = ((current_price - sma_125) / sma_125) * 100
 
-        # 1. Price Momentum Score (0-30 points)
-        # Based on percentage deviation from moving averages
-        deviation_50 = ((current_price - sma_50) / sma_50) * 100
-        deviation_20 = ((current_price - sma_20) / sma_20) * 100
-
-        momentum_score = 15  # Start at neutral
-        # SMA-50 component (0-15 points)
-        if deviation_50 > 5:
-            momentum_score += 7.5
-        elif deviation_50 > 2:
-            momentum_score += 5
-        elif deviation_50 > 0:
-            momentum_score += 2.5
-        elif deviation_50 > -2:
-            momentum_score -= 2.5
-        elif deviation_50 > -5:
-            momentum_score -= 5
+        if momentum_pct > 8:
+            momentum_score = 100
+        elif momentum_pct > 5:
+            momentum_score = 85
+        elif momentum_pct > 3:
+            momentum_score = 75
+        elif momentum_pct > 1:
+            momentum_score = 65
+        elif momentum_pct > 0:
+            momentum_score = 55
+        elif momentum_pct > -1:
+            momentum_score = 45
+        elif momentum_pct > -3:
+            momentum_score = 35
+        elif momentum_pct > -5:
+            momentum_score = 25
+        elif momentum_pct > -8:
+            momentum_score = 15
         else:
-            momentum_score -= 7.5
+            momentum_score = 0
+        indicators.append(momentum_score)
 
-        # SMA-20 component (0-15 points)
-        if deviation_20 > 3:
-            momentum_score += 7.5
-        elif deviation_20 > 1:
-            momentum_score += 5
-        elif deviation_20 > 0:
-            momentum_score += 2.5
-        elif deviation_20 > -1:
-            momentum_score -= 2.5
-        elif deviation_20 > -3:
-            momentum_score -= 5
-        else:
-            momentum_score -= 7.5
-
-        # 2. 52-Week Range Score (0-25 points)
-        # Position in range, but weighted to make extremes harder to reach
+        # ===== INDICATOR 2: Stock Price Strength (52-week highs vs lows) =====
         week_52_high = spy_hist['High'].tail(252).max() if len(spy_hist) >= 252 else spy_hist['High'].max()
         week_52_low = spy_hist['Low'].tail(252).min() if len(spy_hist) >= 252 else spy_hist['Low'].min()
-        price_range = (current_price - week_52_low) / (week_52_high - week_52_low) if week_52_high != week_52_low else 0.5
+        price_position = (current_price - week_52_low) / (week_52_high - week_52_low) if week_52_high != week_52_low else 0.5
+        strength_score = int(price_position * 100)
+        indicators.append(strength_score)
 
-        # Apply curve to make middle range more common
-        if price_range > 0.9:
-            range_score = 22
-        elif price_range > 0.75:
-            range_score = 18
-        elif price_range > 0.6:
-            range_score = 15
-        elif price_range > 0.4:
-            range_score = 12.5
-        elif price_range > 0.25:
-            range_score = 10
-        elif price_range > 0.1:
-            range_score = 7
+        # ===== INDICATOR 3: Stock Price Breadth =====
+        if len(spy_hist) >= 20:
+            recent_changes = []
+            for i in range(1, 21):
+                change = (spy_hist['Close'].iloc[-i] - spy_hist['Close'].iloc[-i-1]) / spy_hist['Close'].iloc[-i-1]
+                volume_weight = spy_hist['Volume'].iloc[-i]
+                recent_changes.append(change * volume_weight)
+
+            avg_weighted_change = sum(recent_changes) / sum(spy_hist['Volume'].tail(20))
+
+            if avg_weighted_change > 0.015:
+                breadth_score = 100
+            elif avg_weighted_change > 0.010:
+                breadth_score = 80
+            elif avg_weighted_change > 0.005:
+                breadth_score = 65
+            elif avg_weighted_change > 0:
+                breadth_score = 55
+            elif avg_weighted_change > -0.005:
+                breadth_score = 45
+            elif avg_weighted_change > -0.010:
+                breadth_score = 35
+            elif avg_weighted_change > -0.015:
+                breadth_score = 20
+            else:
+                breadth_score = 0
+            indicators.append(breadth_score)
         else:
-            range_score = 3
+            indicators.append(50)
 
-        # 3. VIX Score (0-25 points) - More granular
-        vix_score = 12.5  # Default neutral
+        # ===== INDICATOR 4: Put/Call Options =====
+        if vix_hist is not None and len(vix_hist) >= 10:
+            current_vix = vix_hist['Close'].iloc[-1]
+            vix_10d_ago = vix_hist['Close'].iloc[-10]
+            vix_change = ((current_vix - vix_10d_ago) / vix_10d_ago) * 100
+
+            if vix_change < -20:
+                putcall_score = 100
+            elif vix_change < -10:
+                putcall_score = 80
+            elif vix_change < -5:
+                putcall_score = 65
+            elif vix_change < 0:
+                putcall_score = 55
+            elif vix_change < 5:
+                putcall_score = 45
+            elif vix_change < 10:
+                putcall_score = 35
+            elif vix_change < 20:
+                putcall_score = 20
+            else:
+                putcall_score = 0
+            indicators.append(putcall_score)
+        else:
+            indicators.append(50)
+
+        # ===== INDICATOR 5: Market Volatility (VIX) =====
         if vix_hist is not None and len(vix_hist) > 0:
             current_vix = vix_hist['Close'].iloc[-1]
-            vix_avg = vix_hist['Close'].mean()
 
-            # Compare to recent average for context
             if current_vix < 12:
-                vix_score = 22  # Very low volatility = strong greed
+                vix_score = 100
             elif current_vix < 15:
-                vix_score = 18  # Low volatility = greed
+                vix_score = 80
             elif current_vix < 18:
-                vix_score = 15  # Below average = slight greed
-            elif current_vix < 22:
-                vix_score = 12.5  # Normal = neutral
-            elif current_vix < 28:
-                vix_score = 10  # Elevated = slight fear
-            elif current_vix < 35:
-                vix_score = 7  # High = fear
+                vix_score = 65
+            elif current_vix < 20:
+                vix_score = 55
+            elif current_vix < 25:
+                vix_score = 45
+            elif current_vix < 30:
+                vix_score = 30
+            elif current_vix < 40:
+                vix_score = 15
             else:
-                vix_score = 3  # Very high = extreme fear
-
-        # 4. Price Momentum Score (0-20 points)
-        # Multiple timeframes
-        if len(spy_hist) >= 20:
-            change_5d = ((spy_hist['Close'].iloc[-1] - spy_hist['Close'].iloc[-5]) / spy_hist['Close'].iloc[-5]) * 100
-            change_20d = ((spy_hist['Close'].iloc[-1] - spy_hist['Close'].iloc[-20]) / spy_hist['Close'].iloc[-20]) * 100
-
-            trend_score = 10  # Start neutral
-
-            # 5-day trend (0-10 points)
-            if change_5d > 3:
-                trend_score += 5
-            elif change_5d > 1:
-                trend_score += 3
-            elif change_5d > 0:
-                trend_score += 1
-            elif change_5d > -1:
-                trend_score -= 1
-            elif change_5d > -3:
-                trend_score -= 3
-            else:
-                trend_score -= 5
-
-            # 20-day trend (0-10 points)
-            if change_20d > 5:
-                trend_score += 5
-            elif change_20d > 2:
-                trend_score += 3
-            elif change_20d > 0:
-                trend_score += 1
-            elif change_20d > -2:
-                trend_score -= 1
-            elif change_20d > -5:
-                trend_score -= 3
-            else:
-                trend_score -= 5
+                vix_score = 0
+            indicators.append(vix_score)
         else:
-            trend_score = 10
+            indicators.append(50)
 
-        # Calculate total score (0-100)
-        total_score = momentum_score + range_score + vix_score + trend_score
-        total_score = int(max(0, min(100, total_score)))  # Clamp between 0-100
+        # ===== INDICATOR 6: Safe Haven Demand (Stocks vs Treasuries) =====
+        if tlt_hist is not None and len(tlt_hist) >= 20 and len(spy_hist) >= 20:
+            spy_20d_return = ((spy_hist['Close'].iloc[-1] - spy_hist['Close'].iloc[-20]) / spy_hist['Close'].iloc[-20]) * 100
+            tlt_20d_return = ((tlt_hist['Close'].iloc[-1] - tlt_hist['Close'].iloc[-20]) / tlt_hist['Close'].iloc[-20]) * 100
+            safe_haven_diff = spy_20d_return - tlt_20d_return
 
-        # Determine sentiment with more realistic thresholds
-        if total_score >= 80:
+            if safe_haven_diff > 5:
+                safehaven_score = 100
+            elif safe_haven_diff > 3:
+                safehaven_score = 80
+            elif safe_haven_diff > 1:
+                safehaven_score = 65
+            elif safe_haven_diff > 0:
+                safehaven_score = 55
+            elif safe_haven_diff > -1:
+                safehaven_score = 45
+            elif safe_haven_diff > -3:
+                safehaven_score = 35
+            elif safe_haven_diff > -5:
+                safehaven_score = 20
+            else:
+                safehaven_score = 0
+            indicators.append(safehaven_score)
+        else:
+            indicators.append(50)
+
+        # ===== INDICATOR 7: Junk Bond Demand (Yield Spread) =====
+        if hyg_hist is not None and lqd_hist is not None and len(hyg_hist) >= 20 and len(lqd_hist) >= 20:
+            hyg_return = ((hyg_hist['Close'].iloc[-1] - hyg_hist['Close'].iloc[-20]) / hyg_hist['Close'].iloc[-20]) * 100
+            lqd_return = ((lqd_hist['Close'].iloc[-1] - lqd_hist['Close'].iloc[-20]) / lqd_hist['Close'].iloc[-20]) * 100
+            junk_spread = hyg_return - lqd_return
+
+            if junk_spread > 2:
+                junkbond_score = 100
+            elif junk_spread > 1:
+                junkbond_score = 80
+            elif junk_spread > 0.5:
+                junkbond_score = 65
+            elif junk_spread > 0:
+                junkbond_score = 55
+            elif junk_spread > -0.5:
+                junkbond_score = 45
+            elif junk_spread > -1:
+                junkbond_score = 35
+            elif junk_spread > -2:
+                junkbond_score = 20
+            else:
+                junkbond_score = 0
+            indicators.append(junkbond_score)
+        else:
+            indicators.append(50)
+
+        # ===== CALCULATE FINAL SCORE (Average of all 7 indicators) =====
+        total_score = int(sum(indicators) / len(indicators))
+        total_score = max(0, min(100, total_score))
+
+        # Determine sentiment (CNN's thresholds)
+        if total_score >= 75:
             sentiment = 'Extreme Greed'
             css_class = 'extreme-greed'
-        elif total_score >= 60:
+        elif total_score >= 56:
             sentiment = 'Greed'
             css_class = 'greed'
-        elif total_score >= 40:
+        elif total_score >= 46:
             sentiment = 'Neutral'
             css_class = 'neutral'
-        elif total_score >= 20:
+        elif total_score >= 25:
             sentiment = 'Fear'
             css_class = 'fear'
         else:
@@ -2799,6 +2851,8 @@ def fear_greed_index():
 
     except Exception as e:
         print(f"❌ Fear & Greed Index error: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 def auto_run_scans_for_lemonai():
