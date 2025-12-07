@@ -275,61 +275,6 @@
             color: #4CAF50;
         }
 
-        /* Fear & Greed Index Meter */
-        .fear-greed-meter {
-            background: var(--card-bg);
-            padding: 15px 40px;
-            text-align: center;
-            border-bottom: 2px solid var(--border-color);
-            box-shadow: 0 2px 10px var(--shadow);
-        }
-
-        .fear-greed-content {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            font-size: 1.1em;
-            font-weight: bold;
-        }
-
-        .fear-greed-icon {
-            font-size: 1.3em;
-        }
-
-        .fear-greed-value {
-            color: #FFA500;
-            font-family: 'Courier New', monospace;
-            font-size: 1.4em;
-            min-width: 50px;
-        }
-
-        .fear-greed-label {
-            color: var(--text-secondary);
-            font-size: 0.9em;
-        }
-
-        /* Fear & Greed color variations */
-        .fear-greed-extreme-fear .fear-greed-value {
-            color: #dc2626;
-        }
-
-        .fear-greed-fear .fear-greed-value {
-            color: #f97316;
-        }
-
-        .fear-greed-neutral .fear-greed-value {
-            color: #FFA500;
-        }
-
-        .fear-greed-greed .fear-greed-value {
-            color: #84cc16;
-        }
-
-        .fear-greed-extreme-greed .fear-greed-value {
-            color: #10b981;
-        }
-
         /* Tab Navigation */
         .tabs {
             display: flex;
@@ -1349,15 +1294,6 @@
                 <span class="market-timer-icon">⏱️</span>
                 <span class="market-timer-time" id="marketTimerTime">--:--:--</span>
                 <span class="market-timer-label" id="marketTimerLabel">until close</span>
-            </div>
-        </div>
-
-        <!-- Fear & Greed Index Meter -->
-        <div class="fear-greed-meter" id="fearGreedMeter">
-            <div class="fear-greed-content">
-                <span class="fear-greed-icon">📊</span>
-                <span class="fear-greed-value" id="fearGreedValue">--</span>
-                <span class="fear-greed-label" id="fearGreedLabel">Fear & Greed</span>
             </div>
         </div>
 
@@ -3571,35 +3507,6 @@
             }
         }
 
-        // Function to fetch and update Fear & Greed Index
-        async function updateFearGreedIndex() {
-            try {
-                const response = await fetch('/api/fear-greed-index');
-                const data = await response.json();
-
-                if (data.success) {
-                    const meterElement = document.getElementById('fearGreedMeter');
-                    const valueElement = document.getElementById('fearGreedValue');
-                    const labelElement = document.getElementById('fearGreedLabel');
-
-                    // Update values
-                    valueElement.textContent = data.score;
-                    labelElement.textContent = data.sentiment;
-
-                    // Remove all fear-greed classes
-                    meterElement.className = 'fear-greed-meter';
-
-                    // Apply color class based on sentiment
-                    meterElement.classList.add('fear-greed-' + data.css_class);
-                }
-            } catch (error) {
-                console.error('Error fetching Fear & Greed Index:', error);
-                // Show fallback on error
-                document.getElementById('fearGreedValue').textContent = '--';
-                document.getElementById('fearGreedLabel').textContent = 'Fear & Greed';
-            }
-        }
-
         // Load saved theme on page load
         document.addEventListener('DOMContentLoaded', function() {
             // Load authentication
@@ -3627,10 +3534,6 @@
             // Start market timer
             updateMarketTimer();
             setInterval(updateMarketTimer, 1000); // Update every second
-
-            // Start Fear & Greed Index updates
-            updateFearGreedIndex();
-            setInterval(updateFearGreedIndex, 300000); // Update every 5 minutes
         });
         
         // ===== FAVORITES SYSTEM =====
