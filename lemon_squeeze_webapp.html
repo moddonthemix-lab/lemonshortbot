@@ -4327,16 +4327,16 @@
                                 This ${pattern.direction} setup suggests potential breakout ${pattern.direction === 'bullish' ? 'above' : 'below'}
                                 the inside bar's range.
                             </div>
-                            ` : pattern.type === 'Inside Bar (1)' ? `
+                            ` : pattern.type === 'Inside Bar (1)' && pattern.previous_candle && pattern.current_candle ? `
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
                                 <div>
-                                    <strong style="color: #666;">📊 Previous Bar (${pattern.previous_candle.date}):</strong><br>
+                                    <strong style="color: #666;">📊 Previous Bar (${pattern.previous_candle.date || 'N/A'}):</strong><br>
                                     High: $${pattern.previous_candle.high.toFixed(2)}<br>
                                     Low: $${pattern.previous_candle.low.toFixed(2)}<br>
                                     Close: $${pattern.previous_candle.close.toFixed(2)}
                                 </div>
                                 <div>
-                                    <strong style="color: #666;">1️⃣ Inside Bar (${pattern.current_candle.date}):</strong><br>
+                                    <strong style="color: #666;">1️⃣ Inside Bar (${pattern.current_candle.date || 'N/A'}):</strong><br>
                                     High: $${pattern.current_candle.high.toFixed(2)}<br>
                                     Low: $${pattern.current_candle.low.toFixed(2)}<br>
                                     Open: $${pattern.current_candle.open.toFixed(2)}<br>
@@ -4552,16 +4552,16 @@
                                 This ${pattern.direction} setup on the weekly timeframe suggests potential for a multi-day/week move
                                 ${pattern.direction === 'bullish' ? 'above' : 'below'} the inside week's range.
                             </div>
-                            ` : pattern.type === 'Inside Bar (1)' ? `
+                            ` : pattern.type === 'Inside Bar (1)' && pattern.previous_candle && pattern.current_candle ? `
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
                                 <div>
-                                    <strong style="color: #666;">📊 Previous Week (${pattern.previous_candle.date}):</strong><br>
+                                    <strong style="color: #666;">📊 Previous Week (${pattern.previous_candle.date || 'N/A'}):</strong><br>
                                     High: $${pattern.previous_candle.high.toFixed(2)}<br>
                                     Low: $${pattern.previous_candle.low.toFixed(2)}<br>
                                     Close: $${pattern.previous_candle.close.toFixed(2)}
                                 </div>
                                 <div>
-                                    <strong style="color: #666;">1️⃣ Inside Week (${pattern.current_candle.date}):</strong><br>
+                                    <strong style="color: #666;">1️⃣ Inside Week (${pattern.current_candle.date || 'N/A'}):</strong><br>
                                     High: $${pattern.current_candle.high.toFixed(2)}<br>
                                     Low: $${pattern.current_candle.low.toFixed(2)}<br>
                                     Open: $${pattern.current_candle.open.toFixed(2)}<br>
@@ -4771,16 +4771,16 @@
                                 Hourly pattern! Quick intraday setup showing ${pattern.direction} consolidation after expansion.
                                 Watch for breakout ${pattern.direction === 'bullish' ? 'above' : 'below'} the inside hour's range.
                             </div>
-                            ` : pattern.type === 'Inside Bar (1)' ? `
+                            ` : pattern.type === 'Inside Bar (1)' && pattern.previous_candle && pattern.current_candle ? `
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
                                 <div>
-                                    <strong style="color: #666;">📊 Previous Hour (${pattern.previous_candle.date}):</strong><br>
+                                    <strong style="color: #666;">📊 Previous Hour (${pattern.previous_candle.date || 'N/A'}):</strong><br>
                                     High: $${pattern.previous_candle.high.toFixed(2)}<br>
                                     Low: $${pattern.previous_candle.low.toFixed(2)}<br>
                                     Close: $${pattern.previous_candle.close.toFixed(2)}
                                 </div>
                                 <div>
-                                    <strong style="color: #666;">1️⃣ Inside Hour (${pattern.current_candle.date}):</strong><br>
+                                    <strong style="color: #666;">1️⃣ Inside Hour (${pattern.current_candle.date || 'N/A'}):</strong><br>
                                     High: $${pattern.current_candle.high.toFixed(2)}<br>
                                     Low: $${pattern.current_candle.low.toFixed(2)}<br>
                                     Open: $${pattern.current_candle.open.toFixed(2)}<br>
@@ -4955,16 +4955,16 @@
                                 suggests potential breakout ${pattern.direction === 'bullish' ? 'above' : 'below'} the consolidation range.
                                 ${(crypto.timeframe_display || crypto.timeframe) === 'Weekly' ? 'Weekly patterns can signal major multi-week moves!' : ''}
                             </div>
-                            ` : pattern.type === 'Inside Bar (1)' ? `
+                            ` : pattern.type === 'Inside Bar (1)' && pattern.previous_candle && pattern.current_candle ? `
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
                                 <div>
-                                    <strong style="color: #666;">📊 Previous Bar (${pattern.previous_candle.date}):</strong><br>
+                                    <strong style="color: #666;">📊 Previous Bar (${pattern.previous_candle.date || 'N/A'}):</strong><br>
                                     High: $${pattern.previous_candle.high.toFixed(2)}<br>
                                     Low: $${pattern.previous_candle.low.toFixed(2)}<br>
                                     Close: $${pattern.previous_candle.close.toFixed(2)}
                                 </div>
                                 <div>
-                                    <strong style="color: #666;">1️⃣ Inside Bar (${pattern.current_candle.date}):</strong><br>
+                                    <strong style="color: #666;">1️⃣ Inside Bar (${pattern.current_candle.date || 'N/A'}):</strong><br>
                                     High: $${pattern.current_candle.high.toFixed(2)}<br>
                                     Low: $${pattern.current_candle.low.toFixed(2)}<br>
                                     Open: $${pattern.current_candle.open.toFixed(2)}<br>
