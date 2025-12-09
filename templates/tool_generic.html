@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title }} • Lemon Squeeze</title>
+  <style>
+    :root {
+      --lemon: #f6c833;
+      --citrus: #fbeec7;
+      --leaf: #0b7d54;
+      --text: #243017;
+      --muted: #4e5a35;
+      --card: #fff9e6;
+      --border: #f0dca4;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+      color: var(--text);
+      background: var(--citrus);
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    .bg-lemons {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 0;
+    }
+    .bg-lemons img {
+      position: absolute;
+      opacity: 0.14;
+      filter: drop-shadow(0 16px 30px rgba(0,0,0,0.15));
+      animation: floaty 12s ease-in-out infinite alternate;
+    }
+    .bg-lemons img.lemon-1 { width: 360px; left: 4%; top: 12%; animation-duration: 13s; }
+    .bg-lemons img.lemon-2 { width: 280px; right: 6%; top: 30%; animation-duration: 11s; }
+    .bg-lemons img.lemon-3 { width: 320px; left: 12%; bottom: -4%; animation-duration: 14s; }
+    .bg-lemons img.lemon-4 { width: 420px; right: -6%; bottom: -18%; opacity: 0.11; animation: floaty 18s ease-in-out infinite alternate; transform: rotate(-6deg); }
+    .bg-lemons img.lemon-5 { width: 340px; left: -8%; top: -10%; opacity: 0.08; animation: floaty 16s ease-in-out infinite alternate-reverse; transform: rotate(8deg); }
+    @keyframes floaty {
+      0% { transform: translateY(0px) rotate(-2deg) scale(1); }
+      100% { transform: translateY(-18px) rotate(2deg) scale(1.04); }
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      background: #fffef8;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      font-size: 1.1rem;
+      color: var(--leaf);
+      letter-spacing: 0.2px;
+      text-decoration: none;
+    }
+    .nav-pills {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #fffef8;
+      color: var(--text);
+      font-weight: 700;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+    .pill:hover { border-color: var(--leaf); color: var(--leaf); box-shadow: 0 6px 18px rgba(11,125,84,0.12); }
+    .cta-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      text-decoration: none;
+      padding: 10px 16px;
+      border-radius: 999px;
+      font-weight: 800;
+      border: 2px solid var(--leaf);
+      color: #fffef8;
+      background: var(--leaf);
+      box-shadow: 0 10px 26px rgba(11,125,84,0.22);
+      transition: all 0.2s ease;
+    }
+    .btn.secondary {
+      background: #fffef8;
+      color: var(--leaf);
+      border-color: var(--leaf);
+      box-shadow: none;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .page {
+      padding: 26px 18px 40px;
+      max-width: 1180px;
+      margin: 0 auto;
+      width: 100%;
+      display: grid;
+      gap: 20px;
+      position: relative;
+      z-index: 1;
+    }
+    .hero {
+      background: linear-gradient(135deg, #fffef8, #fff4c9);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 14px 40px rgba(0,0,0,0.08);
+      display: grid;
+      gap: 10px;
+    }
+    .subtext { color: var(--muted); font-size: 0.95rem; }
+    .hero h1 { margin: 0; color: var(--leaf); }
+    .hero p { margin: 0; color: var(--muted); }
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+    }
+    .control { display: grid; gap: 4px; }
+    label { font-weight: 700; color: var(--leaf); }
+    input[type="number"], select {
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #fffef8;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .results {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+    }
+    .card {
+      background: #fffef8;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 12px 26px rgba(0,0,0,0.05);
+      display: grid;
+      gap: 6px;
+    }
+    .card h3 { margin: 0; color: var(--leaf); }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #fffef8;
+      color: var(--text);
+      font-weight: 700;
+      font-size: 0.9rem;
+      width: fit-content;
+    }
+    .muted { color: var(--muted); font-size: 0.9rem; }
+    .news { display: grid; gap: 4px; margin-top: 6px; }
+    .news a { color: var(--leaf); text-decoration: none; font-weight: 700; }
+    .news small { color: var(--muted); }
+    .empty {
+      text-align: center;
+      padding: 20px;
+      border: 1px dashed var(--border);
+      border-radius: 14px;
+      background: #fffef8;
+      color: var(--muted);
+    }
+    .loading { text-align: center; padding: 18px; color: var(--muted); }
+    .error { color: #b00020; text-align: center; }
+    .stack { display: grid; gap: 6px; }
+    .info-panel {
+      background: #fffef8;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 12px 26px rgba(0,0,0,0.05);
+      display: grid;
+      gap: 10px;
+    }
+    .info-panel h3 { margin: 0; color: var(--leaf); }
+    .info-panel ul { margin: 0; padding-left: 18px; color: var(--muted); }
+    .info-panel li { margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+  <div class="bg-lemons">
+    <img src="/static/lemon_bubble.png" class="lemon-1" alt="">
+    <img src="/static/lemon_bubble.png" class="lemon-2" alt="">
+    <img src="/static/lemon_bubble.png" class="lemon-3" alt="">
+    <img src="/static/lemon_bg.png" class="lemon-4" alt="">
+    <img src="/static/lemon_bg.png" class="lemon-5" alt="">
+  </div>
+  <header>
+    <a class="brand" href="/">🍋 Lemon Squeeze</a>
+    <div class="nav-pills">
+      <a class="pill" href="/squeeze">Short Squeeze</a>
+      <a class="pill" href="/daily">Daily</a>
+      <a class="pill" href="/hourly">Hourly</a>
+      <a class="pill" href="/weekly">Weekly</a>
+      <a class="pill" href="/volemon">Volemon</a>
+      <a class="pill" href="/usuals">Usuals</a>
+      <a class="pill" href="/crypto">Crypto</a>
+      <a class="pill" href="/lemonai">LemonAI</a>
+      <a class="pill" href="/challenges">Challenges</a>
+      <a class="pill" href="/lemonade">Lemonade</a>
+      <a class="pill" href="/howto">How To</a>
+    </div>
+    <div class="cta-row">
+      <a class="btn secondary" href="/app">Open Terminal</a>
+      <a class="btn" href="/app">Start Squeezing</a>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="hero">
+      <h1>{{ title }}</h1>
+      <p>{{ subtitle if subtitle else 'Powered by the original Lemon Squeeze engine — refreshed UI, same backend logic.' }}</p>
+      <div class="controls" id="controlPanel">
+        <!-- controls injected based on tool -->
+      </div>
+      <div class="cta-row">
+        <a class="btn" href="#" id="runAction">Scan</a>
+        <span class="muted" id="statusMsg"></span>
+      </div>
+      <div class="subtext" id="helperText"></div>
+    </section>
+
+    <section id="resultsSection">
+      <div class="loading" id="loading" style="display:none;">Loading...</div>
+      <div class="results" id="results"></div>
+      <div class="empty" id="emptyState" style="display:none;">No results yet.</div>
+      <div class="loading error" id="errorState" style="display:none;"></div>
+    </section>
+
+    <section class="info-panel" id="infoPanel">
+      <h3>How this tab works</h3>
+      <div class="muted">Pulling details...</div>
+    </section>
+  </main>
+
+  <script>
+    const toolKey = "{{ tool_key }}";
+    const endpoint = "{{ api_endpoint }}";
+    const method = "{{ api_method|default('POST') }}";
+    const controlPanel = document.getElementById('controlPanel');
+    const runBtn = document.getElementById('runAction');
+    const loadingEl = document.getElementById('loading');
+    const resultsEl = document.getElementById('results');
+    const emptyEl = document.getElementById('emptyState');
+    const errorEl = document.getElementById('errorState');
+    const statusEl = document.getElementById('statusMsg');
+    const helperEl = document.getElementById('helperText');
+    const infoPanel = document.getElementById('infoPanel');
+    let isLoading = false;
+
+    const controlsConfig = {
+      daily: [
+        { id: 'dummy', label: 'No filters', type: 'label' }
+      ],
+      hourly: [
+        { id: 'dummy', label: 'No filters', type: 'label' }
+      ],
+      weekly: [
+        { id: 'dummy', label: 'No filters', type: 'label' }
+      ],
+      crypto: [
+        { id: 'dummy', label: 'No filters', type: 'label' }
+      ],
+      lemonai: [
+        { id: 'dummy', label: 'No filters', type: 'label' }
+      ],
+      challenges: [],
+      lemonade: []
+    };
+
+    // Quick reference content derived from the legacy app copy
+    const infoCopy = {
+      daily: {
+        helper: 'Patterns are preloaded. Hit Scan anytime for a fresh pass.',
+        body: `
+          <p>Daily Plays looks for 3-1 Strat / inside-outside combos with volume and news.</p>
+          <ul>
+            <li>Scan list: core large-cap + high-attention names.</li>
+            <li>Shows pattern type + direction, price, change, and fresh headlines.</li>
+            <li>Use for swing bias; confirm on your chart before entries.</li>
+          </ul>`
+      },
+      hourly: {
+        helper: 'Built for day-trade timing. Results are cached; Scan to refresh intraday.',
+        body: `
+          <p>Hourly Plays finds the same patterns on 1h bars for faster moves.</p>
+          <ul>
+            <li>List combines the daily + Volemon watchlists.</li>
+            <li>Use volume + pattern direction as a quick bias check.</li>
+            <li>Refresh during market hours for freshest bars.</li>
+          </ul>`
+      },
+      weekly: {
+        helper: 'Weekly bias preloaded; Scan after Friday close for the newest set.',
+        body: `
+          <p>Weekly Plays surfaces swing setups with inside/outside structure.</p>
+          <ul>
+            <li>Combines daily + Volemon list for broader coverage.</li>
+            <li>Shows weekly change and pattern direction.</li>
+            <li>Pairs well with LemonAI for contract selection.</li>
+          </ul>`
+      },
+      crypto: {
+        helper: 'Crypto runs across 1h/4h/daily/weekly. Cached results show instantly.',
+        body: `
+          <p>BTC, ETH, XRP, SOL, DOGE, HYPE with multi-timeframe 3-1 pattern reads.</p>
+          <ul>
+            <li>Each hit includes price + change and pattern direction.</li>
+            <li>Use when multiple timeframes align for stronger conviction.</li>
+          </ul>`
+      },
+      volemon: {
+        helper: 'Volume spikes are preloaded. Scan to refresh the multiplier and change.',
+        body: `
+          <p>Volemon tracks abnormal volume multiples vs. recent average.</p>
+          <ul>
+            <li>Shows volume x, price change, and market cap context.</li>
+            <li>Great as a confirm step with Hourly/Daily patterns.</li>
+          </ul>`
+      },
+      usuals: {
+        helper: 'Core watchlist with volume + daily/weekly pattern context.',
+        body: `
+          <p>Usuals keeps staples in view with pattern direction per timeframe.</p>
+          <ul>
+            <li>Shows volume ratio, price change, and any detected patterns.</li>
+            <li>Includes top headlines per ticker.</li>
+          </ul>`
+      },
+      lemonai: {
+        helper: 'AI options picks refresh hourly; cached recs load instantly.',
+        body: `
+          <p>LemonAI surfaces options ideas with strike, direction, and confidence.</p>
+          <ul>
+            <li>Includes pattern/flow context and volume ratio where available.</li>
+            <li>Links to relevant headlines for the ticker.</li>
+          </ul>`
+      },
+      challenges: {
+        helper: 'Weekly + multi-week challenges from the reference app.',
+        body: `
+          <p>Track your progress with preset weekly and multi-week goals.</p>
+          <ul>
+            <li>Trade-type challenges (day/swing/AI) and percentage targets.</li>
+            <li>Use as a lightweight accountability layer.</li>
+          </ul>`
+      },
+      lemonade: {
+        helper: 'Dividend ideas load automatically; refresh for new prices/news.',
+        body: `
+          <p>Lemonade Stand lists yield, price, and payout frequency with recent headlines.</p>
+          <ul>
+            <li>Mix of monthly and quarterly payers.</li>
+            <li>Use as a starting watchlist—verify yield recency on your broker.</li>
+          </ul>`
+      }
+    };
+
+    function renderControls() {
+      const cfg = controlsConfig[toolKey] || [];
+      controlPanel.innerHTML = '';
+      if (!cfg.length) {
+        controlPanel.style.display = 'none';
+        return;
+      }
+      controlPanel.style.display = 'grid';
+      cfg.forEach(c => {
+        if (c.type === 'label') {
+          const div = document.createElement('div');
+          div.className = 'control';
+          div.innerHTML = `<label>${c.label}</label>`;
+          controlPanel.appendChild(div);
+        }
+      });
+    }
+
+    async function run(force = false) {
+      if (isLoading) return;
+      isLoading = true;
+      const hasContent = resultsEl.children.length > 0;
+      loadingEl.style.display = 'block';
+      if (!hasContent) {
+        resultsEl.innerHTML = '';
+      }
+      emptyEl.style.display = 'none';
+      errorEl.style.display = 'none';
+      statusEl.textContent = hasContent ? 'Refreshing…' : 'Scanning...';
+      runBtn.textContent = 'Scanning...';
+      runBtn.classList.add('secondary');
+      runBtn.setAttribute('aria-busy', 'true');
+      try {
+        const res = await fetch(endpoint, {
+          method: method,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Failed');
+        handleData(data);
+      } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.style.display = 'block';
+        statusEl.textContent = '';
+      } finally {
+        loadingEl.style.display = 'none';
+        runBtn.textContent = 'Scan';
+        runBtn.classList.remove('secondary');
+        runBtn.removeAttribute('aria-busy');
+        isLoading = false;
+      }
+    }
+
+    function handleData(data) {
+      let list = [];
+      if (toolKey === 'daily' || toolKey === 'hourly' || toolKey === 'weekly' || toolKey === 'volemon' || toolKey === 'usuals') {
+        list = data.results || [];
+        sessionStorage.setItem(`prefetch_${toolKey}`, JSON.stringify({t: Date.now(), data}));
+        renderPlays(list);
+        statusEl.textContent = `Found ${list.length} patterns`;
+      } else if (toolKey === 'crypto') {
+        list = data.results || [];
+        sessionStorage.setItem(`prefetch_${toolKey}`, JSON.stringify({t: Date.now(), data}));
+        renderCrypto(list);
+        statusEl.textContent = `Found ${list.length} crypto patterns`;
+      } else if (toolKey === 'lemonai') {
+        list = data.recommendations || [];
+        sessionStorage.setItem(`prefetch_${toolKey}`, JSON.stringify({t: Date.now(), data}));
+        renderAI(list);
+        statusEl.textContent = `Got ${list.length} recommendations`;
+      } else if (toolKey === 'challenges') {
+        sessionStorage.setItem(`prefetch_${toolKey}`, JSON.stringify({t: Date.now(), data}));
+        renderChallenges(data);
+        statusEl.textContent = 'Challenges loaded';
+      } else if (toolKey === 'lemonade') {
+        list = data.stocks || [];
+        sessionStorage.setItem(`prefetch_${toolKey}`, JSON.stringify({t: Date.now(), data}));
+        renderDividends(list);
+        statusEl.textContent = `Loaded ${list.length} dividend picks`;
+      }
+    }
+
+    function renderPlays(list) {
+      resultsEl.innerHTML = '';
+      if (!list.length) { emptyEl.style.display = 'block'; return; }
+      list.forEach(item => {
+        const pattern = item.pattern?.type || 'Pattern';
+        const direction = item.pattern?.direction || '';
+        const price = item.currentPrice || item.price || 0;
+        const change = item.dailyChange || item.weeklyChange || item.change || 0;
+        const vol = item.volume || 0;
+        const avgVol = item.avgVolume || item.avg_volume || 0;
+        const volRatio = item.volume_ratio || item.volumeRatio || (avgVol ? vol / avgVol : null);
+        const volMultiple = item.volume_multiple || null;
+        const timeframe = item.timeframe_display || item.timeframe || toolKey;
+        const patterns = item.patterns || {};
+
+        const patternBadges = [];
+        if (toolKey === 'usuals' && Object.keys(patterns).length) {
+          Object.entries(patterns).forEach(([tf, data]) => {
+            patternBadges.push(`<span class="badge">${tf.toUpperCase()} ${data?.direction || ''}</span>`);
+          });
+        }
+        const volumeBadge = (toolKey === 'volemon' && (volMultiple || volRatio)) ? `<span class="badge">Vol ${(volMultiple || volRatio)?.toFixed(1)}x</span>` : '';
+        const metaLine = `Price: $${price.toFixed(2)} • Change: ${change.toFixed(2)}%`;
+        const volLine = vol ? `Volume: ${vol.toLocaleString()}${volRatio ? ` • ${volRatio.toFixed(1)}x avg` : ''}` : '';
+        const detailLine = [volLine, timeframe].filter(Boolean).join(' • ');
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <h3>${item.ticker || ''} <span class="badge">${pattern} ${direction}</span> ${volumeBadge}</h3>
+          ${patternBadges.join(' ')}
+          <div class="muted">${metaLine}</div>
+          <div class="muted">${detailLine}</div>
+          ${renderNews(item.news || [])}
+        `;
+        resultsEl.appendChild(card);
+      });
+    }
+
+    function renderCrypto(list) {
+      resultsEl.innerHTML = '';
+      if (!list.length) { emptyEl.style.display = 'block'; return; }
+      list.forEach(item => {
+        const pattern = item.pattern?.type || 'Pattern';
+        const direction = item.pattern?.direction || item.direction || '';
+        const price = item.currentPrice || 0;
+        const change = item.change || 0;
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <h3>${item.ticker || ''} <span class="badge">${pattern} ${direction}</span></h3>
+          <div class="muted">Price: $${price.toFixed(2)} • Change: ${change.toFixed(2)}%</div>
+        `;
+        resultsEl.appendChild(card);
+      });
+    }
+
+    function renderAI(list) {
+      resultsEl.innerHTML = '';
+      if (!list.length) { emptyEl.style.display = 'block'; return; }
+      list.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <h3>${item.ticker || ''} <span class="badge">${item.option_type || ''} @ ${item.strike_price ? item.strike_price.toFixed(2) : ''}</span></h3>
+          <div class="muted">Confidence: ${Math.round(item.confidence || 0)} • Direction: ${item.direction || ''}</div>
+          <div class="muted">Pattern: ${item.pattern || ''}</div>
+          <div class="muted">Volume ratio: ${item.volume_ratio ? item.volume_ratio.toFixed(2) : '—'}</div>
+          ${renderNews(item.news || [])}
+        `;
+        resultsEl.appendChild(card);
+      });
+    }
+
+    function renderChallenges(data) {
+      resultsEl.innerHTML = '';
+      const multi = data.multi_week || [];
+      const weekly = data.weekly || [];
+      if (!multi.length && !weekly.length) { emptyEl.style.display = 'block'; return; }
+      [...multi, ...weekly].forEach(ch => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <h3>${ch.title || ''}</h3>
+          <div class="muted">${ch.description || ''}</div>
+          <div class="badge">${ch.duration || ''}</div>
+          <div class="muted">Target: ${ch.target || ''} • Ends: ${ch.end_date || ''}</div>
+        `;
+        resultsEl.appendChild(card);
+      });
+    }
+
+    function renderDividends(list) {
+      resultsEl.innerHTML = '';
+      if (!list.length) { emptyEl.style.display = 'block'; return; }
+      list.forEach(stock => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <h3>${stock.ticker || ''} <span class="badge">${(stock.yield || 0).toFixed(2)}% yield</span></h3>
+          <div class="muted">Price: $${(stock.price || 0).toFixed(2)}</div>
+          <div class="muted">Frequency: ${stock.frequency || ''}</div>
+          ${renderNews(stock.news || [])}
+        `;
+        resultsEl.appendChild(card);
+      });
+    }
+
+    function renderNews(news) {
+      if (!news.length) return '<div class="muted">No news</div>';
+      return `<div class="news">` + news.slice(0,2).map(n => `
+        <a href="${n.link || '#'}" target="_blank" rel="noopener">${n.title || 'News'}</a>
+        <small>${n.publisher || ''}</small>
+      `).join('') + `</div>`;
+    }
+
+    function renderInfo() {
+      const copy = infoCopy[toolKey];
+      if (!copy) {
+        infoPanel.style.display = 'none';
+        return;
+      }
+      helperEl.textContent = copy.helper || '';
+      infoPanel.innerHTML = `<h3>How this tab works</h3>${copy.body}`;
+    }
+
+    runBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      run();
+    });
+
+    renderControls();
+    renderInfo();
+    // Try cached first; render without hitting network, then quietly refresh if stale
+    (function tryCached() {
+      try {
+        const cached = sessionStorage.getItem(`prefetch_${toolKey}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && parsed.data) {
+            handleData(parsed.data);
+            statusEl.textContent = 'Loaded from cache';
+            const age = parsed.t ? (Date.now() - parsed.t) : 0;
+            if (age > 180000) {
+              setTimeout(() => run(true), 200);
+            }
+            return;
+          }
+        }
+      } catch (e) {}
+      // No cache, auto-run
+      run();
+    })();
+  </script>
+</body>
+</html>

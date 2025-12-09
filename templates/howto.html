@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title }} • Lemon Squeeze</title>
+  <style>
+    :root {
+      --lemon: #f6c833;
+      --citrus: #fbeec7;
+      --leaf: #0b7d54;
+      --text: #243017;
+      --muted: #4e5a35;
+      --card: #fff9e6;
+      --border: #f0dca4;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+      color: var(--text);
+      background: var(--citrus);
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .bg-lemons {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 0;
+    }
+    .bg-lemons img {
+      position: absolute;
+      opacity: 0.14;
+      filter: drop-shadow(0 16px 30px rgba(0,0,0,0.15));
+      animation: floaty 12s ease-in-out infinite alternate;
+    }
+    .bg-lemons img.lemon-1 { width: 360px; left: 4%; top: 12%; animation-duration: 13s; }
+    .bg-lemons img.lemon-2 { width: 280px; right: 6%; top: 30%; animation-duration: 11s; }
+    .bg-lemons img.lemon-3 { width: 320px; left: 12%; bottom: -4%; animation-duration: 14s; }
+    .bg-lemons img.lemon-4 { width: 420px; right: -6%; bottom: -18%; opacity: 0.11; animation: floaty 18s ease-in-out infinite alternate; transform: rotate(-6deg); }
+    .bg-lemons img.lemon-5 { width: 340px; left: -8%; top: -10%; opacity: 0.08; animation: floaty 16s ease-in-out infinite alternate-reverse; transform: rotate(8deg); }
+    @keyframes floaty {
+      0% { transform: translateY(0px) rotate(-2deg) scale(1); }
+      100% { transform: translateY(-18px) rotate(2deg) scale(1.04); }
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      background: #fffef8;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      font-size: 1.1rem;
+      color: var(--leaf);
+      letter-spacing: 0.2px;
+      text-decoration: none;
+    }
+    .nav-pills {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #fffef8;
+      color: var(--text);
+      font-weight: 700;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+    .pill:hover { border-color: var(--leaf); color: var(--leaf); box-shadow: 0 6px 18px rgba(11,125,84,0.12); }
+    .cta-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      text-decoration: none;
+      padding: 10px 16px;
+      border-radius: 999px;
+      font-weight: 800;
+      border: 2px solid var(--leaf);
+      color: #fffef8;
+      background: var(--leaf);
+      box-shadow: 0 10px 26px rgba(11,125,84,0.22);
+      transition: all 0.2s ease;
+    }
+    .btn.secondary {
+      background: #fffef8;
+      color: var(--leaf);
+      border-color: var(--leaf);
+      box-shadow: none;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .page {
+      padding: 32px 18px 48px;
+      max-width: 1180px;
+      margin: 0 auto;
+      width: 100%;
+      display: grid;
+      gap: 24px;
+      position: relative;
+      z-index: 1;
+    }
+    .hero {
+      display: grid;
+      gap: 12px;
+      background: linear-gradient(135deg, #fffef8, #fff4c9);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 24px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.08);
+    }
+    .hero h1 { margin: 0; color: var(--leaf); font-size: clamp(2.1rem, 3vw, 2.6rem); }
+    .hero p { margin: 0; color: var(--muted); max-width: 820px; }
+    .sections {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+    }
+    .card {
+      background: #fffef8;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 12px 26px rgba(0,0,0,0.05);
+      display: grid;
+      gap: 8px;
+    }
+    .card h3 { margin: 0; color: var(--leaf); }
+    .card p { margin: 0; color: var(--muted); }
+    ul { margin: 0; padding-left: 18px; color: var(--muted); }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #fffef8;
+      color: var(--text);
+      font-weight: 700;
+      font-size: 0.9rem;
+      width: fit-content;
+    }
+    .muted { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="bg-lemons">
+    <img src="/static/lemon_bubble.png" class="lemon-1" alt="">
+    <img src="/static/lemon_bubble.png" class="lemon-2" alt="">
+    <img src="/static/lemon_bubble.png" class="lemon-3" alt="">
+    <img src="/static/lemon_bg.png" class="lemon-4" alt="">
+    <img src="/static/lemon_bg.png" class="lemon-5" alt="">
+  </div>
+  <header>
+    <a class="brand" href="/">🍋 Lemon Squeeze</a>
+    <div class="nav-pills">
+      <a class="pill" href="/squeeze">Short Squeeze</a>
+      <a class="pill" href="/daily">Daily</a>
+      <a class="pill" href="/hourly">Hourly</a>
+      <a class="pill" href="/weekly">Weekly</a>
+      <a class="pill" href="/volemon">Volemon</a>
+      <a class="pill" href="/usuals">Usuals</a>
+      <a class="pill" href="/crypto">Crypto</a>
+      <a class="pill" href="/lemonai">LemonAI</a>
+      <a class="pill" href="/challenges">Challenges</a>
+      <a class="pill" href="/lemonade">Lemonade</a>
+      <a class="pill" href="/howto">How To</a>
+    </div>
+    <div class="cta-row">
+      <a class="btn secondary" href="/app">Open Terminal</a>
+      <a class="btn" href="/app">Start Squeezing</a>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="hero">
+      <h1>How to use Lemon Squeeze</h1>
+      <p>{{ subtitle if subtitle else 'A quick playbook for every tab—preloaded data, refresh only when you want new pours.' }}</p>
+      <div class="cta-row">
+        <a class="btn" href="/squeeze">Open Short Squeeze</a>
+        <a class="btn secondary" href="/daily">See Daily / Weekly</a>
+      </div>
+    </section>
+
+    <section class="sections">
+      <div class="card">
+        <h3>Short Squeeze Scanner</h3>
+        <p>Preloaded with the latest cached run. Adjust Min Short %, Daily Gain %, Volume Ratio, and Risk, then refresh.</p>
+        <ul>
+          <li>Flags high short interest + upside move</li>
+          <li>Calculates volume ratio & days to cover</li>
+          <li>Shows risk score and fresh news</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>3-1 Strat (Hourly / Daily / Weekly)</h3>
+        <p>Pattern-first scanners that already load results. Use the Refresh button only when you want a fresh pass.</p>
+        <ul>
+          <li>Hourly Plays → day-trade bias</li>
+          <li>Daily & Weekly → swing bias</li>
+          <li>News pulled per ticker</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Crypto 3-1</h3>
+        <p>BTC, ETH, XRP, SOL, DOGE, HYPE with hourly/daily/weekly context. Cached by default; refresh for new reads.</p>
+      </div>
+      <div class="card">
+        <h3>Volume & Staples</h3>
+        <p>Volemon highlights extreme volume spikes, Usuals keeps the core watchlist with patterns + news.</p>
+      </div>
+      <div class="card">
+        <h3>LemonAI</h3>
+        <p>Options-aware picks with strike, confidence, direction, volume ratio, and linked news.</p>
+      </div>
+      <div class="card">
+        <h3>Income & Challenges</h3>
+        <p>Lemonade Stand lists dividend ideas. Challenges keep you on track weekly and monthly.</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>Playbook by trader type</h3>
+      <div class="sections">
+        <div class="card">
+          <div class="badge">Day Traders</div>
+          <p>Start at Hourly Plays → confirm with Volemon volume. Keep a stop and refresh intraday.</p>
+        </div>
+        <div class="card">
+          <div class="badge">Swing Traders</div>
+          <p>Daily / Weekly Plays → check news + pattern direction. Use LemonAI for options strikes.</p>
+        </div>
+        <div class="card">
+          <div class="badge">Crypto</div>
+          <p>Crypto tab → scan hourly/daily/weekly. Look for multi-timeframe alignment.</p>
+        </div>
+        <div class="card">
+          <div class="badge">Income</div>
+          <p>Lemonade Stand → yield, price, and payout frequency. Headlines included.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>Quick steps</h3>
+      <ul>
+        <li>Landing preloads data. When you open any tab, cached results render instantly.</li>
+        <li>Use the Refresh button only when you want a fresh scan—previous results stay visible while it works.</li>
+        <li>Short Squeeze defaults: Min Short 25%, Gain 15%, Vol Ratio 1.5x, Risk 60. Tune and refresh.</li>
+        <li>Crypto / Hourly / Daily / Weekly already load top patterns; news is limited to the freshest links.</li>
+        <li>LemonAI auto-refreshes hourly; caches are kept for fast page loads.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h3>Risk & disclaimers</h3>
+      <p class="muted">High risk. Not financial advice. Patterns and scanners are tools, not guarantees. Use stops, size small, and never risk more than you can lose. Data may lag; always confirm on your broker chart.</p>
+    </section>
+
+    <div class="card" style="text-align:center;">
+      <h3 style="margin:0; color:var(--leaf);">Ready to pour?</h3>
+      <p class="muted" style="margin:6px 0 12px;">Jump into a tab—everything is preloaded. Refresh only when you need a new squeeze.</p>
+      <div class="cta-row" style="justify-content:center;">
+        <a class="btn" href="/squeeze">Launch Short Squeeze</a>
+        <a class="btn secondary" href="/crypto">Open Crypto</a>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

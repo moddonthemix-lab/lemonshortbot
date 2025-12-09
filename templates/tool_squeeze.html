@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title }} • Lemon Squeeze</title>
+  <style>
+    :root {
+      --lemon: #f6c833;
+      --citrus: #fbeec7;
+      --leaf: #0b7d54;
+      --text: #243017;
+      --muted: #4e5a35;
+      --card: #fff9e6;
+      --border: #f0dca4;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+      color: var(--text);
+      background: var(--citrus);
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    .bg-lemons {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 0;
+    }
+    .bg-lemons img {
+      position: absolute;
+      opacity: 0.14;
+      filter: drop-shadow(0 16px 30px rgba(0,0,0,0.15));
+      animation: floaty 12s ease-in-out infinite alternate;
+    }
+    .bg-lemons img.lemon-1 { width: 360px; left: 4%; top: 12%; animation-duration: 13s; }
+    .bg-lemons img.lemon-2 { width: 280px; right: 6%; top: 30%; animation-duration: 11s; }
+    .bg-lemons img.lemon-3 { width: 320px; left: 12%; bottom: -4%; animation-duration: 14s; }
+    .bg-lemons img.lemon-4 { width: 420px; right: -6%; bottom: -18%; opacity: 0.11; animation: floaty 18s ease-in-out infinite alternate; transform: rotate(-6deg); }
+    .bg-lemons img.lemon-5 { width: 340px; left: -8%; top: -10%; opacity: 0.08; animation: floaty 16s ease-in-out infinite alternate-reverse; transform: rotate(8deg); }
+    @keyframes floaty {
+      0% { transform: translateY(0px) rotate(-2deg) scale(1); }
+      100% { transform: translateY(-18px) rotate(2deg) scale(1.04); }
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      background: #fffef8;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      font-size: 1.1rem;
+      color: var(--leaf);
+      letter-spacing: 0.2px;
+      text-decoration: none;
+    }
+    .nav-pills {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #fffef8;
+      color: var(--text);
+      font-weight: 700;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+    .pill:hover { border-color: var(--leaf); color: var(--leaf); box-shadow: 0 6px 18px rgba(11,125,84,0.12); }
+    .cta-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      text-decoration: none;
+      padding: 10px 16px;
+      border-radius: 999px;
+      font-weight: 800;
+      border: 2px solid var(--leaf);
+      color: #fffef8;
+      background: var(--leaf);
+      box-shadow: 0 10px 26px rgba(11,125,84,0.22);
+      transition: all 0.2s ease;
+    }
+    .btn.secondary {
+      background: #fffef8;
+      color: var(--leaf);
+      border-color: var(--leaf);
+      box-shadow: none;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .page {
+      padding: 26px 18px 40px;
+      max-width: 1180px;
+      margin: 0 auto;
+      width: 100%;
+      display: grid;
+      gap: 20px;
+      position: relative;
+      z-index: 1;
+    }
+    .hero {
+      background: linear-gradient(135deg, #fffef8, #fff4c9);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 14px 40px rgba(0,0,0,0.08);
+      display: grid;
+      gap: 10px;
+    }
+    .hero h1 { margin: 0; color: var(--leaf); }
+    .hero p { margin: 0; color: var(--muted); }
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+    }
+    .control {
+      display: grid;
+      gap: 4px;
+    }
+    label { font-weight: 700; color: var(--leaf); }
+    input[type="number"] {
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #fffef8;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .results {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+    }
+    .card {
+      background: #fffef8;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 12px 26px rgba(0,0,0,0.05);
+      display: grid;
+      gap: 6px;
+    }
+    .card h3 { margin: 0; color: var(--leaf); }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #fffef8;
+      color: var(--text);
+      font-weight: 700;
+      font-size: 0.9rem;
+      width: fit-content;
+    }
+    .muted { color: var(--muted); font-size: 0.9rem; }
+    .news {
+      display: grid;
+      gap: 4px;
+      margin-top: 6px;
+    }
+    .news a { color: var(--leaf); text-decoration: none; font-weight: 700; }
+    .news small { color: var(--muted); }
+    .empty {
+      text-align: center;
+      padding: 20px;
+      border: 1px dashed var(--border);
+      border-radius: 14px;
+      background: #fffef8;
+      color: var(--muted);
+    }
+    .loading {
+      text-align: center;
+      padding: 18px;
+      color: var(--muted);
+    }
+    .error { color: #b00020; }
+  </style>
+</head>
+<body>
+  <div class="bg-lemons">
+    <img src="/static/lemon_bubble.png" class="lemon-1" alt="">
+    <img src="/static/lemon_bubble.png" class="lemon-2" alt="">
+    <img src="/static/lemon_bubble.png" class="lemon-3" alt="">
+    <img src="/static/lemon_bg.png" class="lemon-4" alt="">
+    <img src="/static/lemon_bg.png" class="lemon-5" alt="">
+  </div>
+  <header>
+    <a class="brand" href="/">🍋 Lemon Squeeze</a>
+    <div class="nav-pills">
+      <a class="pill" href="/squeeze">Short Squeeze</a>
+      <a class="pill" href="/daily">Daily</a>
+      <a class="pill" href="/hourly">Hourly</a>
+      <a class="pill" href="/weekly">Weekly</a>
+      <a class="pill" href="/volemon">Volemon</a>
+      <a class="pill" href="/usuals">Usuals</a>
+      <a class="pill" href="/crypto">Crypto</a>
+      <a class="pill" href="/lemonai">LemonAI</a>
+      <a class="pill" href="/challenges">Challenges</a>
+      <a class="pill" href="/lemonade">Lemonade</a>
+      <a class="pill" href="/howto">How To</a>
+    </div>
+    <div class="cta-row">
+      <a class="btn secondary" href="/app">Open Terminal</a>
+      <a class="btn" href="/app">Start Squeezing</a>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="hero">
+      <h1>{{ title }}</h1>
+      <p>{{ subtitle if subtitle else 'Powered by the original Lemon Squeeze engine — refreshed UI, same backend logic.' }}</p>
+      <div class="controls">
+        <div class="control">
+          <label for="minShort">Min Short %</label>
+          <input type="number" id="minShort" value="25" step="1" min="0">
+        </div>
+        <div class="control">
+          <label for="minGain">Min Daily Gain %</label>
+          <input type="number" id="minGain" value="15" step="1" min="0">
+        </div>
+        <div class="control">
+          <label for="minVolRatio">Min Volume Ratio</label>
+          <input type="number" id="minVolRatio" value="1.5" step="0.1" min="0">
+        </div>
+      <div class="control">
+        <label for="minRisk">Min Risk Score</label>
+        <input type="number" id="minRisk" value="60" step="1" min="0" max="100">
+      </div>
+    </div>
+    <div class="cta-row">
+      <a class="btn" href="#" id="runScan">Scan</a>
+      <span class="muted" id="statusMsg"></span>
+    </div>
+    </section>
+
+    <section id="resultsSection">
+      <div class="loading" id="loading" style="display:none;">Scanning lemons...</div>
+      <div class="results" id="results"></div>
+      <div class="empty" id="emptyState" style="display:none;">No squeezes found. Try lowering thresholds or scanning later.</div>
+      <div class="loading error" id="errorState" style="display:none;"></div>
+    </section>
+  </main>
+
+  <script>
+    const loadingEl = document.getElementById('loading');
+    const resultsEl = document.getElementById('results');
+    const emptyEl = document.getElementById('emptyState');
+    const errorEl = document.getElementById('errorState');
+    const statusEl = document.getElementById('statusMsg');
+    let isLoading = false;
+
+    function renderCached() {
+      try {
+        const cached = sessionStorage.getItem('prefetch_squeeze');
+        if (!cached) return { rendered: false, age: 0 };
+        const parsed = JSON.parse(cached);
+        if (parsed && parsed.data && parsed.data.results && parsed.data.results.length) {
+          renderResults(parsed.data.results);
+          statusEl.textContent = `Loaded ${parsed.data.results.length} (cached)`;
+          const age = parsed.t ? (Date.now() - parsed.t) : 0;
+          return { rendered: true, age };
+        }
+        if (parsed && parsed.data) {
+          emptyEl.style.display = 'block';
+          return { rendered: true, age: 0 };
+        }
+      } catch (e) {}
+      return { rendered: false, age: 0 };
+    }
+
+    async function fetchSqueezes(options = {}) {
+      const { force = false } = options;
+      if (isLoading) return;
+      isLoading = true;
+      const hadContent = resultsEl.children.length > 0;
+      const minShort = parseFloat(document.getElementById('minShort').value);
+      const minGain = parseFloat(document.getElementById('minGain').value);
+      const minVolRatio = parseFloat(document.getElementById('minVolRatio').value);
+      const minRisk = parseFloat(document.getElementById('minRisk').value);
+
+      loadingEl.style.display = 'block';
+      if (!hadContent) {
+        resultsEl.innerHTML = '';
+      }
+      emptyEl.style.display = 'none';
+      errorEl.style.display = 'none';
+      statusEl.textContent = hadContent ? 'Refreshing…' : 'Loading...';
+
+      try {
+        const res = await fetch('/api/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ minShort, minGain, minVolRatio, minRisk })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Scan failed');
+
+        renderResults(data.results || []);
+        statusEl.textContent = `Found ${data.results?.length || 0} candidates`;
+        sessionStorage.setItem('prefetch_squeeze', JSON.stringify({t: Date.now(), data}));
+      } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.style.display = 'block';
+        statusEl.textContent = '';
+      } finally {
+        loadingEl.style.display = 'none';
+        isLoading = false;
+      }
+    }
+
+    function renderResults(list) {
+      resultsEl.innerHTML = '';
+      if (!list.length) {
+        emptyEl.style.display = 'block';
+        return;
+      }
+      list.sort((a,b) => (b.riskScore || 0) - (a.riskScore || 0));
+      list.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <h3>${item.ticker || ''}</h3>
+          <div class="badge">Risk ${item.riskScore?.toFixed(1) || '—'}</div>
+          <div class="muted">Short: ${item.shortInterest?.toFixed(1) || 0}% • Gain: ${item.dailyChange?.toFixed(2) || 0}%</div>
+          <div class="muted">Vol ratio: ${item.volumeRatio?.toFixed(2) || 0} • Price: $${item.currentPrice?.toFixed(2) || 0}</div>
+          <div class="muted">Float: ${item.floatShares ? item.floatShares.toLocaleString() : '—'} • Volume: ${item.volume?.toLocaleString() || '—'}</div>
+          ${renderNews(item.news || [])}
+        `;
+        resultsEl.appendChild(card);
+      });
+    }
+
+    function renderNews(news) {
+      if (!news.length) return '<div class="muted">No news</div>';
+      return `<div class="news">` + news.slice(0,2).map(n => `
+        <a href="${n.link || '#'}" target="_blank" rel="noopener">${n.title || 'News'}</a>
+        <small>${n.publisher || ''}</small>
+      `).join('') + `</div>`;
+    }
+
+    document.getElementById('runScan').addEventListener('click', (e) => {
+      e.preventDefault();
+      fetchSqueezes({ force: true });
+    });
+
+    const cachedState = renderCached();
+    if (!cachedState.rendered) {
+      fetchSqueezes({ force: true });
+    } else if (cachedState.age > 180000) {
+      setTimeout(() => fetchSqueezes({ force: true }), 250);
+    }
+  </script>
+</body>
+</html>

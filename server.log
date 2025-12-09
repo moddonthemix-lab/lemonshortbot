@@ -1,0 +1,80 @@
+[2025-12-07 22:56:39 -0500] [89824] [INFO] Starting gunicorn 21.2.0
+[2025-12-07 22:56:39 -0500] [89824] [INFO] Listening at: http://0.0.0.0:5050 (89824)
+[2025-12-07 22:56:39 -0500] [89824] [INFO] Using worker: sync
+[2025-12-07 22:56:39 -0500] [89834] [INFO] Booting worker with pid: 89834
+[2025-12-07 22:56:39 -0500] [89835] [INFO] Booting worker with pid: 89835
+[2025-12-07 22:56:39 -0500] [89836] [INFO] Booting worker with pid: 89836
+[2025-12-07 23:08:28 -0500] [89824] [CRITICAL] WORKER TIMEOUT (pid:89836)
+Exception ignored from cffi callback <function buffer_callback at 0x10d2fcf40>:
+Traceback (most recent call last):
+  File "/Users/nolangriffis/Downloads/lemonshortbot-claude-investigate-liver-changes-01BLpJuHXKFMSjcNmo56frHt/.venv/lib/python3.13/site-packages/curl_cffi/curl.py", line 100, in buffer_callback
+    @ffi.def_extern()
+  File "/Users/nolangriffis/Downloads/lemonshortbot-claude-investigate-liver-changes-01BLpJuHXKFMSjcNmo56frHt/.venv/lib/python3.13/site-packages/gunicorn/workers/base.py", line 203, in handle_abort
+    sys.exit(1)
+SystemExit: 1
+[2025-12-07 23:08:29 -0500] [89824] [ERROR] Worker (pid:89836) was sent SIGKILL! Perhaps out of memory?
+[2025-12-07 23:08:29 -0500] [90789] [INFO] Booting worker with pid: 90789
+[2025-12-07 23:08:59 -0500] [89824] [CRITICAL] WORKER TIMEOUT (pid:89835)
+[2025-12-07 23:09:00 -0500] [89824] [ERROR] Worker (pid:89835) was sent SIGKILL! Perhaps out of memory?
+[2025-12-07 23:09:00 -0500] [90813] [INFO] Booting worker with pid: 90813
+[2025-12-07 23:09:31 -0500] [89824] [CRITICAL] WORKER TIMEOUT (pid:89834)
+[2025-12-07 23:09:32 -0500] [89824] [ERROR] Worker (pid:89834) was sent SIGKILL! Perhaps out of memory?
+[2025-12-07 23:09:32 -0500] [90838] [INFO] Booting worker with pid: 90838
+[2025-12-07 23:10:19 -0500] [89824] [CRITICAL] WORKER TIMEOUT (pid:90789)
+[2025-12-07 23:10:19 -0500] [90789] [INFO] Worker exiting (pid: 90789)
+✅ LemonAI database initialized
+
+🔄 Running daily backtest check...
+✅ Daily backtest scheduler started (runs every 24 hours)
+📅 Daily auto-scanner started
+✅ Daily plays auto-scanner started (scans at 5pm ET daily)
+📅 Weekly auto-scanner started
+✅ Weekly plays auto-scanner started (scans Friday 5pm ET)
+✅ Market open scanner started (auto-runs at 9:30 AM ET)
+👁️  Options flow monitor started
+⏰ Next daily scan in 17.9 hours (at 05:00 PM ET)
+✅ Options flow monitor started (scans every 15 min during market hours)
+⏰ Next weekly scan in 113.9 hours (at Friday 05:00 PM ET)
+✅ Daily backtest completed
+
+📅 Weekend detected. Sleeping until Monday market open (10.4 hours)
+💤 Market closed. Monitor sleeping...
+
+🤖 LemonAI: Starting analysis...
+🔄 LemonAI: Generating fresh recommendations...
+📊 LemonAI: Auto-running scans...
+🔄 Auto-running comprehensive scan for LemonAI...
+✅ AAPL: Yahoo (attempt 1)
+✅ MSFT: Yahoo (attempt 1)
+✅ GOOGL: Yahoo (attempt 1)
+✅ AMZN: Yahoo (attempt 1)
+✅ TSLA: Yahoo (attempt 1)
+✅ META: Yahoo (attempt 1)
+✅ NVDA: Yahoo (attempt 1)
+✅ AMD: Yahoo (attempt 1)
+✅ SPY: Yahoo (attempt 1)
+✅ QQQ: Yahoo (attempt 1)
+✅ IWM: Yahoo (attempt 1)
+✅ DIA: Yahoo (attempt 1)
+✅ NFLX: Yahoo (attempt 1)
+⚠️  NFLX: Error accessing news: 'NoneType' object has no attribute 'get'
+✅ DIS: Yahoo (attempt 1)
+⚠️  DIS: Error accessing news: 'NoneType' object has no attribute 'get'
+✅ PYPL: Yahoo (attempt 1)
+✅ UBER: Yahoo (attempt 1)
+✅ BABA: Yahoo (attempt 1)
+✅ SNAP: Yahoo (attempt 1)
+✅ ROKU: Yahoo (attempt 1)
+⚠️  ROKU: Error accessing news: 'NoneType' object has no attribute 'get'
+✅ F: Yahoo (attempt 1)
+⚠️  F: Error accessing news: 'NoneType' object has no attribute 'get'
+✅ GM: Yahoo (attempt 1)
+✅ BA: Yahoo (attempt 1)
+✅ JPM: Yahoo (attempt 1)
+⚠️  JPM: Error accessing news: 'NoneType' object has no attribute 'get'
+✅ GS: Yahoo (attempt 1)
+✅ MS: Yahoo (attempt 1)
+✅ XOM: Yahoo (attempt 1)
+[2025-12-07 23:10:19 -0500] [89824] [ERROR] Worker (pid:90789) exited with code 1
+[2025-12-07 23:10:19 -0500] [89824] [ERROR] Worker (pid:90789) exited with code 1.
+[2025-12-07 23:10:19 -0500] [90879] [INFO] Booting worker with pid: 90879
