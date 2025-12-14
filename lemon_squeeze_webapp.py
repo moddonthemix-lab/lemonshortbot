@@ -1513,27 +1513,32 @@ def weekly_plays():
                     if has_pattern:
                         current_price = hist['Close'].iloc[-1]
 
-                        # Calculate weekly change from the weekly data
-                        current_week_close = weekly['Close'].iloc[-1]
-                        previous_week_close = weekly['Close'].iloc[-2]
-                        weekly_change = ((current_week_close - previous_week_close) / previous_week_close) * 100
+                        # Calculate weekly change
+                        if len(weekly) >= 2:
+                            current_week_close = weekly['Close'].iloc[-1]
+                            previous_week_close = weekly['Close'].iloc[-2]
+                            weekly_change = ((current_week_close - previous_week_close) / previous_week_close) * 100
+                        else:
+                            weekly_change = 0.0
 
                         # Fetch news for this ticker
                         news = fetch_news(stock_data, ticker)
 
                         results.append({
                             'ticker': ticker,
-                            'company': ticker,
+                            'company': info.get('longName', ticker),
                             'currentPrice': float(current_price),
                             'weeklyChange': float(weekly_change),
                             'volume': int(hist['Volume'].iloc[-1]),
+                            'avgVolume': int(hist['Volume'].mean()) if len(hist) > 0 else 0,
                             'marketCap': info.get('marketCap', 0),
                             'pattern': pattern_data,
                             'timeframe': 'weekly',
                             'news': news
                         })
                         print(f"✅ {ticker}: {pattern_data['type']}")
-            except:
+            except Exception as e:
+                print(f"❌ {ticker}: {e}")
                 continue
         
         print(f"✅ Found {len(results)} weekly patterns\n")
@@ -1571,16 +1576,32 @@ def hourly_plays():
 
                     if has_pattern:
                         current_price = hist['Close'].iloc[-1]
+
+                        # Calculate hourly change from previous hour
+                        if len(hist) >= 2:
+                            previous_price = hist['Close'].iloc[-2]
+                            hourly_change = ((current_price - previous_price) / previous_price) * 100
+                        else:
+                            hourly_change = 0.0
+
+                        # Fetch news for this ticker
+                        news = fetch_news(stock_data, ticker)
+
                         results.append({
                             'ticker': ticker,
-                            'company': ticker,
+                            'company': info.get('longName', ticker),
                             'currentPrice': float(current_price),
+                            'hourlyChange': float(hourly_change),
                             'volume': int(hist['Volume'].iloc[-1]),
+                            'avgVolume': int(hist['Volume'].mean()) if len(hist) > 0 else 0,
+                            'marketCap': info.get('marketCap', 0),
                             'pattern': pattern_data,
-                            'timeframe': 'hourly'
+                            'timeframe': 'hourly',
+                            'news': news
                         })
                         print(f"✅ {ticker}: {pattern_data['type']}")
-            except:
+            except Exception as e:
+                print(f"❌ {ticker}: {e}")
                 continue
         
         print(f"✅ Found {len(results)} hourly patterns\n")
@@ -1648,6 +1669,7 @@ def crypto_plays():
                                     'currentPrice': float(current_price),
                                     'change': float(change),
                                     'volume': int(hist['Volume'].iloc[-1]),
+                                    'avgVolume': int(hist['Volume'].mean()) if len(hist) > 0 else 0,
                                     'pattern': pattern_data,
                                     'timeframe': tf_name,
                                     'timeframe_display': display_name
