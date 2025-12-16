@@ -465,6 +465,7 @@ def calculate_risk_score(short_interest, daily_change, volume_ratio, days_to_cov
 def check_strat_31(hist):
     """
     Check if stock has a 3-1 pattern (The Strat)
+    WITH STRICT VALIDATION - must be significant pattern
     """
     if len(hist) < 3:
         return False, None
@@ -473,36 +474,63 @@ def check_strat_31(hist):
     previous = hist.iloc[-2]
     before_prev = hist.iloc[-3]
 
+    # Check for 3 (outside bar)
     is_three = (previous['High'] > before_prev['High'] and
                 previous['Low'] < before_prev['Low'])
 
+    # Check for 1 (inside bar)
     is_one = (current['High'] < previous['High'] and
               current['Low'] > previous['Low'])
 
+    if not (is_three and is_one):
+        return False, None
+
+    # STRICT VALIDATION: Pattern must be SIGNIFICANT
+
+    # 1. The "3" bar (outside bar) must be at least 1.5% range
+    three_range = ((previous['High'] - previous['Low']) / previous['Low']) * 100
+    if three_range < 1.5:
+        return False, None
+
+    # 2. The "3" bar must be significantly larger than the bar before it
+    before_prev_range = ((before_prev['High'] - before_prev['Low']) / before_prev['Low']) * 100
+    if three_range < before_prev_range * 1.3:  # At least 30% larger
+        return False, None
+
+    # 3. The "1" bar must be clearly inside (not just barely)
+    # Current bar should use less than 70% of the previous bar's range
+    current_range = current['High'] - current['Low']
+    previous_range = previous['High'] - previous['Low']
+    if current_range / previous_range > 0.7:
+        return False, None
+
+    # 4. Volume confirmation - current bar should have decent volume
+    if len(hist) >= 20:
+        avg_volume = hist['Volume'].tail(20).mean()
+        if current['Volume'] < avg_volume * 0.5:  # At least 50% of avg volume
+            return False, None
+
     direction = "bullish" if current['Close'] > current['Open'] else "bearish"
 
-    if is_three and is_one:
-        pattern_data = {
-            'has_pattern': True,
-            'type': '3-1 Strat',
-            'direction': direction,
-            'three_candle': {
-                'high': float(previous['High']),
-                'low': float(previous['Low']),
-                'close': float(previous['Close']),
-                'date': previous.name.strftime('%Y-%m-%d')
-            },
-            'one_candle': {
-                'high': float(current['High']),
-                'low': float(current['Low']),
-                'close': float(current['Close']),
-                'open': float(current['Open']),
-                'date': current.name.strftime('%Y-%m-%d')
-            }
+    pattern_data = {
+        'has_pattern': True,
+        'type': '3-1 Strat',
+        'direction': direction,
+        'three_candle': {
+            'high': float(previous['High']),
+            'low': float(previous['Low']),
+            'close': float(previous['Close']),
+            'date': previous.name.strftime('%Y-%m-%d')
+        },
+        'one_candle': {
+            'high': float(current['High']),
+            'low': float(current['Low']),
+            'close': float(current['Close']),
+            'open': float(current['Open']),
+            'date': current.name.strftime('%Y-%m-%d')
         }
-        return True, pattern_data
-
-    return False, None
+    }
+    return True, pattern_data
 
 def check_all_patterns(hist):
     """
@@ -524,29 +552,62 @@ def check_all_patterns(hist):
     is_inside = (current['High'] < previous['High'] and
                  current['Low'] > previous['Low'])
 
-    if is_inside:
-        direction = 'bullish' if current['Close'] > previous['Close'] else 'bearish'
-        pattern_data = {
-            'has_pattern': True,
-            'type': 'Inside Bar (1)',
-            'direction': direction,
-            'previous_candle': {
-                'high': float(previous['High']),
-                'low': float(previous['Low']),
-                'close': float(previous['Close']),
-                'date': previous.name.strftime('%Y-%m-%d')
-            },
-            'current_candle': {
-                'high': float(current['High']),
-                'low': float(current['Low']),
-                'close': float(current['Close']),
-                'open': float(current['Open']),
-                'date': current.name.strftime('%Y-%m-%d')
-            }
-        }
-        return True, pattern_data
+    if not is_inside:
+        return False, None
 
-    return False, None
+    # STRICT VALIDATION: Inside bar must be SIGNIFICANT
+
+    # 1. Previous bar must have decent range (at least 1% range)
+    previous_range_pct = ((previous['High'] - previous['Low']) / previous['Low']) * 100
+    if previous_range_pct < 1.0:
+        return False, None
+
+    # 2. Current bar must be clearly inside (not just barely)
+    # Should use less than 75% of previous bar's range
+    current_range = current['High'] - current['Low']
+    previous_range = previous['High'] - previous['Low']
+    if current_range / previous_range > 0.75:
+        return False, None
+
+    # 3. Previous bar should be significant compared to recent bars
+    if len(hist) >= 5:
+        recent_avg_range = 0
+        for i in range(2, min(6, len(hist))):
+            bar = hist.iloc[-i]
+            bar_range = ((bar['High'] - bar['Low']) / bar['Low']) * 100
+            recent_avg_range += bar_range
+        recent_avg_range /= min(4, len(hist) - 2)
+
+        # Previous bar should be at least 80% of recent average
+        if previous_range_pct < recent_avg_range * 0.8:
+            return False, None
+
+    # 4. Volume confirmation
+    if len(hist) >= 20:
+        avg_volume = hist['Volume'].tail(20).mean()
+        if current['Volume'] < avg_volume * 0.5:  # At least 50% of avg volume
+            return False, None
+
+    direction = 'bullish' if current['Close'] > previous['Close'] else 'bearish'
+    pattern_data = {
+        'has_pattern': True,
+        'type': 'Inside Bar (1)',
+        'direction': direction,
+        'previous_candle': {
+            'high': float(previous['High']),
+            'low': float(previous['Low']),
+            'close': float(previous['Close']),
+            'date': previous.name.strftime('%Y-%m-%d')
+        },
+        'current_candle': {
+            'high': float(current['High']),
+            'low': float(current['Low']),
+            'close': float(current['Close']),
+            'open': float(current['Open']),
+            'date': current.name.strftime('%Y-%m-%d')
+        }
+    }
+    return True, pattern_data
 
 def analyze_multiple_timeframes(ticker):
     """
