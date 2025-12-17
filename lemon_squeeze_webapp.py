@@ -485,31 +485,31 @@ def check_strat_31(hist):
     if not (is_three and is_one):
         return False, None
 
-    # EXTREMELY STRICT VALIDATION - ZERO TOLERANCE FOR FALSE POSITIVES
+    # BALANCED VALIDATION - Catch real patterns, filter obvious false positives
 
-    # 1. The "3" bar must have AT LEAST 3% range (was 1.5%)
+    # 1. The "3" bar must have AT LEAST 2% range (significant move)
     three_range_pct = ((previous['High'] - previous['Low']) / previous['Low']) * 100
-    if three_range_pct < 3.0:
+    if three_range_pct < 2.0:
         return False, None
 
-    # 2. The "3" bar must be at LEAST 2X larger than bar before it (was 1.3x)
+    # 2. The "3" bar must be at LEAST 1.5X larger than bar before it
     before_prev_range_pct = ((before_prev['High'] - before_prev['Low']) / before_prev['Low']) * 100
-    if three_range_pct < before_prev_range_pct * 2.0:
+    if three_range_pct < before_prev_range_pct * 1.5:
         return False, None
 
-    # 3. The "1" bar must be CLEARLY inside - use LESS than 50% of previous range (was 70%)
+    # 3. The "1" bar must be clearly inside - use LESS than 60% of previous range
     current_range = current['High'] - current['Low']
     previous_range = previous['High'] - previous['Low']
-    if current_range / previous_range > 0.5:
+    if current_range / previous_range > 0.6:
         return False, None
 
-    # 4. Volume must be AT LEAST 80% of average (was 50%)
+    # 4. Volume must be AT LEAST 60% of average
     if len(hist) >= 20:
         avg_volume = hist['Volume'].tail(20).mean()
-        if current['Volume'] < avg_volume * 0.8:
+        if current['Volume'] < avg_volume * 0.6:
             return False, None
 
-    # 5. NEW: The "3" bar MUST be in top 15% of recent ranges
+    # 5. The "3" bar should be above average (top 30% of recent ranges)
     if len(hist) >= 10:
         recent_ranges = []
         for i in range(2, min(15, len(hist))):
@@ -519,22 +519,9 @@ def check_strat_31(hist):
 
         if len(recent_ranges) > 0:
             recent_ranges_sorted = sorted(recent_ranges, reverse=True)
-            top_15_threshold = recent_ranges_sorted[int(len(recent_ranges) * 0.15)]
-            if three_range_pct < top_15_threshold:
+            top_30_threshold = recent_ranges_sorted[int(len(recent_ranges) * 0.3)]
+            if three_range_pct < top_30_threshold:
                 return False, None
-
-    # 6. NEW: The "3" bar must have decisive close
-    three_close_position = (previous['Close'] - previous['Low']) / previous_range
-    if current['Close'] > current['Open']:  # Bullish setup
-        if three_close_position < 0.5:  # Must close in top 50%
-            return False, None
-    else:  # Bearish setup
-        if three_close_position > 0.5:  # Must close in bottom 50%
-            return False, None
-
-    # 7. NEW: Inside bar must be AT LEAST 40% smaller than outside bar
-    if current_range / previous_range > 0.6:
-        return False, None
 
     direction = "bullish" if current['Close'] > current['Open'] else "bearish"
 
@@ -581,20 +568,20 @@ def check_all_patterns(hist):
     if not is_inside:
         return False, None
 
-    # EXTREMELY STRICT VALIDATION - ZERO TOLERANCE FOR FALSE POSITIVES
+    # BALANCED VALIDATION - Catch real patterns, filter obvious false positives
 
-    # 1. Previous bar must have AT LEAST 2.5% range (was 1%)
+    # 1. Previous bar must have AT LEAST 1.2% range (meaningful move)
     previous_range_pct = ((previous['High'] - previous['Low']) / previous['Low']) * 100
-    if previous_range_pct < 2.5:
+    if previous_range_pct < 1.2:
         return False, None
 
-    # 2. Current bar must be CLEARLY inside - use LESS than 50% of previous range (was 75%)
+    # 2. Current bar must be clearly inside - use LESS than 65% of previous range
     current_range = current['High'] - current['Low']
     previous_range = previous['High'] - previous['Low']
-    if current_range / previous_range > 0.5:
+    if current_range / previous_range > 0.65:
         return False, None
 
-    # 3. Previous bar MUST be in top 20% of recent ranges
+    # 3. Previous bar should be above average size (top 40% of recent ranges)
     if len(hist) >= 10:
         recent_ranges = []
         for i in range(2, min(15, len(hist))):
@@ -604,24 +591,20 @@ def check_all_patterns(hist):
 
         if len(recent_ranges) > 0:
             recent_ranges_sorted = sorted(recent_ranges, reverse=True)
-            top_20_threshold = recent_ranges_sorted[int(len(recent_ranges) * 0.2)]
-            if previous_range_pct < top_20_threshold:
+            top_40_threshold = recent_ranges_sorted[int(len(recent_ranges) * 0.4)]
+            if previous_range_pct < top_40_threshold:
                 return False, None
 
-    # 4. Volume must be AT LEAST 75% of average (was 50%)
+    # 4. Volume must be AT LEAST 40% of average (real activity)
     if len(hist) >= 20:
         avg_volume = hist['Volume'].tail(20).mean()
-        if current['Volume'] < avg_volume * 0.75:
+        if current['Volume'] < avg_volume * 0.4:
             return False, None
 
-    # 5. NEW: Previous bar must have been directional (not doji)
+    # 5. Previous bar should have some directional bias (not tiny doji)
     prev_body = abs(previous['Close'] - previous['Open'])
     prev_body_pct = (prev_body / previous_range) * 100
-    if prev_body_pct < 40:  # Body must be at least 40% of range
-        return False, None
-
-    # 6. NEW: Inside bar must be significantly compressed
-    if current_range > previous_range * 0.55:
+    if prev_body_pct < 25:  # Body at least 25% of range
         return False, None
 
     direction = 'bullish' if current['Close'] > previous['Close'] else 'bearish'
