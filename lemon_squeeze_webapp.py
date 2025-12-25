@@ -182,16 +182,34 @@ user_favorites = {}
 user_journal = {}  # {email: [journal_entries]}
 chat_messages = []  # Global chat messages
 
+# ===== PATTERN DETECTION VALIDATION SETTINGS =====
+# These values determine which patterns are shown vs filtered as noise
+# CHANGING THESE VALUES WILL AUTO-CLEAR THE CACHE (no manual restart needed!)
+PATTERN_VALIDATION_CONFIG = {
+    '31_strat_min_range_pct': 0.8,      # 3-1 pattern: min % range for outside bar
+    '31_strat_min_volume_pct': 0.3,     # 3-1 pattern: min volume as % of 20-day avg (30%)
+    'inside_bar_min_range_pct': 0.5,    # Inside bar: min % range for previous bar
+    'inside_bar_min_volume_pct': 0.3    # Inside bar: min volume as % of 20-day avg (30%)
+}
+
+# Generate version hash from validation config
+# If config changes, version changes, cache auto-clears
+PATTERN_VALIDATION_VERSION = hashlib.md5(
+    json.dumps(PATTERN_VALIDATION_CONFIG, sort_keys=True).encode()
+).hexdigest()[:8]
+
+print(f"🔍 Pattern Detection Version: {PATTERN_VALIDATION_VERSION}")
+
 # Scan results cache for #lemonplays bot
 scan_cache = {
-    'squeeze': {'results': [], 'timestamp': None, 'timeframe': '3mo'},
-    'daily': {'results': [], 'timestamp': None, 'timeframe': '1d'},
-    'weekly': {'results': [], 'timestamp': None, 'timeframe': '5d'},
-    'hourly': {'results': [], 'timestamp': None, 'timeframe': '1d'},
-    'volemon': {'results': [], 'timestamp': None, 'timeframe': '5d'},
-    'usuals': {'results': [], 'timestamp': None, 'timeframe': '5d'},
-    'crypto': {'results': [], 'timestamp': None, 'timeframe': '7d'},
-    'lemonai': {'results': [], 'timestamp': None, 'timeframe': '1 week'}
+    'squeeze': {'results': [], 'timestamp': None, 'timeframe': '3mo', 'version': None},
+    'daily': {'results': [], 'timestamp': None, 'timeframe': '1d', 'version': None},
+    'weekly': {'results': [], 'timestamp': None, 'timeframe': '5d', 'version': None},
+    'hourly': {'results': [], 'timestamp': None, 'timeframe': '1d', 'version': None},
+    'volemon': {'results': [], 'timestamp': None, 'timeframe': '5d', 'version': None},
+    'usuals': {'results': [], 'timestamp': None, 'timeframe': '5d', 'version': None},
+    'crypto': {'results': [], 'timestamp': None, 'timeframe': '7d', 'version': None},
+    'lemonai': {'results': [], 'timestamp': None, 'timeframe': '1 week', 'version': None}
 }
 
 # ===== LEMONAI DATABASE =====
@@ -494,19 +512,21 @@ def check_strat_31(hist):
     # MINIMAL VALIDATION - DO NOT REMOVE OR CHANGE WITHOUT TESTING
     # These two simple checks eliminate 90% of false positives while keeping
     # all real tradeable patterns. Tested extensively Dec 2025.
+    # Values are defined in PATTERN_VALIDATION_CONFIG at top of file.
+    # Changing those values will auto-clear cache - no manual restart needed!
     # ============================================================================
 
-    # 1. Outside bar must have at least 0.8% range (meaningful move)
+    # 1. Outside bar must have at least X% range (meaningful move)
     #    WHY: Filters tiny bars that aren't tradeable anyway
     three_range_pct = ((previous['High'] - previous['Low']) / previous['Low']) * 100
-    if three_range_pct < 0.8:
+    if three_range_pct < PATTERN_VALIDATION_CONFIG['31_strat_min_range_pct']:
         return False, None
 
-    # 2. Volume must be at least 30% of average (not dead volume)
+    # 2. Volume must be at least X% of average (not dead volume)
     #    WHY: Patterns need volume to be tradeable
     if len(hist) >= 20:
         avg_volume = hist['Volume'].tail(20).mean()
-        if current['Volume'] < avg_volume * 0.3:
+        if current['Volume'] < avg_volume * PATTERN_VALIDATION_CONFIG['31_strat_min_volume_pct']:
             return False, None
 
     direction = "bullish" if current['Close'] > current['Open'] else "bearish"
@@ -558,19 +578,21 @@ def check_all_patterns(hist):
     # MINIMAL VALIDATION - DO NOT REMOVE OR CHANGE WITHOUT TESTING
     # These two simple checks eliminate 90% of false positives while keeping
     # all real tradeable patterns (like coinbase inside bars). Tested Dec 2025.
+    # Values are defined in PATTERN_VALIDATION_CONFIG at top of file.
+    # Changing those values will auto-clear cache - no manual restart needed!
     # ============================================================================
 
-    # 1. Previous bar must have at least 0.5% range (meaningful move)
+    # 1. Previous bar must have at least X% range (meaningful move)
     #    WHY: Inside bars need a meaningful previous bar to be tradeable
     previous_range_pct = ((previous['High'] - previous['Low']) / previous['Low']) * 100
-    if previous_range_pct < 0.5:
+    if previous_range_pct < PATTERN_VALIDATION_CONFIG['inside_bar_min_range_pct']:
         return False, None
 
-    # 2. Volume must be at least 30% of average (not dead volume)
+    # 2. Volume must be at least X% of average (not dead volume)
     #    WHY: Patterns need volume to be tradeable
     if len(hist) >= 20:
         avg_volume = hist['Volume'].tail(20).mean()
-        if current['Volume'] < avg_volume * 0.3:
+        if current['Volume'] < avg_volume * PATTERN_VALIDATION_CONFIG['inside_bar_min_volume_pct']:
             return False, None
 
     direction = 'bullish' if current['Close'] > previous['Close'] else 'bearish'
@@ -1508,6 +1530,7 @@ def daily_plays():
         timestamp = datetime.now(ZoneInfo('America/New_York'))
         scan_cache['daily']['results'] = results
         scan_cache['daily']['timestamp'] = timestamp
+        scan_cache['daily']['version'] = PATTERN_VALIDATION_VERSION
 
         return jsonify({
             'success': True,
@@ -1593,6 +1616,7 @@ def weekly_plays():
         timestamp = datetime.now(ZoneInfo('America/New_York'))
         scan_cache['weekly']['results'] = results
         scan_cache['weekly']['timestamp'] = timestamp
+        scan_cache['weekly']['version'] = PATTERN_VALIDATION_VERSION
 
         return jsonify({
             'success': True,
@@ -1734,6 +1758,7 @@ def crypto_plays():
         # Cache results for #lemonplays bot
         scan_cache['crypto']['results'] = results
         scan_cache['crypto']['timestamp'] = datetime.now()
+        scan_cache['crypto']['version'] = PATTERN_VALIDATION_VERSION
 
         return jsonify({'success': True, 'results': results})
 
@@ -1880,6 +1905,7 @@ def usuals_scan():
         # Cache results for #lemonplays bot
         scan_cache['usuals']['results'] = results
         scan_cache['usuals']['timestamp'] = datetime.now()
+        scan_cache['usuals']['version'] = PATTERN_VALIDATION_VERSION
 
         return jsonify({'success': True, 'results': results})
 
@@ -2815,6 +2841,7 @@ def auto_run_scans_for_lemonai():
 
         scan_cache['daily']['results'] = daily_results
         scan_cache['daily']['timestamp'] = datetime.now()
+        scan_cache['daily']['version'] = PATTERN_VALIDATION_VERSION
         print(f"✅ Auto-scan: Found {len(daily_results)} setups (patterns + momentum)")
 
         # Run usuals scanner - include ALL stocks with ANY setup
@@ -2889,6 +2916,7 @@ def auto_run_scans_for_lemonai():
 
         scan_cache['usuals']['results'] = usuals_results
         scan_cache['usuals']['timestamp'] = datetime.now()
+        scan_cache['usuals']['version'] = PATTERN_VALIDATION_VERSION
         print(f"✅ Auto-scan: Scanned {len(usuals_results)} usuals (all included)")
 
     except Exception as e:
@@ -3734,8 +3762,20 @@ def run_options_flow_monitor():
             time_module.sleep(600)  # Sleep 10 minutes on error
 
 def is_daily_cache_valid():
-    """Check if daily cache is still valid (5pm to 2pm next day)"""
+    """Check if daily cache is still valid (5pm to 2pm next day)
+
+    Also checks version - if pattern detection logic changed, cache auto-clears
+    """
     if not scan_cache['daily']['timestamp']:
+        return False
+
+    # VERSION CHECK - Auto-clear cache if pattern detection logic changed
+    cached_version = scan_cache['daily'].get('version')
+    if cached_version != PATTERN_VALIDATION_VERSION:
+        print(f"🔄 Daily cache version mismatch ({cached_version} != {PATTERN_VALIDATION_VERSION}) - auto-clearing cache")
+        scan_cache['daily']['results'] = []
+        scan_cache['daily']['timestamp'] = None
+        scan_cache['daily']['version'] = None
         return False
 
     now_et = datetime.now(ZoneInfo('America/New_York'))
@@ -3760,8 +3800,20 @@ def is_daily_cache_valid():
     return False
 
 def is_weekly_cache_valid():
-    """Check if weekly cache is still valid (Friday 5pm to next Friday 5pm)"""
+    """Check if weekly cache is still valid (Friday 5pm to next Friday 5pm)
+
+    Also checks version - if pattern detection logic changed, cache auto-clears
+    """
     if not scan_cache['weekly']['timestamp']:
+        return False
+
+    # VERSION CHECK - Auto-clear cache if pattern detection logic changed
+    cached_version = scan_cache['weekly'].get('version')
+    if cached_version != PATTERN_VALIDATION_VERSION:
+        print(f"🔄 Weekly cache version mismatch ({cached_version} != {PATTERN_VALIDATION_VERSION}) - auto-clearing cache")
+        scan_cache['weekly']['results'] = []
+        scan_cache['weekly']['timestamp'] = None
+        scan_cache['weekly']['version'] = None
         return False
 
     now_et = datetime.now(ZoneInfo('America/New_York'))
