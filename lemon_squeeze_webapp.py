@@ -480,6 +480,53 @@ def calculate_risk_score(short_interest, daily_change, volume_ratio, days_to_cov
     
     return round(risk_score, 1)
 
+# ===== DATA COMPLETENESS HELPERS =====
+# These prevent false pattern detections from incomplete (partial) bars.
+# A partial daily bar (mid-day scan) or incomplete weekly bar (mid-week scan)
+# has a smaller range than a full bar, making it appear as an inside bar
+# almost always - causing many false positives.
+
+def _get_complete_daily_hist(hist):
+    """Return hist with today's partial bar removed if market is currently open.
+
+    Without this, scanning during market hours would detect false inside bar
+    patterns because today's intraday range is smaller than a full daily bar.
+    """
+    now_et = datetime.now(ZoneInfo('America/New_York'))
+    weekday = now_et.weekday()  # 0=Mon, 4=Fri, 5=Sat, 6=Sun
+    market_open = (weekday < 5 and
+                   (now_et.hour > 9 or (now_et.hour == 9 and now_et.minute >= 30)) and
+                   now_et.hour < 16)
+    if market_open and len(hist) >= 4:
+        return hist.iloc[:-1]
+    return hist
+
+
+def _resample_to_complete_weekly(hist):
+    """Resample daily hist to complete weekly bars, dropping current incomplete week.
+
+    Without this, running mid-week would show the current partial week as an
+    inside bar almost every time (fewer trading days = smaller range), creating
+    massive false positives across every stock in the weekly scanner.
+    """
+    weekly = hist.resample('W').agg({
+        'Open': 'first',
+        'High': 'max',
+        'Low': 'min',
+        'Close': 'last',
+        'Volume': 'sum'
+    }).dropna()
+
+    # Drop current incomplete week (weeks end Sunday; if not yet Sunday, week isn't done)
+    now_et = datetime.now(ZoneInfo('America/New_York'))
+    weekday = now_et.weekday()  # 0=Mon, 4=Fri, 5=Sat, 6=Sun
+    week_complete = weekday >= 5 or (weekday == 4 and now_et.hour >= 16)
+    if not week_complete and len(weekly) > 3:
+        weekly = weekly.iloc[:-1]
+
+    return weekly
+
+
 def check_strat_31(hist):
     """
     Check if stock has a 3-1 pattern (The Strat)
@@ -667,16 +714,11 @@ def analyze_multiple_timeframes(ticker):
                             'Volume': 'sum'
                         }).dropna()
                 elif tf == 'daily':
-                    hist_tf = hist  # Already daily
+                    # Skip today's partial bar if market is open
+                    hist_tf = _get_complete_daily_hist(hist)
                 elif tf == 'weekly':
-                    # Resample daily to weekly
-                    hist_tf = hist.resample('W').agg({
-                        'Open': 'first',
-                        'High': 'max',
-                        'Low': 'min',
-                        'Close': 'last',
-                        'Volume': 'sum'
-                    }).dropna()
+                    # Resample to complete weekly bars only (drops current incomplete week)
+                    hist_tf = _resample_to_complete_weekly(hist)
 
                 # Skip if not enough data
                 if hist_tf is None or len(hist_tf) < 3:
@@ -1495,7 +1537,9 @@ def daily_plays():
                 stock_data, hist, info = safe_yf_ticker(ticker)
 
                 if stock_data and hist is not None and len(hist) >= 3:
-                    has_pattern, pattern_data = check_all_patterns(hist)
+                    # Use only complete daily bars - skip today's partial bar if market is open
+                    hist_complete = _get_complete_daily_hist(hist)
+                    has_pattern, pattern_data = check_all_patterns(hist_complete)
 
                     if has_pattern:
                         current_price = hist['Close'].iloc[-1]
@@ -1568,14 +1612,8 @@ def weekly_plays():
                 stock_data, hist, info = safe_yf_ticker(ticker)
 
                 if stock_data and hist is not None and len(hist) >= 3:
-                    # Resample to weekly
-                    weekly = hist.resample('W').agg({
-                        'Open': 'first',
-                        'High': 'max',
-                        'Low': 'min',
-                        'Close': 'last',
-                        'Volume': 'sum'
-                    })
+                    # Resample to complete weekly bars only (drops current incomplete week)
+                    weekly = _resample_to_complete_weekly(hist)
 
                     has_pattern, pattern_data = check_all_patterns(weekly)
 
@@ -1853,9 +1891,10 @@ def usuals_scan():
                     avg_volume = hist['Volume'].iloc[:-1].mean()
                     volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1
                     
-                    # Check patterns on daily timeframe
+                    # Check patterns on daily timeframe (skip today's partial bar if market open)
                     patterns = {}
-                    has_daily_pattern, daily_pattern_data = check_all_patterns(hist)
+                    hist_complete = _get_complete_daily_hist(hist)
+                    has_daily_pattern, daily_pattern_data = check_all_patterns(hist_complete)
 
                     if has_daily_pattern:
                         patterns['daily'] = {
@@ -1863,14 +1902,8 @@ def usuals_scan():
                             'direction': daily_pattern_data['direction']
                         }
 
-                    # Check weekly timeframe
-                    weekly = hist.resample('W').agg({
-                        'Open': 'first',
-                        'High': 'max',
-                        'Low': 'min',
-                        'Close': 'last',
-                        'Volume': 'sum'
-                    })
+                    # Check weekly timeframe (drop current incomplete week)
+                    weekly = _resample_to_complete_weekly(hist)
 
                     has_weekly_pattern, weekly_pattern_data = check_all_patterns(weekly)
                     if has_weekly_pattern:
