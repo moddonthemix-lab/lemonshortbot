@@ -520,7 +520,7 @@ def _resample_to_complete_weekly(hist):
     # Drop current incomplete week (weeks end Sunday; if not yet Sunday, week isn't done)
     now_et = datetime.now(ZoneInfo('America/New_York'))
     weekday = now_et.weekday()  # 0=Mon, 4=Fri, 5=Sat, 6=Sun
-    week_complete = weekday >= 5 or (weekday == 4 and now_et.hour >= 16)
+    week_complete = weekday == 6  # Only complete on Sunday
     if not week_complete and len(weekly) > 3:
         weekly = weekly.iloc[:-1]
 
